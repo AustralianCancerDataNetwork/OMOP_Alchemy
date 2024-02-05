@@ -37,10 +37,10 @@ class Measurement(Base):
     operator_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
     modifier_of_field_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
     # relationships
-    person: so.Mapped['Person'] = so.relationship(foreign_keys=[person_id])
-    provider: so.Mapped[Optional['Provider']] = so.relationship(foreign_keys=[provider_id])
-    visit_occurrence: so.Mapped[Optional['Visit_Occurrence']] = so.relationship(foreign_keys=[visit_occurrence_id])
-    visit_detail: so.Mapped[Optional['Visit_Detail']] = so.relationship(foreign_keys=[visit_detail_id])
+    person_object: so.Mapped['Person'] = so.relationship(foreign_keys=[person_id])
+    provider_object: so.Mapped[Optional['Provider']] = so.relationship(foreign_keys=[provider_id])
+    visit_occurrence_object: so.Mapped[Optional['Visit_Occurrence']] = so.relationship(foreign_keys=[visit_occurrence_id])
+    visit_detail_object: so.Mapped[Optional['Visit_Detail']] = so.relationship(foreign_keys=[visit_detail_id])
     # concept_relationships
     unit_concept: so.Mapped[Optional['Concept']] = so.relationship(foreign_keys=[unit_concept_id])
     measurement_concept: so.Mapped['Concept'] = so.relationship(foreign_keys=[measurement_concept_id])

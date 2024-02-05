@@ -2,3 +2,4 @@
 from .db import Base
 from .tables.clinical import Person
 from .tables.vocabulary import Concept
+from .tables.onco_ext import episode
