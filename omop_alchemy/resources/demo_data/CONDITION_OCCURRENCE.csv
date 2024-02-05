@@ -1,1 +1,6 @@
-condition_occurrence_id	condition_start_date	condition_start_date	condition_start_datetime	condition_end_date	condition_end_datetime	stop_reason	condition_source_value	condition_status_source_value	person_id	provider_id	visit_occurrence_id	visit_detail_id	condition_concept_id	condition_type_concept_id	condition_status_concept_id	condition_source_concept_id
+condition_occurrence_id	condition_start_date	condition_start_datetime	condition_end_date	condition_end_datetime	stop_reason	condition_source_value	condition_status_source_value	person_id	provider_id	visit_occurrence_id	visit_detail_id	condition_concept_id	condition_type_concept_id	condition_status_concept_id	condition_source_concept_id
+1	20150304							1				44499685	32840	32902	
+2	20120908							2				44505308	32840	32902	
+3	20141011							3				36529645	32840	32902	
+4	20190827							4				44503828	32840	32902	
+5	20200901							4				45566717	32840	32908	

@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 from sqlalchemy.ext.hybrid import hybrid_property
 import sqlalchemy as sa
 import sqlalchemy.orm as so
@@ -44,6 +44,10 @@ class Person(Base):
     gender_source: so.Mapped[Optional['Concept']] = so.relationship(foreign_keys=[gender_source_concept_id])
     ethnicity_source: so.Mapped[Optional['Concept']] = so.relationship(foreign_keys=[ethnicity_source_concept_id])
     race_source: so.Mapped[Optional['Concept']] = so.relationship(foreign_keys=[race_source_concept_id])
+
+    conditions: so.Mapped[List['Condition_Occurrence']] = so.relationship(
+        back_populates="person", lazy="selectin"
+    )
 
     def __repr__(self):
         return f'Person: person_id = {self.person_id}'

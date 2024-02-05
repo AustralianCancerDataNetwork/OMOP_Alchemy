@@ -2,6 +2,7 @@ from datetime import datetime, date
 from typing import Optional
 import sqlalchemy as sa
 import sqlalchemy.orm as so
+from sqlalchemy.ext.hybrid import hybrid_property
 
 from ...db import Base
 
@@ -38,5 +39,13 @@ class Condition_Occurrence(Base):
     condition_type_concept: so.Mapped['Concept'] = so.relationship(foreign_keys=[condition_type_concept_id])
     condition_status_concept: so.Mapped['Concept'] = so.relationship(foreign_keys=[condition_status_concept_id])
     condition_source_concept: so.Mapped['Concept'] = so.relationship(foreign_keys=[condition_source_concept_id])
-    
-    
+
+
+    @hybrid_property
+    def condition_label(self):
+        if self.condition_concept:
+            return self.condition_concept.concept_name
+        
+    @condition_label.expression
+    def _condition_label_expression(cls) -> sa.ColumnElement[Optional[str]]:
+        return sa.cast("SQLColumnExpression[Optional[str]]", cls.condition_concept.concept_name)

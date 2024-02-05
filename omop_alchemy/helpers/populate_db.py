@@ -7,7 +7,7 @@ import sqlalchemy.orm as so
 import sqlalchemy.sql.sqltypes as sss
 
 from ..db.config import engine, config
-from ..tables.clinical import Person
+from ..tables.clinical import Person, Condition_Occurrence
 from ..tables.health_system import Care_Site, Location, Provider
 from ..tables.vocabulary import Concept, Vocabulary, Concept_Class, Domain, Relationship, \
                                 Concept_Relationship, Concept_Ancestor
@@ -29,12 +29,14 @@ to_load_health_system = {'folder': 'demo_data',
                          'PROVIDER.csv': Provider}
 
 to_load_clinical = {'folder': 'demo_data',
-                    'PERSON.csv': Person}
+                  #  'PERSON.csv': Person,
+                    'CONDITION_OCCURRENCE.csv': Condition_Occurrence}
 
 # flexible loading of ohdsi vocab files downloaded to the path /data/ohdsi_vocabs
 
 def convert_date_col(dt):
-    return datetime.strptime(dt, '%Y%m%d')
+    if dt != '':
+        return datetime.strptime(dt, '%Y%m%d')
 
 def convert_datetime_col(dt):
     if dt != '':
