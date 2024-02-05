@@ -28,12 +28,17 @@ to_load_health_system = {'folder': 'demo_data',
                          'LOCATION.csv': Location,
                          'PROVIDER.csv': Provider}
 
-to_load_clinical = {'PERSON.csv': Person}
+to_load_clinical = {'folder': 'demo_data',
+                    'PERSON.csv': Person}
 
 # flexible loading of ohdsi vocab files downloaded to the path /data/ohdsi_vocabs
 
 def convert_date_col(dt):
     return datetime.strptime(dt, '%Y%m%d')
+
+def convert_datetime_col(dt):
+    if dt != '':
+        return datetime.strptime(dt, '%Y%m%d%H%M%S')
 
 def callable_pass(s):
     return s
@@ -53,7 +58,7 @@ def convert_dec(i):
 type_map = {sss.BigInteger: convert_int, 
             sss.Integer: convert_int, 
             sss.Numeric: convert_dec, 
-            sss.DateTime: convert_date_col, 
+            sss.DateTime: convert_datetime_col, 
             sss.String: callable_pass, 
             sss.Date: convert_date_col}
 
@@ -65,7 +70,7 @@ def populate_demo_db(to_load):
         folder = Path(config.VOCAB_PATH) / to_load['folder']
         print(folder)
         for ohdsi_file, interface in to_load.items():
-            if ohdsi_file != folder.name:
+            if interface != folder.name:
                 try:
                     with open(folder / ohdsi_file, 'r') as file:
                         reader = csv.DictReader(file, delimiter='\t')

@@ -1,5 +1,5 @@
 person_id	birth_datetime	death_datetime	person_source_value	gender_source_value	race_source_value	ethnicity_source_value	year_of_birth	month_of_birth	day_of_birth	location_id	provider_id	care_site_id	gender_concept_id	ethnicity_concept_id	race_concept_id	gender_source_concept_id	ethnicity_source_concept_id	race_source_concept_id
 1			1234	M			1950	1	10	1	1	1	8507					
 2			2354	F			1960	2	11	1	2	1	8532					
-3	1970-03-12:00.00.00		2255	M			1970	3	12	3	9	9	8507					
-4		2018-08-02:00.00.00	8877	F			1980	4	13	3	10	9	8532					
+3	19700312000000		2255	M			1970	3	12	3	9	9	8507					
+4		20180802000000	8877	F			1980	4	13	3	10	9	8532					
