@@ -24,7 +24,6 @@ class Visit_Occurrence(Base):
     person_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('person.person_id'))
     provider_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('provider.provider_id'))
     care_site_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('care_site.care_site_id'))
-    provider_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('provider.provider_id'))
     preceding_visit_occurrence_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('visit_occurrence.visit_occurrence_id'))
     # concept fks
     visit_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
@@ -35,7 +34,6 @@ class Visit_Occurrence(Base):
     person: so.Mapped[Optional['Person']] = so.relationship(foreign_keys=[person_id])
     provider: so.Mapped[Optional['Provider']] = so.relationship(foreign_keys=[provider_id])
     care_site: so.Mapped[Optional['Care_Site']] = so.relationship(foreign_keys=[care_site_id])
-    provider: so.Mapped[Optional['Provider']] = so.relationship(foreign_keys=[provider_id])
     visit_occurrence: so.Mapped[Optional['Visit_Occurrence']] = so.relationship(foreign_keys=[preceding_visit_occurrence_id])
     # concept_relationships
     visit_concept: so.Mapped[Optional['Concept']] = so.relationship(foreign_keys=[visit_concept_id])

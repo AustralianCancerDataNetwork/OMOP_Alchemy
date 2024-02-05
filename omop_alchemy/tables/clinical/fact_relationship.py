@@ -8,7 +8,7 @@ from ...db import Base
 class Fact_Relationship(Base):
     __tablename__ = 'fact_relationship'
     # identifier
-    fact_relationship_id_id: so.Mapped[int] = so.mapped_column(primary_key=True, autoincrement=True) 
+    fact_relationship_id: so.Mapped[int] = so.mapped_column(primary_key=True, autoincrement=True) 
     # temporal
     # strings
     # numeric
