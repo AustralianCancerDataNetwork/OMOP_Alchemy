@@ -1,0 +1,13 @@
+care_site_id	care_site_name	care_site_source_value	place_of_service_source_value	location_id	place_of_service_concept_id
+1	Liverpool Cancer Services	Cancer Services		1	9202
+2	Liverpool Inpatient	Inpatient Services		1	9201
+3	Liverpool Emergency	Emergency Department		1	9203
+4	Liverpool Telehealth	Telehealth Appointment		1	5083
+5	Bankstown Cancer Services	Cancer Services		2	9202
+6	Bankstown Inpatient	Inpatient Services		2	9201
+7	Bankstown Emergency	Emergency Department		2	9203
+8	Bankstown Telehealth	Telehealth Appointment		2	5083
+9	Macarthur Cancer Services	Cancer Services		3	9202
+10	Macarthur Inpatient	Inpatient Services		3	9201
+11	Macarthur Emergency	Emergency Department		3	9203
+12	Macarthur Telehealth	Telehealth Appointment		3	5083

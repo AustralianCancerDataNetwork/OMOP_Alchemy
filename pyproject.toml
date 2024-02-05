@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "omop_alchemy"
+version="0.1a1"
+description = "SQLAlchemy Models for OHDSI OMOP Common Data Model"
+authors = ["georgie <georgina.kennedy@unsw.edu.au>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+SQLAlchemy = "^2.0.25"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0.0"
+ipykernel = "^6.29.0"
+sphinx = "^7.2.6"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
