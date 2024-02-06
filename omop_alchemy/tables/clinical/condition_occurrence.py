@@ -40,8 +40,8 @@ class Condition_Occurrence(Base):
     condition_status_concept: so.Mapped['Concept'] = so.relationship(foreign_keys=[condition_status_concept_id])
     condition_source_concept: so.Mapped['Concept'] = so.relationship(foreign_keys=[condition_source_concept_id])
 
-    modifiers: so.Mapped[List['Measurement']] = so.relationship(
-        backref="modifies", lazy="selectin"
+    modifiers: so.Mapped[List['Condition_Modifier']] = so.relationship(
+        backref="condition_object", lazy="selectin"
     )
 
     @hybrid_property
