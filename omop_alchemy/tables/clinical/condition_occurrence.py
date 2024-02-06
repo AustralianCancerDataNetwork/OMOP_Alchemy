@@ -4,12 +4,13 @@ import sqlalchemy as sa
 import sqlalchemy.orm as so
 from sqlalchemy.ext.hybrid import hybrid_property
 
+from .modifiable_table import Modifiable_Table
 from ...db import Base
 
-class Condition_Occurrence(Base):
+class Condition_Occurrence(Modifiable_Table):
     __tablename__ = 'condition_occurrence'
     # identifier
-    condition_occurrence_id: so.Mapped[int] = so.mapped_column(primary_key=True, autoincrement=True)
+    condition_occurrence_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('modifiable_table.modifier_id'), primary_key=True, autoincrement=True)
     # temporal
     condition_start_date: so.Mapped[date] = so.mapped_column(sa.Date)
     condition_start_datetime: so.Mapped[Optional[datetime]] = so.mapped_column(sa.DateTime)
@@ -40,9 +41,11 @@ class Condition_Occurrence(Base):
     condition_status_concept: so.Mapped['Concept'] = so.relationship(foreign_keys=[condition_status_concept_id])
     condition_source_concept: so.Mapped['Concept'] = so.relationship(foreign_keys=[condition_source_concept_id])
 
-    modifiers: so.Mapped[List['Condition_Modifier']] = so.relationship(
-        backref="condition_object", lazy="selectin"
-    )
+
+    __mapper_args__ = {
+        "polymorphic_identity": "condition",
+        'inherit_condition': (condition_occurrence_id == Modifiable_Table.modifier_id)
+    }
 
     @hybrid_property
     def condition_label(self):

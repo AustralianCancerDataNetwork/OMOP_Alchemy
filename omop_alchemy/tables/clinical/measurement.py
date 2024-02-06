@@ -23,7 +23,8 @@ class Measurement(Base):
     value_as_number: so.Mapped[Decimal] = so.mapped_column(sa.Numeric)
     range_low: so.Mapped[Optional[Decimal]] = so.mapped_column(sa.Numeric)
     range_high: so.Mapped[Optional[Decimal]] = so.mapped_column(sa.Numeric)
-    modifier_of_event_id: so.Mapped[int] = so.mapped_column(sa.Integer)
+
+    modifier_of_event_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('modifiable_table.modifier_id'))
     # fks
     person_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('person.person_id'))
     provider_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('provider.provider_id'))
@@ -42,6 +43,7 @@ class Measurement(Base):
     provider_object: so.Mapped[Optional['Provider']] = so.relationship(foreign_keys=[provider_id])
     visit_occurrence_object: so.Mapped[Optional['Visit_Occurrence']] = so.relationship(foreign_keys=[visit_occurrence_id])
     visit_detail_object: so.Mapped[Optional['Visit_Detail']] = so.relationship(foreign_keys=[visit_detail_id])
+    modified_object: so.Mapped[Optional['Modifiable_Table']] = so.relationship(foreign_keys=[modifier_of_event_id])
     # concept_relationships
     unit_concept: so.Mapped[Optional['Concept']] = so.relationship(foreign_keys=[unit_concept_id])
     measurement_concept: so.Mapped['Concept'] = so.relationship(foreign_keys=[measurement_concept_id])
@@ -51,38 +53,32 @@ class Measurement(Base):
     modifier_of_concept: so.Mapped[Optional['Concept']] = so.relationship(foreign_keys=[modifier_of_field_concept_id])
     value_as_concept: so.Mapped[Optional['Concept']] = so.relationship(foreign_keys=[value_as_concept_id])
 
-    __mapper_args__ = {
-        "polymorphic_on":sa.case(
-            (modifier_of_field_concept_id == ModifierFields.condition_occurrence_id.value, "condition_modifier"),
-            (modifier_of_field_concept_id == ModifierFields.procedure_occurrence_id.value, "procedure_modifier"),
-            else_="episode_modifier"),
-        "polymorphic_identity":"measurement"
-    }
-
-class Condition_Modifier(Measurement):
-    __tablename__ = 'condition_modifier'    
-    measurement_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey("measurement.measurement_id"), primary_key=True)
-    condition_occurrence_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('condition_occurrence.condition_occurrence_id'))
-    condition_occurrence_object: so.Mapped[Optional['Condition_Occurrence']] = so.relationship(foreign_keys=[condition_occurrence_id])
-    __mapper_args__ = {
-        "polymorphic_load": "inline",
-        "polymorphic_identity": "condition_modifier",
-    }
 
 
-class Procedure_Modifier(Measurement):
-    __tablename__ = 'procedure_modifier'
-    measurement_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey("measurement.measurement_id"), primary_key=True)
-    __mapper_args__ = {
-        "polymorphic_load": "inline",
-        "polymorphic_identity": "procedure_modifier",
-    }
+# class Condition_Modifier(Measurement):
+#     __tablename__ = 'condition_modifier'    
+#     measurement_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey("measurement.measurement_id"), primary_key=True)
+#     condition_occurrence_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('condition_occurrence.condition_occurrence_id'))
+#     # condition_occurrence_object: so.Mapped[Optional['Condition_Occurrence']] = so.relationship(foreign_keys=[condition_occurrence_id])
+#     __mapper_args__ = {
+#         "polymorphic_load": "inline",
+#         "polymorphic_identity": "condition_modifier",
+#     }
 
 
-class Episode_Modifier(Measurement):
-    __tablename__ = 'episode_modifier'
-    measurement_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey("measurement.measurement_id"), primary_key=True)
-    __mapper_args__ = {
-        "polymorphic_load": "inline",
-        "polymorphic_identity": "episode_modifier",
-    }
+# class Procedure_Modifier(Measurement):
+#     __tablename__ = 'procedure_modifier'
+#     measurement_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey("measurement.measurement_id"), primary_key=True)
+#     __mapper_args__ = {
+#         "polymorphic_load": "inline",
+#         "polymorphic_identity": "procedure_modifier",
+#     }
+
+
+# class Episode_Modifier(Measurement):
+#     __tablename__ = 'episode_modifier'
+#     measurement_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey("measurement.measurement_id"), primary_key=True)
+#     __mapper_args__ = {
+#         "polymorphic_load": "inline",
+#         "polymorphic_identity": "episode_modifier",
+#     }

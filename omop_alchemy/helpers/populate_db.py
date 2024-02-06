@@ -7,7 +7,7 @@ import sqlalchemy.orm as so
 import sqlalchemy.sql.sqltypes as sss
 
 from ..db.config import engine, config
-from ..tables.clinical import Person, Condition_Occurrence
+from ..tables.clinical import Person, Condition_Occurrence, Measurement
 from ..tables.health_system import Care_Site, Location, Provider
 from ..tables.vocabulary import Concept, Vocabulary, Concept_Class, Domain, Relationship, \
                                 Concept_Relationship, Concept_Ancestor
@@ -30,17 +30,24 @@ to_load_health_system = {'folder': 'demo_data',
 
 to_load_clinical = {'folder': 'demo_data',
                     'PERSON.csv': Person,
-                    'CONDITION_OCCURRENCE.csv': Condition_Occurrence}
+                    'CONDITION_OCCURRENCE.csv': Condition_Occurrence,
+                    'MEASUREMENT.csv': Measurement}#,
+                    #'CONCEPT.csv': Concept}
 
 # flexible loading of ohdsi vocab files downloaded to the path /data/ohdsi_vocabs
 
-def convert_date_col(dt):
+def datetime_conversion(dt, fmt):
     if dt != '':
-        return datetime.strptime(dt, '%Y%m%d')
+        return datetime.strptime(dt, fmt)
+    
+def convert_date_col(dt):
+    return datetime_conversion(dt, '%Y%m%d')
+    
+def convert_time_col(dt):
+    return datetime_conversion(dt, '%H%M%S')
 
 def convert_datetime_col(dt):
-    if dt != '':
-        return datetime.strptime(dt, '%Y%m%d%H%M%S')
+    return datetime_conversion(dt, '%Y%m%d%H%M%S')
 
 def callable_pass(s):
     return s
@@ -61,6 +68,7 @@ type_map = {sss.BigInteger: convert_int,
             sss.Integer: convert_int, 
             sss.Numeric: convert_dec, 
             sss.DateTime: convert_datetime_col, 
+            sss.Time: convert_time_col, 
             sss.String: callable_pass, 
             sss.Date: convert_date_col}
 

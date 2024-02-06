@@ -3,12 +3,13 @@ from typing import Optional
 import sqlalchemy as sa
 import sqlalchemy.orm as so
 
+from .modifiable_table import Modifiable_Table
 from ...db import Base
 
-class Procedure_Occurrence(Base):
+class Procedure_Occurrence(Modifiable_Table):
     __tablename__ = 'procedure_occurrence'
     # identifier
-    procedure_occurrence_id: so.Mapped[int] = so.mapped_column(primary_key=True, autoincrement=True) 
+    procedure_occurrence_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('modifiable_table.modifier_id'), primary_key=True, autoincrement=True) 
 
     # temporal
     procedure_date: so.Mapped[Optional[date]] = so.mapped_column(sa.Date)
@@ -38,3 +39,8 @@ class Procedure_Occurrence(Base):
     modifier_concept: so.Mapped[Optional['Concept']] = so.relationship(foreign_keys=[modifier_concept_id])
     procedure_concept: so.Mapped[Optional['Concept']] = so.relationship(foreign_keys=[procedure_concept_id])
     procedure_source_concept: so.Mapped[Optional['Concept']] = so.relationship(foreign_keys=[procedure_source_concept_id])
+
+    __mapper_args__ = {
+        "polymorphic_identity": "procedure",
+        'inherit_condition': (procedure_occurrence_id == Modifiable_Table.modifier_id)
+    }
