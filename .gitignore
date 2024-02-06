@@ -37,3 +37,4 @@ venv.bak/
 poetry.lock
 ohdsi_vocabs/
 demo.db
+dash.db

@@ -3,7 +3,7 @@ import sqlalchemy.orm as so
 from sqlalchemy.ext.hybrid import hybrid_property
 from typing import List, Optional
 from datetime import datetime
-from ...helpers import Modality, EpisodeConcepts
+from ..conventions import Modality, EpisodeConcepts
 from ...db import Base
 from ..clinical.measurement import Measurement
 
@@ -37,10 +37,10 @@ class Episode(Base):
     episode_object_concept: so.Mapped['Concept'] = so.relationship(foreign_keys=[episode_object_concept_id])
     episode_type_concept: so.Mapped['Concept'] = so.relationship(foreign_keys=[episode_type_concept_id])
 
-    # reverse relationships
-    modifiers: so.Mapped[List['Measurement']] = so.relationship(
-        back_populates="person_object", lazy="selectin"
-    )
+    # # reverse relationships
+    # modifiers: so.Mapped[List['Measurement']] = so.relationship(
+    #     back_populates="person_object", lazy="selectin"
+    # )
     
 
     def __init__(self, 

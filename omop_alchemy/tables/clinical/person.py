@@ -48,6 +48,9 @@ class Person(Base):
     conditions: so.Mapped[List['Condition_Occurrence']] = so.relationship(
         back_populates="person", lazy="selectin"
     )
+    episodes: so.Mapped[List['Episode']] = so.relationship(
+        back_populates="person_object", lazy="selectin"
+    )
 
     def __repr__(self):
         return f'Person: person_id = {self.person_id}'

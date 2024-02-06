@@ -1,5 +1,5 @@
 from datetime import datetime, date
-from typing import Optional
+from typing import Optional, List
 import sqlalchemy as sa
 import sqlalchemy.orm as so
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -40,6 +40,9 @@ class Condition_Occurrence(Base):
     condition_status_concept: so.Mapped['Concept'] = so.relationship(foreign_keys=[condition_status_concept_id])
     condition_source_concept: so.Mapped['Concept'] = so.relationship(foreign_keys=[condition_source_concept_id])
 
+    modifiers: so.Mapped[List['Measurement']] = so.relationship(
+        backref="modifies", lazy="selectin"
+    )
 
     @hybrid_property
     def condition_label(self):

@@ -7,7 +7,7 @@ class Config(object):
 
     home_dir = Path(__file__).parent.parent
     data_path = home_dir / 'resources' 
-    db_dir = data_path / 'demo.db'
+    db_dir = data_path / 'dash.db'
     vocab_load = data_path 
 
     vocab_load.mkdir(parents=True, exist_ok=True)

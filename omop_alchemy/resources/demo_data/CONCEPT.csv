@@ -1,0 +1,5 @@
+concept_id	concept_name	domain_id	vocabulary_id	concept_class_id	standard_concept	concept_code	valid_start_date	valid_end_date	invalid_reason
+35918383	TNM Clin M	Measurement	NAACCR	NAACCR Variable	S	960	20200101	20991231	
+4265162	Primary tumor size	Measurement	SNOMED	Observable Entity	S	399734001	20200101	20991231	
+35919156	Grade III	Meas Value	NAACCR	NAACCR Value		440@3	20200101	20991231	
+35919673	cM0	Meas Value	NAACCR	NAACCR Value	S	960@c0	20200101	20991231	

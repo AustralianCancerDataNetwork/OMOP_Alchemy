@@ -5,6 +5,7 @@ import sqlalchemy as sa
 import sqlalchemy.orm as so
 
 from ...db import Base
+from ..conventions import ModifierFields
 
 class Measurement(Base):
     __tablename__ = 'measurement'
@@ -49,4 +50,12 @@ class Measurement(Base):
     operator_concept: so.Mapped[Optional['Concept']] = so.relationship(foreign_keys=[operator_concept_id])
     modifier_of_concept: so.Mapped[Optional['Concept']] = so.relationship(foreign_keys=[modifier_of_field_concept_id])
     value_as_concept: so.Mapped[Optional['Concept']] = so.relationship(foreign_keys=[value_as_concept_id])
+
+    __mapper_args__ = {
+        "polymorphic_on":sa.case(
+            (modifier_of_field_concept_id == ModifierFields.condition_occurrence_id.value, "Condition_Occurrence"),
+            (modifier_of_field_concept_id == ModifierFields.procedure_occurrence_id.value, "Procedure_Occurrence"),
+            else_="Episode"),
+        "polymorphic_identity":"measurement"
+    }
 
