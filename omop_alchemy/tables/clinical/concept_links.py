@@ -4,6 +4,7 @@ from decimal import Decimal
 import sqlalchemy as sa
 import sqlalchemy.orm as so
 
+# TODO: refactor this out of the clinical subfolder - should be in the parent tables folder?
 
 class Concept_Links():
     labels = {}

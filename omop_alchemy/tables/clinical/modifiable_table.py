@@ -13,10 +13,14 @@ class Modifiable_Table(Base):
     modifier_id: so.Mapped[int] = so.mapped_column(primary_key=True, autoincrement=True)
     modifier_of_field_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
 
-
     modifiers: so.Mapped[List['Measurement']] = so.relationship(
         backref="modifying_object", lazy="selectin", viewonly=True
     )
+    
+    # TODO - need to play with this so that the same base class can be polymorphic with both measurement table
+    # modifiers and linked observations. Not possible to have two base classes both representing tables. 
+    # only measurement-based modifiers currently work, although the observation class looks like it has been 
+    # partially updated already
 
     __mapper_args__ = {
             "polymorphic_on":sa.case(

@@ -41,7 +41,6 @@ class Condition_Occurrence(Modifiable_Table):
     condition_status_concept: so.Mapped['Concept'] = so.relationship(foreign_keys=[condition_status_concept_id])
     condition_source_concept: so.Mapped['Concept'] = so.relationship(foreign_keys=[condition_source_concept_id])
 
-
     __mapper_args__ = {
         "polymorphic_identity": "condition",
         'inherit_condition': (condition_occurrence_id == Modifiable_Table.modifier_id)

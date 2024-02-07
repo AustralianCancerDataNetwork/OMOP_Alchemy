@@ -6,10 +6,14 @@ from datetime import datetime
 from ..conventions import Modality, EpisodeConcepts
 from ...db import Base
 from ..clinical.measurement import Measurement
+from ..clinical.modifiable_table import Modifiable_Table
+from ..clinical.concept_links import Concept_Links
 
 
-class Episode(Base):
+class Episode(Base, Concept_Links):
     __tablename__ = 'episode'
+    labels = {'episode': False, 'episode_object': False, 'episode_type': False}
+
     # identifier
     episode_id: so.Mapped[int] = so.mapped_column(primary_key=True, autoincrement=True)
     # temporal
@@ -23,25 +27,14 @@ class Episode(Base):
     person_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey("person.person_id"))
     episode_parent_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey("episode.episode_id"))
 
-    # concept fks
-    episode_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
-    episode_object_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
-    episode_type_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
-
     # relationships
     person_object: so.Mapped['Person'] = so.relationship(back_populates="episodes", foreign_keys=[person_id])
     episode_parent_object: so.Mapped['Episode'] = so.relationship(foreign_keys=[episode_parent_id])
 
-    # concept relationships
-    episode_concept: so.Mapped['Concept'] = so.relationship(foreign_keys=[episode_concept_id])
-    episode_object_concept: so.Mapped['Concept'] = so.relationship(foreign_keys=[episode_object_concept_id])
-    episode_type_concept: so.Mapped['Concept'] = so.relationship(foreign_keys=[episode_type_concept_id])
-
-    # # reverse relationships
-    # modifiers: so.Mapped[List['Measurement']] = so.relationship(
-    #     back_populates="person_object", lazy="selectin"
-    # )
-    
+    __mapper_args__ = {
+        "polymorphic_identity": "episode",
+        'inherit_condition': (episode_id == Modifiable_Table.modifier_id)
+    }
 
     def __init__(self, 
                  episode_concept_id=EpisodeConcepts.episode_of_care.value, 
@@ -58,17 +51,18 @@ class Episode(Base):
                          *args, **kwargs)
     
     def __repr__(self):
-        return f'Episode: episode_id = {self.episode_id}'
+        ep_type = 'Treatment ' if self.is_tx else 'Diagnostic '
+        return f'{ep_type} Episode: episode_id = {self.episode_id}'
     
-    @hybrid_property
+    @property
     def is_overarching(self):
         return self.episode_concept_id == EpisodeConcepts.episode_of_care.value
     
-    @hybrid_property
+    @property
     def is_tx(self):
         return self.episode_concept_id in [EpisodeConcepts.treatment_regimen.value, EpisodeConcepts.treatment_cycle.value]
         
-    @hybrid_property
+    @property
     def is_dx(self):
         return self.episode_concept_id in [EpisodeConcepts.disease_first_occurrence.value, EpisodeConcepts.disease_progression.value]
     
@@ -86,5 +80,5 @@ class Episode(Base):
     def _modality_setter(self, value: Optional[Modality]) -> None:
         assert value in Modality    
         self.modifiers.append(Measurement(person_id = self.person_id,
-                                            subject = self, 
-                                            measurement_concept_id = value.value))
+                                          modified_object = self, 
+                                          measurement_concept_id = value.value))
