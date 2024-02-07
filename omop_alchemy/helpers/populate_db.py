@@ -31,7 +31,7 @@ to_load_health_system = {'folder': 'demo_data',
 to_load_clinical = {'folder': 'demo_data',
                     'PERSON.csv': Person,
                     'CONDITION_OCCURRENCE.csv': Condition_Occurrence,
-                    'MEASUREMENT.csv': Measurement}#,
+                    'MEASUREMENT.csv': Measurement}
                     #'CONCEPT.csv': Concept}
 
 # flexible loading of ohdsi vocab files downloaded to the path /data/ohdsi_vocabs

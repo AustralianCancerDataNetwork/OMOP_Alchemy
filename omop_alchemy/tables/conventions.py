@@ -16,7 +16,7 @@ class ConceptEnum(enum.Enum):
     
 class ModifierFields(ConceptEnum):
     condition_occurrence_id = 1147127
-    drug_quantity = 1147507
+#    drug_quantity = 1147507
     drug_exposure_id = 1147707
     procedure_occurrence_id = 1147082
 

@@ -4,10 +4,13 @@ import sqlalchemy as sa
 import sqlalchemy.orm as so
 from decimal import Decimal
 
+from .concept_links import Concept_Links
 from ...db import Base
 
-class Observation(Base):
+class Observation(Base, Concept_Links):
     __tablename__ = 'observation'
+    labels = {'observation': False, 'observation_type': False, 'observation_source': False, 'value_as': False, 'qualifier': False, 'unit': False, 'obs_event_field': False}
+
     # identifier
     observation_id: so.Mapped[int] = so.mapped_column(primary_key=True, autoincrement=True) 
     # temporal
@@ -21,30 +24,19 @@ class Observation(Base):
     qualifier_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50))
     # numeric
     value_as_number: so.Mapped[Optional[Decimal]] = so.mapped_column(sa.Numeric)
-    observation_event_id: so.Mapped[Optional[int]] = so.mapped_column(sa.Integer)
+    # polymorphic fk
+    observation_event_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('modifiable_table.modifier_id'))
     # fks
     person_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('person.person_id'))
-    provider_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('provider.provider_id'))
-    visit_occurrence_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('visit_occurrence.visit_occurrence_id'))
-    visit_detail_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('visit_detail.visit_detail_id'))
-    # concept fks
-    observation_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
-    observation_type_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
-    observation_source_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
-    value_as_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
-    qualifier_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
-    unit_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
-    obs_event_field_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
+    provider_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('provider.provider_id'))
+    visit_occurrence_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('visit_occurrence.visit_occurrence_id'))
+    visit_detail_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('visit_detail.visit_detail_id'))
     # relationships
-    person: so.Mapped[Optional['Person']] = so.relationship(foreign_keys=[person_id])
+    person: so.Mapped['Person'] = so.relationship(foreign_keys=[person_id])
     provider: so.Mapped[Optional['Provider']] = so.relationship(foreign_keys=[provider_id])
     visit_occurrence: so.Mapped[Optional['Visit_Occurrence']] = so.relationship(foreign_keys=[visit_occurrence_id])
     visit_detail: so.Mapped[Optional['Visit_Detail']] = so.relationship(foreign_keys=[visit_detail_id])
-    # concept_relationships
-    observation_concept: so.Mapped[Optional['Concept']] = so.relationship(foreign_keys=[observation_concept_id])
-    observation_type_concept: so.Mapped[Optional['Concept']] = so.relationship(foreign_keys=[observation_type_concept_id])
-    observation_source_concept: so.Mapped[Optional['Concept']] = so.relationship(foreign_keys=[observation_source_concept_id])
-    value_as_concept: so.Mapped[Optional['Concept']] = so.relationship(foreign_keys=[value_as_concept_id])
-    qualifier_concept: so.Mapped[Optional['Concept']] = so.relationship(foreign_keys=[qualifier_concept_id])
-    unit_concept: so.Mapped[Optional['Concept']] = so.relationship(foreign_keys=[unit_concept_id])
-    obs_event_field_concept: so.Mapped[Optional['Concept']] = so.relationship(foreign_keys=[obs_event_field_concept_id])
+    observed_object: so.Mapped[Optional['Modifiable_Table']] = so.relationship(foreign_keys=[observation_event_id])
+
+
+Observation.add_concepts()
