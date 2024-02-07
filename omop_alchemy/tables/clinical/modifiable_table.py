@@ -16,6 +16,11 @@ class Modifiable_Table(Base):
     modifiers: so.Mapped[List['Measurement']] = so.relationship(
         backref="modifying_object", lazy="selectin", viewonly=True
     )
+
+
+    related_obs: so.Mapped[List['Observation']] = so.relationship(
+        backref="observing_object", lazy="selectin", viewonly=True
+    )
     
     # TODO - need to play with this so that the same base class can be polymorphic with both measurement table
     # modifiers and linked observations. Not possible to have two base classes both representing tables. 

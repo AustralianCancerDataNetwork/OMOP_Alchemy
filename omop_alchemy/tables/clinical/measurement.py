@@ -39,5 +39,3 @@ class Measurement(Base, Concept_Links):
     visit_occurrence_object: so.Mapped[Optional['Visit_Occurrence']] = so.relationship(foreign_keys=[visit_occurrence_id])
     visit_detail_object: so.Mapped[Optional['Visit_Detail']] = so.relationship(foreign_keys=[visit_detail_id])
     modified_object: so.Mapped[Optional['Modifiable_Table']] = so.relationship(foreign_keys=[modifier_of_event_id])
-
-Measurement.add_concepts()

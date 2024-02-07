@@ -37,6 +37,3 @@ class Observation(Base, Concept_Links):
     visit_occurrence: so.Mapped[Optional['Visit_Occurrence']] = so.relationship(foreign_keys=[visit_occurrence_id])
     visit_detail: so.Mapped[Optional['Visit_Detail']] = so.relationship(foreign_keys=[visit_detail_id])
     observed_object: so.Mapped[Optional['Modifiable_Table']] = so.relationship(foreign_keys=[observation_event_id])
-
-
-Observation.add_concepts()

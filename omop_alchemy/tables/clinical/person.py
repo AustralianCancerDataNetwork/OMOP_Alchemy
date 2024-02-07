@@ -66,5 +66,3 @@ class Person(Base, Concept_Links):
         age_at = min(age_at, self.death_datetime) if self.death_datetime is not None else age_at
         return self.age_calc(age_at)
 
-
-Person.add_concepts()
