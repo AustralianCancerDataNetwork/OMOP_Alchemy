@@ -17,4 +17,4 @@ class Config(object):
     SECRET_KEY='dev'
 
 config = Config()
-engine = sa.create_engine(config.SQLALCHEMY_DATABASE_URI, echo=True)
+engine = sa.create_engine(config.SQLALCHEMY_DATABASE_URI, echo=False)

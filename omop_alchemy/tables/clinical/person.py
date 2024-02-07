@@ -4,10 +4,14 @@ from sqlalchemy.ext.hybrid import hybrid_property
 import sqlalchemy as sa
 import sqlalchemy.orm as so
 
+from .concept_links import Concept_Links
 from ...db import Base
 
-class Person(Base):
+class Person(Base, Concept_Links):
     __tablename__ = 'person'
+
+    labels = {'gender': False, 'ethnicity': False, 'race': False}
+
     # identifier
     person_id: so.Mapped[int] = so.mapped_column(primary_key=True, autoincrement=True)
     # temporal
@@ -30,17 +34,17 @@ class Person(Base):
     gender_source_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
     ethnicity_source_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
     race_source_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
-    gender_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
-    ethnicity_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
-    race_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
+    #gender_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
+    #ethnicity_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
+    #race_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
     # relationships
     location: so.Mapped[Optional['Location']] = so.relationship(foreign_keys=[location_id])
     provider: so.Mapped[Optional['Provider']] = so.relationship(foreign_keys=[provider_id])
     care_site: so.Mapped[Optional['Care_Site']] = so.relationship(foreign_keys=[care_site_id])
     # concept_relationships
-    gender: so.Mapped[Optional['Concept']] = so.relationship(foreign_keys=[gender_concept_id])
-    ethnicity: so.Mapped[Optional['Concept']] = so.relationship(foreign_keys=[ethnicity_concept_id])
-    race: so.Mapped[Optional['Concept']] = so.relationship(foreign_keys=[race_concept_id])
+    #gender: so.Mapped[Optional['Concept']] = so.relationship(foreign_keys=[gender_concept_id])
+    #ethnicity: so.Mapped[Optional['Concept']] = so.relationship(foreign_keys=[ethnicity_concept_id])
+    #race: so.Mapped[Optional['Concept']] = so.relationship(foreign_keys=[race_concept_id])
     gender_source: so.Mapped[Optional['Concept']] = so.relationship(foreign_keys=[gender_source_concept_id])
     ethnicity_source: so.Mapped[Optional['Concept']] = so.relationship(foreign_keys=[ethnicity_source_concept_id])
     race_source: so.Mapped[Optional['Concept']] = so.relationship(foreign_keys=[race_source_concept_id])
@@ -62,14 +66,14 @@ class Person(Base):
         month = self.month_of_birth or 1
         return datetime(self.year_of_birth, month, day)
 
-    @hybrid_property
-    def gender_label(self):
-        if self.gender:
-            return self.gender.concept_name
+    # @hybrid_property
+    # def gender_label(self):
+    #     if self.gender:
+    #         return self.gender.concept_name
         
-    @gender_label.expression
-    def _gender_label_expression(cls) -> sa.ColumnElement[Optional[str]]:
-        return sa.cast("SQLColumnExpression[Optional[str]]", cls.gender.concept_name)
+    # @gender_label.expression
+    # def _gender_label_expression(cls) -> sa.ColumnElement[Optional[str]]:
+    #     return sa.cast("SQLColumnExpression[Optional[str]]", cls.gender.concept_name)
 
     def age_calc(self, age_at, selected_dob):
         if selected_dob is None:
@@ -94,3 +98,4 @@ class Person(Base):
     
 
 
+Person.add_concepts()

@@ -15,7 +15,7 @@ class Modifiable_Table(Base):
 
 
     modifiers: so.Mapped[List['Measurement']] = so.relationship(
-        backref="modifying_object", lazy="selectin"
+        backref="modifying_object", lazy="selectin", viewonly=True
     )
 
     __mapper_args__ = {
