@@ -3,7 +3,7 @@ name = "omop_alchemy"
 version="0.1a1"
 description = "SQLAlchemy Models for OHDSI OMOP Common Data Model"
 authors = ["georgie <georgina.kennedy@unsw.edu.au>"]
-license = "MIT"
+license = "CC-BY-NC-4.0"
 readme = "README.md"
 
 [tool.poetry.dependencies]
