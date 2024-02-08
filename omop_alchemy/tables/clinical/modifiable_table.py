@@ -5,8 +5,7 @@ import sqlalchemy as sa
 import sqlalchemy.orm as so
 
 from ...db import Base
-from ..conventions import ModifierFields
-
+from ...conventions.concept_enumerators import ModifierFields
 
 class Modifiable_Table(Base):
     __tablename__ = 'modifiable_table'

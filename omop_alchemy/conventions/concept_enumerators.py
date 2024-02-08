@@ -16,7 +16,6 @@ class ConceptEnum(enum.Enum):
     
 class ModifierFields(ConceptEnum):
     condition_occurrence_id = 1147127
-#    drug_quantity = 1147507
     drug_exposure_id = 1147707
     procedure_occurrence_id = 1147082
 
@@ -24,7 +23,7 @@ class ModifierTables(ConceptEnum):
     drug_exposure = 1147339
     episode = 35225440
     observation = 1147304
-    
+
 class TreatmentEpisode(ConceptEnum):
     care_plan_assignment = 4207655  # SNOMED - Prescription of therapeutic regimen
     ehr_prescription = 32838        # EHR prescription
@@ -36,16 +35,17 @@ class Modality(ConceptEnum):
     radiotherapy = 35803411
     
 class EpisodeConcepts(ConceptEnum):   
-    # episode classes in use
     episode_of_care = 32533           # Overarching disease episode
-    
     treatment_regimen = 32531         # Assignment to or derivation of treatment regimen   
     treatment_cycle = 32532           # Assignment to or derivation of treatment cycle
-    
     disease_first_occurrence = 32528  # Initial diagnosis
     disease_progression = 32677       # Diagnosis that is linked to another primary
-    
-    # episode types in use
+
+class EpisodeTypes(ConceptEnum):
     ehr_defined = 32544               # Episode defined in EHR
     ehr_derived = 32545               # Episode derived algorithmically from EHR
+    
+class ConditionModifiers(ConceptEnum):
+    # for measurement_concept_id grouping
+    init_diag = 734306                # Cancer Modifier - Initial Diagnosis
     

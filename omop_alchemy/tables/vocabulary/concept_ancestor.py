@@ -16,5 +16,5 @@ class Concept_Ancestor(Base):
     max_levels_of_separation: so.Mapped[Optional[int]] = so.mapped_column(sa.Integer)
 
     def __repr__(self):
-        return f'<Ancestry {self.ancestor_concept_id.concept_name} ({self.min_levels_of_separation} - {self.max_levels_of_separation}) {self.descendant_concept_id.concept_name}>'
+        return f'<Ancestry {self.ancestor.concept_name} ({self.min_levels_of_separation} - {self.max_levels_of_separation}) {self.descendant.concept_name}>'
 

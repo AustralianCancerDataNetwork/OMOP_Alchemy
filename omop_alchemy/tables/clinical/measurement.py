@@ -5,7 +5,6 @@ import sqlalchemy as sa
 import sqlalchemy.orm as so
 
 from ...db import Base
-from ..conventions import ModifierFields
 from .concept_links import Concept_Links
 
 class Measurement(Base, Concept_Links):
