@@ -7,7 +7,7 @@ import sqlalchemy.sql.expression as exp
 import re
 
 from ..db import Base, engine
-from ..tables.vocabulary import Concept, Concept_Relationship
+from ..tables.vocabulary import Concept, Concept_Relationship, Concept_Ancestor
 from .concept_enumerators import ConceptEnum
 
 class VocabLookup:
@@ -24,12 +24,14 @@ class VocabLookup:
                  parent=None,         # used when you want to pull all child concepts under a given parent into the lookup
                  domain=None,         # otherwise we are grabbing by specification of domain
                  concept_class=None,  # and optionally concept_class
+                 code_filter=None,    # last option - apply a string filter (this is required for grade as distinct from stage)
                  standard_only=True): # for when you want to toggle between grabbing children from standard concepts strictly or not
         self._unknown = unknown.value if isinstance(unknown, ConceptEnum) else unknown
         self._lookup = defaultdict(self.return_unknown)
         self._domain = domain
         self._concept_class = concept_class
         self._standard_only = standard_only
+        self._code_filter = code_filter
         # parent parameter is the high-level concept under which you want to pull
         # in all available matches - e.g. TNM stages, which can grab all concepts 
         # that fall under the parent concept from the concept_relationship table
@@ -59,6 +61,8 @@ class VocabLookup:
             q = q.filter(Concept.concept_class_id==self._concept_class)
         if self._standard_only:
             q = q.filter(Concept.standard_concept=='S')
+        if self._code_filter:
+            q = q.filter(Concept.concept_code.ilike(f'%{self._code_filter}%'))
         concepts = q.all()
         for row in concepts:
             self._lookup[row.concept_name.lower().strip()] = row.concept_id
