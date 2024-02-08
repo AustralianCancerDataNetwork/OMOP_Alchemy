@@ -7,7 +7,7 @@ from ...conventions import Modality, EpisodeConcepts
 from ...db import Base
 from ..clinical.measurement import Measurement
 from ..clinical.modifiable_table import Modifiable_Table
-from ..clinical.concept_links import Concept_Links
+from ..concept_links import Concept_Links
 
 
 class Episode(Base, Concept_Links):

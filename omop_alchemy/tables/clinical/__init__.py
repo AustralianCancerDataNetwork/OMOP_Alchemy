@@ -15,7 +15,7 @@ from .visit_occurrence import Visit_Occurrence
 from .visit_detail import Visit_Detail
 from .modifiable_table import Modifiable_Table
 
-for concept_linked_table in [Person, Observation, Measurement]:
+for concept_linked_table in [Observation, Measurement]:
     concept_linked_table.add_concepts()
 
 __all__ = [Condition_Occurrence, Device_Exposure, Drug_Exposure, Fact_Relationship, Measurement,

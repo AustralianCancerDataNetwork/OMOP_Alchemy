@@ -5,7 +5,7 @@ import sqlalchemy as sa
 import sqlalchemy.orm as so
 
 from ...db import Base
-from .concept_links import Concept_Links
+from ..concept_links import Concept_Links
 
 class Measurement(Base, Concept_Links):
     __tablename__ = 'measurement'

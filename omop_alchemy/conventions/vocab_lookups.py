@@ -122,23 +122,12 @@ class VocabLookup:
                     break
                 value = self._lookup[c(term).lower().strip()]
         return value
-
-# class StandardVocabLookup(VocabLookup):
-#     # standard vocabulary is a lookup that filters 
-#     # on vocabulary and domain
-#     # codes_only flag will restrict to matching only
-#     # on codes, rather than concept string matching
-#     # with_synonyms flag uses the concept_synonym
-#     # table to provide alternative string matching
-#     # (with_synonyms overrides codes_only)
-
-#     def __init__(self, vocabulary, domain, 
-#                  unknown, corrections, 
-#                  codes_only=False, with_synonyms=False):
-#         super().__init__(unknown)
-#         self._correction = corrections
-#         get_standard_vocab(vocabulary, domain, self._lookup, codes_only, with_synonyms)
-
+    
+    def __contains__(self, item):
+        if isinstance(item, int):
+            return item in self._lookup.values()
+        if isinstance(item, str):
+            return item in self._lookup.keys() and self.lookup(item) != self.return_unknown()
 
 # class HierarchicalLookup():
 #     # this class holds an ordered list of standard vocabularies and 
@@ -245,7 +234,6 @@ class VocabLookup:
 
 # #try:
 # cava_log.log('Loading custom concept lookup objects', 'debug')
-# lookup_gender = GenderLookup()
 # lookup_language = LanguageLookup()
 # lookup_race = RaceLookup()
 # lookup_condition = ConditionLookup(unknown=Unknown.cancer, object_lookup=CTL.condition_lookup, source=['morph', 'topog'], target=['condition'], vocabulary='ICDO3') # Unknown histology of unknown primary site
