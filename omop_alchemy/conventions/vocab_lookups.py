@@ -8,6 +8,7 @@ import re
 
 from ..db import Base, engine
 from ..tables.vocabulary import Concept, Concept_Relationship
+from .concept_enumerators import ConceptEnum
 
 class VocabLookup:
     # base class for custom vocabulary lookups
@@ -19,23 +20,27 @@ class VocabLookup:
     #   spelling correction functions
 
     def __init__(self, 
-                 unknown=0,     # TODO: tbd do we want to define behaviours when mapping is not found?
-                 parent=None,   # used when you want to pull all child concepts under a given parent into the lookup
-                 domain=None):  # otherwise we are grabbing by specification of domain
-        self._unknown = unknown
+                 unknown=0,           # TODO: tbd do we want to define behaviours when mapping is not found?
+                 parent=None,         # used when you want to pull all child concepts under a given parent into the lookup
+                 domain=None,         # otherwise we are grabbing by specification of domain
+                 concept_class=None,  # and optionally concept_class
+                 standard_only=True): # for when you want to toggle between grabbing children from standard concepts strictly or not
+        self._unknown = unknown.value if isinstance(unknown, ConceptEnum) else unknown
         self._lookup = defaultdict(self.return_unknown)
         self._domain = domain
+        self._concept_class = concept_class
+        self._standard_only = standard_only
         # parent parameter is the high-level concept under which you want to pull
         # in all available matches - e.g. TNM stages, which can grab all concepts 
         # that fall under the parent concept from the concept_relationship table
-        self._parent = parent
+        self._parent = parent.value if isinstance(parent, ConceptEnum) else parent
         self._correction = None
         with so.Session(engine) as session:
             # TBD: question - do we need to provide support for combining parent 
             # definition with domain def? is this a likely use-case? it won't fail 
             # for now, but perhaps check?
             if parent is not None:
-                self.get_lookup(self._lookup, parent.value, session)
+                self.get_lookup(session)
             if domain is not None:
                 self.get_domain_lookup(session)
         
@@ -47,45 +52,56 @@ class VocabLookup:
         # returns a default dictionary that contains all
         # concepts under a given domain for rapid lookups
         
-        d = session.query(Concept.concept_name,
-                          Concept.concept_id
-                         ).filter(Concept.domain_id==self._domain).all()
-        for row in d:
+        q = session.query(Concept)
+        if self._domain:
+            q = q.filter(Concept.domain_id==self._domain)
+        if self._concept_class:
+            q = q.filter(Concept.concept_class_id==self._concept_class)
+        if self._standard_only:
+            q = q.filter(Concept.standard_concept=='S')
+        concepts = q.all()
+        for row in concepts:
             self._lookup[row.concept_name.lower().strip()] = row.concept_id
+            self._lookup[row.concept_code.lower().strip()] = row.concept_id
     
-    def get_children(self, concept_id_tuple, session):
-        # TODO: check if we can do this thru Concept_Ancestor instead
+    def get_standard_hierarchy(self, session):
+        children = session.query(Concept_Ancestor
+                                ).options(so.joinedload(Concept_Ancestor.descendant)
+                                ).filter(Concept_Ancestor.ancestor_concept_id == self._parent).distinct().all()
+        return [c.descendant for c in children]
+        
+    def get_all_hierarchy(self, this_level, concepts, session):
+        # TODO: check if we want to do this thru Concept_Ancestor strictly
         # if confirmed we only want to be doing for standard concepts?
         # this is iterative and slow way of doing it to arbitrary depths
-        # otherwise...
-        return session.query(Concept_Relationship.concept_id_1, 
-                             Concept_Relationship.concept_id_2
-                            ).filter(Concept_Relationship.concept_id_1.in_(concept_id_tuple)
-                            ).filter(Concept_Relationship.relationship_id=='Subsumes').distinct()
-    
-    def get_all_concepts_in_hierarchy(self, children, concepts, session):
-        # uses the subsumes relationship to get all higher-granularity items in the 
-        # conceptual hierarchy
-        next_level = []
-        if len(children) == 0:
+        # otherwise...but good if you want to include non-standard 
+        # children - maybe useful in condition_concept_id?
+
+        if len(this_level) == 0:
             return concepts
-        for child in children:
-            next_level = self.get_children(child.concept_id_2, session)
-            #concepts.append(get_concept(child.concept_id_2, targ_sess))
-            self.get_all_concepts_in_hierarchy(next_level, concepts, session)
+        children = session.query(Concept
+                                ).join(Concept_Relationship, Concept_Relationship.concept_id_2==Concept.concept_id
+                                ).filter(Concept_Relationship.concept_id_1.in_(this_level)
+                                ).filter(Concept_Relationship.relationship_id=='Subsumes').distinct().all()
+        next_level = tuple([c.concept_id for c in children if c not in concepts])
+        concepts += children
+        concepts = self.get_all_hierarchy(next_level, concepts, session)
+        return concepts
 
     def get_lookup(self, session):
         # returns a default dictionary that contains all
         # concepts under a given parent concept and the
         # appropriate unknown value for the target context
-        first_level = self.get_children((self._parent), session)
-        concepts = []
-        self.get_all_concepts_in_hierarchy(first_level, concepts, session)
+        if not self._standard_only:
+            concepts = self.get_all_hierarchy(tuple([self._parent]), [], session)
+        else:
+            concepts = self.get_standard_hierarchy(session)
         for c in concepts:
             self._lookup[c.concept_name.lower()] = c.concept_id
+            self._lookup[c.concept_code.lower()] = c.concept_id
 
     def return_unknown(self):
-        return self._unknown.value
+        return self._unknown
 
     def lookup_exact(self, term):
         if term == None:
@@ -102,9 +118,6 @@ class VocabLookup:
                     break
                 value = self._lookup[c(term).lower().strip()]
         return value
-
-
-
 
 # class StandardVocabLookup(VocabLookup):
 #     # standard vocabulary is a lookup that filters 

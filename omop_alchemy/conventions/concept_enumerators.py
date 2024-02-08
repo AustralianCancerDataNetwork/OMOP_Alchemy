@@ -48,4 +48,4 @@ class EpisodeTypes(ConceptEnum):
 class ConditionModifiers(ConceptEnum):
     # for measurement_concept_id grouping
     init_diag = 734306                # Cancer Modifier - Initial Diagnosis
-    
+    tnm = 734320                      # Cancer Modifier - Parent AJCC/UICC concept
