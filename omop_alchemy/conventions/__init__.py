@@ -2,7 +2,9 @@ from .concept_enumerators import Modality, EpisodeConcepts, ModifierFields, Cond
 from .vocab_lookups import VocabLookup
 
 tnm_lookup = VocabLookup(parent=ConditionModifiers.tnm)
+grading_lookup = VocabLookup(domain="Measurement", concept_class="Staging/Grading")
+mets_lookup = VocabLookup(parent=ConditionModifiers.mets)
 
 
 __all__ = [Modality, EpisodeConcepts, ModifierFields, VocabLookup, ConditionModifiers,
-           tnm_lookup]
+           tnm_lookup, grading_lookup, mets_lookup]

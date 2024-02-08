@@ -3,7 +3,7 @@ import sqlalchemy.orm as so
 from sqlalchemy.ext.hybrid import hybrid_property
 from typing import List, Optional
 from datetime import datetime
-from ..conventions import Modality
+from ...conventions.concept_enumerators import Modality
 from ...db import Base
 
 
