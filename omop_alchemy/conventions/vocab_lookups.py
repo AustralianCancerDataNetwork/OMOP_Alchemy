@@ -129,6 +129,16 @@ class VocabLookup:
         if isinstance(item, str):
             return item in self._lookup.keys() and self.lookup(item) != self.return_unknown()
 
+from .concept_enumerators import ConditionModifiers
+
+tnm_lookup = VocabLookup(parent=ConditionModifiers.tnm)
+grading_lookup = VocabLookup(domain="Measurement", concept_class="Staging/Grading", code_filter='grade')
+mets_lookup = VocabLookup(parent=ConditionModifiers.mets)
+gender_lookup = VocabLookup(domain="Gender")
+race_lookup = VocabLookup(domain="Race")
+ethnicity_lookup = VocabLookup(domain="Ethnicity")
+
+
 # class HierarchicalLookup():
 #     # this class holds an ordered list of standard vocabularies and 
 #     # will try match them in order of priority, restricted

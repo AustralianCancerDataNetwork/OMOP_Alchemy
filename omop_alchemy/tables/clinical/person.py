@@ -4,41 +4,40 @@ from sqlalchemy.ext.hybrid import hybrid_property
 import sqlalchemy as sa
 import sqlalchemy.orm as so
 
-from ...conventions import gender_lookup, ethnicity_lookup, race_lookup
 from ..concept_links import Concept_Links
 from ...db import Base
 
 class Person(Base):#, Concept_Links):
     __tablename__ = 'person'
-
+    validators = {}
 #    testing out @validates decorator instead and can't do this easily if these are added dynamically after all...
 #    labels = {'gender': False, 'ethnicity': False, 'race': False, 'gender_source': False, 'ethnicity_source': False, 'race_source': False}
 
     # identifier
     person_id: so.Mapped[int] = so.mapped_column(primary_key=True, autoincrement=True)
     # temporal
-    birth_datetime: so.Mapped[Optional[datetime]] = so.mapped_column(sa.DateTime)
-    death_datetime: so.Mapped[Optional[datetime]] = so.mapped_column(sa.DateTime)
+    birth_datetime: so.Mapped[Optional[datetime]] = so.mapped_column(sa.DateTime, nullable=True)
+    death_datetime: so.Mapped[Optional[datetime]] = so.mapped_column(sa.DateTime, nullable=True)
     # strings
-    person_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50))
-    gender_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50))
-    race_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50))
-    ethnicity_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50))
+    person_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50), nullable=True)
+    gender_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50), nullable=True)
+    race_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50), nullable=True)
+    ethnicity_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50), nullable=True)
     # numeric
-    year_of_birth: so.Mapped[Optional[int]] = so.mapped_column(sa.Integer)
-    month_of_birth: so.Mapped[Optional[int]] = so.mapped_column(sa.Integer)
-    day_of_birth: so.Mapped[Optional[int]] = so.mapped_column(sa.Integer)
+    year_of_birth: so.Mapped[Optional[int]] = so.mapped_column(sa.Integer, nullable=True)
+    month_of_birth: so.Mapped[Optional[int]] = so.mapped_column(sa.Integer, nullable=True)
+    day_of_birth: so.Mapped[Optional[int]] = so.mapped_column(sa.Integer, nullable=True)
     # fks
-    location_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('location.location_id'))
-    provider_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('provider.provider_id'))
-    care_site_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('care_site.care_site_id'))
+    location_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('location.location_id'), nullable=True)
+    provider_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('provider.provider_id'), nullable=True)
+    care_site_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('care_site.care_site_id'), nullable=True)
     # concept fks
-    gender_source_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
-    ethnicity_source_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
-    race_source_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
-    gender_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
-    ethnicity_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
-    race_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
+    gender_source_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('concept.concept_id'), nullable=True)
+    ethnicity_source_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('concept.concept_id'), nullable=True)
+    race_source_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('concept.concept_id'), nullable=True)
+    gender_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('concept.concept_id'), default=0)
+    ethnicity_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('concept.concept_id'), default=0)
+    race_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('concept.concept_id'), default=0)
     # relationships
     location: so.Mapped[Optional['Location']] = so.relationship(foreign_keys=[location_id])
     provider: so.Mapped[Optional['Provider']] = so.relationship(foreign_keys=[provider_id])
@@ -53,46 +52,62 @@ class Person(Base):#, Concept_Links):
     ethnicity_source: so.Mapped[Optional['Concept']] = so.relationship(foreign_keys=[ethnicity_source_concept_id])
     race_source: so.Mapped[Optional['Concept']] = so.relationship(foreign_keys=[race_source_concept_id])
 
+    @classmethod
+    def set_validators(cls):
+        # putting this here so that we can defer the import until after the models have all been instantiated, otherwise 
+        # it tries to query the concepts from non-existent tables - there may be a better way?
+        from ...conventions.vocab_lookups import gender_lookup, ethnicity_lookup, race_lookup
+        cls.validators = {'gender': gender_lookup, 'ethnicity': ethnicity_lookup, 'race': race_lookup}
+
     # don't love how repetitive this is, but haven't worked out how to add functions dynamically that
     # include decorators, so it'll do for now...
     @so.validates('gender_concept_id')
     def validate_gender(self, key, gender_concept_id):
-        if gender_concept_id and gender_concept_id not in gender_lookup:
+        if gender_concept_id and gender_concept_id not in self.validators['gender']:
             raise ValueError("failed validation - gender concept")
+        return gender_concept_id
     
     @so.validates('race_concept_id')
     def validate_race(self, key, race_concept_id):
-        if race_concept_id and race_concept_id not in race_lookup:
+        if race_concept_id and race_concept_id not in self.validators['race']:
             raise ValueError("failed validation - race concept")
+        return race_concept_id
     
     @so.validates('ethnicity_concept_id')
     def validate_ethnicity(self, key, ethnicity_concept_id):
-        if ethnicity_concept_id and ethnicity_concept_id not in ethnicity_lookup:
+        if ethnicity_concept_id and ethnicity_concept_id not in self.validators['ethnicity']:
             raise ValueError("failed validation - ethnicity concept")
+        return ethnicity_concept_id
     
     @so.validates('year_of_birth')
     def validate_yob(self, key, year_of_birth):
         if year_of_birth and (year_of_birth < 1900 or year_of_birth > datetime.now().year):
             raise ValueError("failed validation - year of birth out of range")
+        return year_of_birth
         
     @so.validates('month_of_birth')
     def validate_mob(self, key, month_of_birth):
         if month_of_birth and (month_of_birth < 1 or month_of_birth > 12):
             raise ValueError("failed validation - month of birth out of range")
+        return month_of_birth
         
     @so.validates('day_of_birth')
     def validate_day_of_birth(self, key, day_of_birth):
-        if day_of_birth:
-            try:
-                datetime.date(year=self.year_of_birth, month=self.month_of_birth, day=self.day_of_birth)  
-            except:
-                raise ValueError(f'failed validation - invalid date of birth combination yyyy-mm-dd {self.year_of_birth}-{self.month_of_birth}-{self.day_of_birth}')
+        # this is run before actually storing to attributes, so can't check for like 30th Feb using this form
+        if day_of_birth and (day_of_birth < 1 or day_of_birth > 31):
+            raise ValueError(f'failed validation - day of birth out of range')
+        return day_of_birth
 
     def __repr__(self):
         age = self.age
-        y = age['age_years']
-        d = age['age_days']
-        return f'Person: person_id = {self.person_id}, age={y} years and {d}'
+        p = f'Person: person_id = {self.person_id}'
+        if age != {}:
+            y = age['age_years']
+            d = age['age_days']
+            p += f'; age={y} years and {d} days'
+        if self.gender:
+            p += f'; {self.gender.concept_name}'
+        return p
 
     def age_calc(self, age_at):
         if self.dob is None:
