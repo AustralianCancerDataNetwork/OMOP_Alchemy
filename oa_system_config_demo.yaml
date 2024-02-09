@@ -1,0 +1,26 @@
+filesystem:
+  log_path: 
+    - logs
+  data_path: 
+    - resources
+  local_db: dash.db # filename for sqlite OR null if using another connection
+  log_file: cava_log.log # name of log file stored in app_dir
+logging:
+  log_level: debug # debug | info | warning | error | critical
+  log_target: file # file | console
+  echo: false
+private_key:
+  key_creds: name_your_private_key
+  key_home: /path/to/private_key/secring.gpg
+  gpg_app: /usr/bin/gpg
+keyring:
+  backend: sagecipher.keyring.Keyring
+db:
+  db_pid_env: source_db_pid # db credential password label as stored in keyring
+  db_uid_env: source # db credential user label as stored in keyring
+  host: 127.0.0.1
+  host_pid_env: source_host_pid # ssh credential password label (if tunneling required)
+  host_uid_env: source_host_uid # ssh credential user ID label (if tunneling required)
+  platform: postgresql
+  port: 5432
+  schema: source

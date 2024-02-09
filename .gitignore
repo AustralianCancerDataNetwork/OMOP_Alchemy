@@ -38,3 +38,5 @@ poetry.lock
 ohdsi_vocabs/
 demo.db
 dash.db
+oa_system_config.yaml
+pwd_override.txt
