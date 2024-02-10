@@ -6,7 +6,7 @@ import sqlalchemy as sa
 import sqlalchemy.orm as so
 import sqlalchemy.sql.sqltypes as sss
 
-from ..db.config import engine, config
+from ..db.config import oa_config, logger
 from ..tables.clinical import Person, Condition_Occurrence, Measurement, Observation
 from ..tables.health_system import Care_Site, Location, Provider
 from ..tables.vocabulary import Concept, Vocabulary, Concept_Class, Domain, Relationship, \
@@ -30,10 +30,10 @@ to_load_health_system = {'folder': 'demo_data',
 
 to_load_clinical = {'folder': 'demo_data',
                     'PERSON.csv': Person,
-                    'CONDITION_OCCURRENCE.csv': Condition_Occurrence,
-                    'MEASUREMENT.csv': Measurement}#,
-                    #'OBSERVATION.csv': Observation,
-                    #'CONCEPT.csv': Concept}
+                    #'CONDITION_OCCURRENCE.csv': Condition_Occurrence,
+                    #'MEASUREMENT.csv': Measurement,
+                    'OBSERVATION.csv': Observation,
+                    'CONCEPT.csv': Concept}
 
 # flexible loading of ohdsi vocab files downloaded to the path /data/ohdsi_vocabs
 
@@ -61,7 +61,7 @@ def convert_int(i):
     
 def convert_dec(i):
     try:
-        return Decimal(i)
+        return sss.Decimal(i)
     except:
         return 0
 
@@ -77,9 +77,9 @@ def get_type_lookup(interface):
     return {c.key: type_map[type(c.type)] for c in interface.__table__._columns}
 
 def populate_demo_db(to_load):
-    with so.Session(engine) as sess:
-        folder = Path(config.VOCAB_PATH) / to_load['folder']
-        print(folder)
+    with so.Session(oa_config.engine) as sess:
+        folder = Path(oa_config.data_path) / to_load['folder']
+        logger.debug(folder)
         for ohdsi_file, interface in to_load.items():
             if interface != folder.name:
                 try:
@@ -92,14 +92,15 @@ def populate_demo_db(to_load):
                             o = interface(**record)
                             sess.add(o)
 
-                        print(f'complete load for: {ohdsi_file}')
+                        logger.debug(f'complete load for: {ohdsi_file}')
                 except Exception as e:
-                    print(f'Error loading data file {ohdsi_file}. Have you unzipped it in the correct location ({config.VOCAB_PATH})?')
+                    logger.error(e)
+                    logger.debug(f'Error loading data file {ohdsi_file}. Have you unzipped it in the correct location ({oa_config.data_path})?')
         sess.commit()
 
 
 def populate_clinical_demo_data():
-    with so.Session(engine) as sess:
+    with so.Session(oa_config.engine) as sess:
 
         gender_concepts = [(8532, 'F', 'FEMALE'), (8507, 'M', 'MALE')]
         ages = [{'year_of_birth': 2000}, 

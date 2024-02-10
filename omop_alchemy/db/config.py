@@ -158,7 +158,6 @@ class Config(object):
 
 
 oa_config = Config()
-#oa_config.set_logger()
 oa_config.set_db_config()
 
 

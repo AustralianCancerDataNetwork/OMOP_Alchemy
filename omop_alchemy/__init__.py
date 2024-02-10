@@ -10,7 +10,7 @@ from .helpers.create_db import create_db
 # clinical and reference directories. needs to be made more friendly for re-create / update etc, but 
 # will do for now :)
 
-from .db import oa_config
+from .db import oa_config, logger
 
 create_db(Base, oa_config.engine)
 
