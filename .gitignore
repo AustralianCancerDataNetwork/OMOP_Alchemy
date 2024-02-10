@@ -40,3 +40,4 @@ demo.db
 dash.db
 oa_system_config.yaml
 pwd_override.txt
+logs/

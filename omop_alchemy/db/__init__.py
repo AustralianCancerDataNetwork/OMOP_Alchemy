@@ -1,6 +1,6 @@
 import sqlalchemy.orm as so
-from .config import config, engine
+from .config import oa_config, Config
 
 Base = so.declarative_base()
 
-__all__ = [Base, config, engine]
+__all__ = [Base, oa_config, Config]

@@ -6,7 +6,7 @@ import sqlalchemy.sql.sqltypes as sss
 import sqlalchemy.sql.expression as exp
 import re
 
-from ..db import Base, engine
+from ..db import Base, oa_config
 from ..tables.vocabulary import Concept, Concept_Relationship, Concept_Ancestor
 from .concept_enumerators import ConceptEnum
 
@@ -37,7 +37,7 @@ class VocabLookup:
         # that fall under the parent concept from the concept_relationship table
         self._parent = parent.value if isinstance(parent, ConceptEnum) else parent
         self._correction = None
-        with so.Session(engine) as session:
+        with so.Session(oa_config.engine) as session:
             # TBD: question - do we need to provide support for combining parent 
             # definition with domain def? is this a likely use-case? it won't fail 
             # for now, but perhaps check?
