@@ -164,6 +164,7 @@ oa_config.set_db_config()
 
 if oa_config.logging.log_target == 'file':
     handler = logging.FileHandler(filename=oa_config.log_path / oa_config.filesystem.log_file)
+    oa_config.log_path.mkdir(parents=True, exist_ok=True)
 else:
     handler = logging.StreamHandler()
 logging.basicConfig(level=log_levels[oa_config.logging.log_level], 
