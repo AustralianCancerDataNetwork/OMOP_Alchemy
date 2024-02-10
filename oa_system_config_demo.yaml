@@ -1,4 +1,5 @@
 filesystem:
+  app_root: /full/path/to/operating/dir # absolute path of where you want the data files and logs to sit
   log_path: 
     - logs
   data_path: 

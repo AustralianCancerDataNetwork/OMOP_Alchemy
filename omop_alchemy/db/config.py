@@ -53,7 +53,7 @@ class Config(object):
             self.config_file = CONFIG_PATH / config_filename
             assert self.config_file.exists(), f'Missing config file: looking for {self.config_file}, cwd = {os.getcwd()}'
             self.settings = read_config_file(self.config_file)
-            self.app_root = Path(__file__).parent.parent
+            self.app_root = Path(self.filesystem.settings['app_root'])# Path(__file__).parent.parent
             self._engine = None
 
             for location in ['log_path', 'data_path']:
@@ -70,6 +70,7 @@ class Config(object):
             ...
 
     def set_db_config(self):
+        self.data_path.mkdir(parents=True, exist_ok=True)
         self.engine = self.get_engine('cdm')
         
     def keys(self):
@@ -160,11 +161,9 @@ class Config(object):
 oa_config = Config()
 oa_config.set_db_config()
 
-
-
 if oa_config.logging.log_target == 'file':
-    handler = logging.FileHandler(filename=oa_config.log_path / oa_config.filesystem.log_file)
     oa_config.log_path.mkdir(parents=True, exist_ok=True)
+    handler = logging.FileHandler(filename=oa_config.log_path / oa_config.filesystem.log_file)
 else:
     handler = logging.StreamHandler()
 logging.basicConfig(level=log_levels[oa_config.logging.log_level], 
