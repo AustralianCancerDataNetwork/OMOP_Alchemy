@@ -10,9 +10,9 @@ class Concept(Base):
     concept_name: so.Mapped[str] = so.mapped_column(sa.String(255))
     concept_code: so.Mapped[str] = so.mapped_column(sa.String(50))
 
-    domain_id: so.Mapped[str] = so.mapped_column(sa.String(20), sa.ForeignKey('domain.domain_id'))
-    vocabulary_id: so.Mapped[str] = so.mapped_column(sa.String(20), sa.ForeignKey('vocabulary.vocabulary_id'))
-    concept_class_id: so.Mapped[str] = so.mapped_column(sa.String(20), sa.ForeignKey('concept_class.concept_class_id'))
+    domain_id: so.Mapped[str] = so.mapped_column(sa.String(20), sa.ForeignKey('domain.domain_id', name='c_fk_1'))
+    vocabulary_id: so.Mapped[str] = so.mapped_column(sa.String(20), sa.ForeignKey('vocabulary.vocabulary_id', name='c_fk_2'))
+    concept_class_id: so.Mapped[str] = so.mapped_column(sa.String(20), sa.ForeignKey('concept_class.concept_class_id', name='c_fk_3'))
     
     domain: so.Mapped['Domain'] = so.relationship(foreign_keys=[domain_id])
     vocabulary: so.Mapped['Vocabulary'] = so.relationship(foreign_keys=[vocabulary_id])

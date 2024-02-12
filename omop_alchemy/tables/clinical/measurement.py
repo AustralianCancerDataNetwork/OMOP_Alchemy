@@ -26,12 +26,12 @@ class Measurement(Base, Concept_Links):
     range_low: so.Mapped[Optional[Decimal]] = so.mapped_column(sa.Numeric)
     range_high: so.Mapped[Optional[Decimal]] = so.mapped_column(sa.Numeric)
     # polymorphic fk
-    modifier_of_event_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('modifiable_table.modifier_id'))
+    modifier_of_event_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('modifiable_table.modifier_id', name='m_fk_1'))
     # fks
-    person_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('person.person_id'))
-    provider_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('provider.provider_id'))
-    visit_occurrence_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('visit_occurrence.visit_occurrence_id'))
-    visit_detail_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('visit_detail.visit_detail_id'))
+    person_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('person.person_id', name='m_fk_2'))
+    provider_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('provider.provider_id', name='m_fk_3'))
+    visit_occurrence_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('visit_occurrence.visit_occurrence_id', name='m_fk_4'))
+    visit_detail_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('visit_detail.visit_detail_id', name='m_fk_5'))
     # relationships
     person_object: so.Mapped['Person'] = so.relationship(foreign_keys=[person_id])
     provider_object: so.Mapped[Optional['Provider']] = so.relationship(foreign_keys=[provider_id])

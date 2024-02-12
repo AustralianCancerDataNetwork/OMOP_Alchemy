@@ -16,9 +16,9 @@ class Fact_Relationship(Base):
     fact_id_2: so.Mapped[int] = so.mapped_column(sa.Integer)
     # fks
     # concept fks
-    domain_concept_id_1: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
-    domain_concept_id_2: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
-    relationship_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
+    domain_concept_id_1: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='fr_fk_1'))
+    domain_concept_id_2: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='fr_fk_2'))
+    relationship_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='fr_fk_3'))
     # relationships
     # concept_relationships
     relationship: so.Mapped['Concept'] = so.relationship(foreign_keys=[relationship_concept_id])

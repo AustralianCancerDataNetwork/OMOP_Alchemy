@@ -26,12 +26,12 @@ class Observation(Base, Concept_Links):
     # numeric
     value_as_number: so.Mapped[Optional[Decimal]] = so.mapped_column(sa.Numeric)
     # polymorphic fk
-    observation_event_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('modifiable_table.modifier_id'))
+    observation_event_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('modifiable_table.modifier_id', name='o_fk_1'))
     # fks
-    person_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('person.person_id'))
-    provider_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('provider.provider_id'))
-    visit_occurrence_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('visit_occurrence.visit_occurrence_id'))
-    visit_detail_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('visit_detail.visit_detail_id'))
+    person_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('person.person_id', name='o_fk_2'))
+    provider_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('provider.provider_id', name='o_fk_3'))
+    visit_occurrence_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('visit_occurrence.visit_occurrence_id', name='o_fk_4'))
+    visit_detail_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('visit_detail.visit_detail_id', name='o_fk_5'))
     # relationships
     person: so.Mapped['Person'] = so.relationship(foreign_keys=[person_id])
     provider: so.Mapped[Optional['Provider']] = so.relationship(foreign_keys=[provider_id])

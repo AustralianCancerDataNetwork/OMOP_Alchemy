@@ -21,15 +21,15 @@ class Visit_Occurrence(Base):
     # numeric
     admitted_from_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.Integer)
     # fks
-    person_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('person.person_id'))
-    provider_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('provider.provider_id'))
-    care_site_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('care_site.care_site_id'))
-    preceding_visit_occurrence_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('visit_occurrence.visit_occurrence_id'))
+    person_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('person.person_id', name='vo_fk_1'))
+    provider_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('provider.provider_id', name='vo_fk_2'))
+    care_site_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('care_site.care_site_id', name='vo_fk_3'))
+    preceding_visit_occurrence_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('visit_occurrence.visit_occurrence_id', name='vo_fk_4'))
     # concept fks
-    visit_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
-    visit_source_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
-    discharge_to_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
-    visit_type_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
+    visit_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='vo_fk_5'))
+    visit_source_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='vo_fk_6'))
+    discharge_to_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='vo_fk_7'))
+    visit_type_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='vo_fk_8'))
     # relationships
     person: so.Mapped[Optional['Person']] = so.relationship(foreign_keys=[person_id])
     provider: so.Mapped[Optional['Provider']] = so.relationship(foreign_keys=[provider_id])

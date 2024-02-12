@@ -7,9 +7,9 @@ from ...db import Base
 class Concept_Relationship(Base): 
     __tablename__ = 'concept_relationship'
 
-    concept_id_1: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id'), primary_key=True)
-    concept_id_2: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id'), primary_key=True)
-    relationship_id: so.Mapped[str] = so.mapped_column(sa.String(20), sa.ForeignKey('relationship.relationship_id'), primary_key=True)
+    concept_id_1: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='cr_fk_1'), primary_key=True)
+    concept_id_2: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='cr_fk_2'), primary_key=True)
+    relationship_id: so.Mapped[str] = so.mapped_column(sa.String(20), sa.ForeignKey('relationship.relationship_id', name='cr_fk_3'), primary_key=True)
 
     valid_start_date: so.Mapped[Optional[date]] = so.mapped_column(sa.Date)
     valid_end_date: so.Mapped[Optional[date]] = so.mapped_column(sa.Date)

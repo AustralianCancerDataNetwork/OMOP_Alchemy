@@ -15,9 +15,9 @@ class Observation_Period(Base):
     # strings
     # numeric
     # fks
-    person_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('person.person_id'))
+    person_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('person.person_id', name='op_fk_1'))
     # concept fks
-    period_type_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
+    period_type_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='op_fk_2'))
     # relationships
     person: so.Mapped[Optional['Person']] = so.relationship(foreign_keys=[person_id])
     # concept_relationships

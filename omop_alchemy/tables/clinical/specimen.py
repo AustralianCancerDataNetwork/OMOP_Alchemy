@@ -22,13 +22,13 @@ class Specimen(Base):
     # numeric    
     quantity: so.Mapped[Optional[Decimal]] = so.mapped_column(sa.Numeric)
     # fks
-    person_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('person.person_id'))
+    person_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('person.person_id', name='s_fk_1'))
     # concept fks
-    specimen_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
-    specimen_type_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
-    unit_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
-    anatomic_site_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
-    disease_status_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
+    specimen_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='s_fk_1'))
+    specimen_type_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='s_fk_1'))
+    unit_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='s_fk_1'))
+    anatomic_site_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='s_fk_1'))
+    disease_status_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='s_fk_1'))
     # relationships
     person: so.Mapped[Optional['Person']] = so.relationship(foreign_keys=[person_id])
     # concept_relationships

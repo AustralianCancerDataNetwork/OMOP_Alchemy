@@ -166,6 +166,7 @@ if oa_config.logging.log_target == 'file':
     handler = logging.FileHandler(filename=oa_config.log_path / oa_config.filesystem.log_file)
 else:
     handler = logging.StreamHandler()
+    
 logging.basicConfig(level=log_levels[oa_config.logging.log_level], 
                     format='%(name)s - %(levelname)s - %(message)s',
                     handlers=[handler]

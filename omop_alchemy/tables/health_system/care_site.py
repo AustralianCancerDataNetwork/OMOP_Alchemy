@@ -16,9 +16,9 @@ class Care_Site(Base):
     place_of_service_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50))
     # numeric
     # fks
-    location_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('location.location_id'))
+    location_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('location.location_id', name='cs_fk_1'))
     # concept fks
-    place_of_service_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
+    place_of_service_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='cs_fk_2'))
     # relationships
     location: so.Mapped[Optional['Location']] = so.relationship(foreign_keys=[location_id])    
     # concept relationships

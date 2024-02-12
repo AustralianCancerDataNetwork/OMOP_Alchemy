@@ -9,7 +9,7 @@ from ...db import Base
 class Procedure_Occurrence(Modifiable_Table):
     __tablename__ = 'procedure_occurrence'
     # identifier
-    procedure_occurrence_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('modifiable_table.modifier_id'), primary_key=True, autoincrement=True) 
+    procedure_occurrence_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('modifiable_table.modifier_id', name='po_fk_1'), primary_key=True, autoincrement=True) 
 
     # temporal
     procedure_date: so.Mapped[Optional[date]] = so.mapped_column(sa.Date)
@@ -20,15 +20,15 @@ class Procedure_Occurrence(Modifiable_Table):
     # numeric
     quantity: so.Mapped[Optional[int]] = so.mapped_column(sa.Integer)
     # fks
-    person_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('person.person_id'))
-    provider_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('provider.provider_id'))
-    visit_occurrence_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('visit_occurrence.visit_occurrence_id'))
-    visit_detail_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('visit_detail.visit_detail_id'))
+    person_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('person.person_id', name='po_fk_2'))
+    provider_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('provider.provider_id', name='po_fk_3'))
+    visit_occurrence_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('visit_occurrence.visit_occurrence_id', name='po_fk_4'))
+    visit_detail_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('visit_detail.visit_detail_id', name='po_fk_5'))
     # concept fks
-    procedure_type_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
-    modifier_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
-    procedure_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
-    procedure_source_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
+    procedure_type_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='po_fk_6'))
+    modifier_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='po_fk_7'))
+    procedure_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='po_fk_8'))
+    procedure_source_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='po_fk_9'))
     # relationships
     person: so.Mapped[Optional['Person']] = so.relationship(foreign_keys=[person_id])
     provider: so.Mapped[Optional['Provider']] = so.relationship(foreign_keys=[provider_id])

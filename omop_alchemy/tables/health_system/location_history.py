@@ -16,10 +16,10 @@ class Location_History(Base):
     # numeric
     entity_id: so.Mapped[Optional[int]] = so.mapped_column(sa.Integer)
     # fks
-    location_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('location.location_id'))
+    location_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('location.location_id', name='lh_fk_1'))
     domain_id: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50))
     # concept fks
-    relationship_type_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
+    relationship_type_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='lh_fk_2'))
     # relationships
     location: so.Mapped[Optional['Location']] = so.relationship(foreign_keys=[location_id])
     # concept relationships

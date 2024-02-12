@@ -30,8 +30,8 @@ to_load_health_system = {'folder': 'demo_data',
 
 to_load_clinical = {'folder': 'demo_data',
                     'PERSON.csv': Person,
-                    #'CONDITION_OCCURRENCE.csv': Condition_Occurrence,
-                    #'MEASUREMENT.csv': Measurement,
+                    'CONDITION_OCCURRENCE.csv': Condition_Occurrence,
+                    'MEASUREMENT.csv': Measurement,
                     'OBSERVATION.csv': Observation,
                     'CONCEPT.csv': Concept}
 
@@ -117,4 +117,3 @@ def populate_clinical_demo_data():
                     **ages[n%5])
             sess.add(p)
         sess.commit()
-

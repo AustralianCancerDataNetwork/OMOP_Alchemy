@@ -25,19 +25,19 @@ class Survey_Conduct(Base):
     survey_version_number: so.Mapped[Optional[str]] = so.mapped_column(sa.String(20))
     # numeric
     # fks
-    person_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('person.person_id'))
-    provider_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('provider.provider_id'))
-    visit_occurrence_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('visit_occurrence.visit_occurrence_id'))
-    visit_detail_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('visit_detail.visit_detail_id'))    
-    response_visit_occurrence_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('visit_occurrence.visit_occurrence_id'))
+    person_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('person.person_id', name='sc_fk_1'))
+    provider_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('provider.provider_id', name='sc_fk_2'))
+    visit_occurrence_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('visit_occurrence.visit_occurrence_id', name='sc_fk_3'))
+    visit_detail_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('visit_detail.visit_detail_id', name='sc_fk_4'))    
+    response_visit_occurrence_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('visit_occurrence.visit_occurrence_id', name='sc_fk_5'))
     # concept fks
-    survey_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
-    assisted_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
-    respondent_type_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
-    timing_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
-    collection_method_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
-    validated_survey_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
-    survey_source_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
+    survey_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='sc_fk_6'))
+    assisted_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='sc_fk_7'))
+    respondent_type_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='sc_fk_8'))
+    timing_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='sc_fk_9'))
+    collection_method_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='sc_fk_10'))
+    validated_survey_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='sc_fk_11'))
+    survey_source_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='sc_fk_12'))
 
     # relationships
     person: so.Mapped[Optional['Person']] = so.relationship(foreign_keys=[person_id])

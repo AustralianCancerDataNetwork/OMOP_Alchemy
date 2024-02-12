@@ -6,7 +6,7 @@ class Domain(Base):
     __tablename__ = 'domain'
     domain_id: so.Mapped[str] = so.mapped_column(sa.String(20), primary_key=True)
     domain_name: so.Mapped[str] = so.mapped_column(sa.String(255))
-    domain_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
+    domain_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='d_fk_1'))
 
     concept: so.Mapped['Concept'] = so.relationship(foreign_keys=[domain_concept_id])
 

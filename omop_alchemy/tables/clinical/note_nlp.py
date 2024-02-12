@@ -24,9 +24,9 @@ class Note_NLP(Base):
     # fks    
     note_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('note.note_id'))
     # concept fks
-    section_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
-    note_nlp_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
-    note_nlp_source_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id'))
+    section_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='n_fk_1'))
+    note_nlp_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='n_fk_2'))
+    note_nlp_source_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='n_fk_3'))
     # relationships
     note: so.Mapped[Optional['Note']] = so.relationship(foreign_keys=[note_id])
     # concept_relationships
