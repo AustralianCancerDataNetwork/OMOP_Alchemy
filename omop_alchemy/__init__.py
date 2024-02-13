@@ -11,7 +11,6 @@ from .helpers.create_db import create_db
 # will do for now :)
 
 from .db import oa_config, logger
-
 create_db(Base, oa_config.engine)
 
 from .conventions import ConditionModifiers

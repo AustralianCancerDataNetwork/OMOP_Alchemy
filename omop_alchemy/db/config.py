@@ -9,7 +9,7 @@ max_depth = 3
 try:
     CONFIG_PATH = Path(os.environ['OA_CONFIG'])
 except KeyError:
-    print('WARNING: Missing OA_CONFIG environment variable')
+    print('WARNING: Missing OA_CONFIG environment variable - we will try locate a config file but if not found, will return an empty config - this may have unintended consequences')
     CONFIG_PATH = Path(__file__).parent
 
 config_filename = 'oa_system_config.yaml'
@@ -51,7 +51,11 @@ class Config(object):
             else:
                 self.config_path = config_path_override # this usage is intended only for stubbing out test fixtures
             self.config_file = CONFIG_PATH / config_filename
-            assert self.config_file.exists(), f'Missing config file: looking for {self.config_file}, cwd = {os.getcwd()}'
+            try:
+                assert self.config_file.exists(), f'Missing config file: looking for {self.config_file}, cwd = {os.getcwd()}'
+            except: 
+                print('WARNING: no config file available - assuming another configuration mechanism in place (e.g. flask) and returning empty config')
+                return
             self.settings = read_config_file(self.config_file)
             self.app_root = Path(self.filesystem.settings['app_root'])# Path(__file__).parent.parent
             self._engine = None
@@ -166,7 +170,7 @@ if oa_config.logging.log_target == 'file':
     handler = logging.FileHandler(filename=oa_config.log_path / oa_config.filesystem.log_file)
 else:
     handler = logging.StreamHandler()
-    
+
 logging.basicConfig(level=log_levels[oa_config.logging.log_level], 
                     format='%(name)s - %(levelname)s - %(message)s',
                     handlers=[handler]
