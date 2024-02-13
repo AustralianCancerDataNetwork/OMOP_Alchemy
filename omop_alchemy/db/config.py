@@ -51,11 +51,7 @@ class Config(object):
             else:
                 self.config_path = config_path_override # this usage is intended only for stubbing out test fixtures
             self.config_file = CONFIG_PATH / config_filename
-            try:
-                assert self.config_file.exists(), f'Missing config file: looking for {self.config_file}, cwd = {os.getcwd()}'
-            except: 
-                print('WARNING: no config file available - assuming another configuration mechanism in place (e.g. flask) and returning empty config')
-                return
+            assert self.config_file.exists(), f'Missing config file: looking for {self.config_file}, cwd = {os.getcwd()}'
             self.settings = read_config_file(self.config_file)
             self.app_root = Path(self.filesystem.settings['app_root'])# Path(__file__).parent.parent
             self._engine = None
