@@ -6,8 +6,10 @@ import sqlalchemy.sql.sqltypes as sss
 import sqlalchemy.sql.expression as exp
 import re
 
-from ..db import Base, oa_config
-from ..tables.vocabulary import Concept, Concept_Relationship, Concept_Ancestor
+from oa_configurator import oa_config
+
+from ..db import Base
+from ..model.vocabulary import Concept, Concept_Relationship, Concept_Ancestor
 from .concept_enumerators import ConceptEnum
 
 class VocabLookup:

@@ -6,10 +6,10 @@ import sqlalchemy as sa
 import sqlalchemy.orm as so
 import sqlalchemy.sql.sqltypes as sss
 
-from ..db.config import oa_config, logger
-from ..tables.clinical import Person, Condition_Occurrence, Measurement, Observation
-from ..tables.health_system import Care_Site, Location, Provider
-from ..tables.vocabulary import Concept, Vocabulary, Concept_Class, Domain, Relationship, \
+from oa_configurator import oa_config, logger
+from ..model.clinical import Person, Condition_Occurrence, Measurement, Observation
+from ..model.health_system import Care_Site, Location, Provider
+from ..model.vocabulary import Concept, Vocabulary, Concept_Class, Domain, Relationship, \
                                 Concept_Relationship, Concept_Ancestor
 
 # TODO: insert some validation and checks to make sure folk know how and why to do this (and the limits for demo purposes)
