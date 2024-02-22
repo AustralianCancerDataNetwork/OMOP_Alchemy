@@ -76,44 +76,38 @@ type_map = {sss.BigInteger: convert_int,
 def get_type_lookup(interface):
     return {c.key: type_map[type(c.type)] for c in interface.__table__._columns}
 
-def populate_demo_db(to_load):
+
+def data_load_prep():
+    # check if database is not sqlite and try turn off foreign keys if possible
+    ...
+
+def after_data_load():
+    # turn back on foreign keys if they've been turned off
+    ...
+
+def populate_db_from_file(filepath, interface, session):
+    logger.debug(filepath)
+    try: 
+        with open(filepath, 'r') as file:
+            reader = csv.DictReader(file, delimiter='\t')
+            field_map = get_type_lookup(interface)
+            
+            for row in reader:
+                record = {field:field_map[field](data) for field, data in row.items() if field in field_map}
+                o = interface(**record)
+                session.add(o)
+
+            logger.debug(f'complete load for: {filepath}')
+    except Exception as e:
+        logger.error(e)
+        logger.debug(f'Error loading data file {filepath}. Have you unzipped it in the correct location ({oa_config.data_path})?')
+
+
+def populate_db_from_dict(to_load):
     with so.Session(oa_config.engine) as sess:
         folder = Path(oa_config.data_path) / to_load['folder']
         logger.debug(folder)
         for ohdsi_file, interface in to_load.items():
             if interface != folder.name:
-                try:
-                    with open(folder / ohdsi_file, 'r') as file:
-                        reader = csv.DictReader(file, delimiter='\t')
-                        field_map = get_type_lookup(interface)
-                        
-                        for row in reader:
-                            record = {field:field_map[field](data) for field, data in row.items() if field in field_map}
-                            o = interface(**record)
-                            sess.add(o)
-
-                        logger.debug(f'complete load for: {ohdsi_file}')
-                except Exception as e:
-                    logger.error(e)
-                    logger.debug(f'Error loading data file {ohdsi_file}. Have you unzipped it in the correct location ({oa_config.data_path})?')
-        sess.commit()
-
-
-def populate_clinical_demo_data():
-    with so.Session(oa_config.engine) as sess:
-
-        gender_concepts = [(8532, 'F', 'FEMALE'), (8507, 'M', 'MALE')]
-        ages = [{'year_of_birth': 2000}, 
-                {'year_of_birth': 2000, 'day_of_birth': 12, 'month_of_birth': 3},
-                {'birth_datetime': datetime(2000, 4, 2)}, 
-                {'birth_datetime': datetime.now()},
-                {'birth_datetime': datetime(2000, 4, 2), 'death_datetime': datetime(2008, 4, 2)}]
-
-        for n in range(15, 20):
-            p = Person(person_id=n, 
-                    gender_concept_id=gender_concepts[n%2][0],
-                    ethnicity_concept_id=0,
-                    race_concept_id=0,
-                    **ages[n%5])
-            sess.add(p)
+                populate_db_from_file(folder / ohdsi_file, interface, sess)
         sess.commit()
