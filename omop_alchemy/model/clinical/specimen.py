@@ -25,10 +25,10 @@ class Specimen(Base):
     person_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('person.person_id', name='s_fk_1'))
     # concept fks
     specimen_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='s_fk_1'))
-    specimen_type_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='s_fk_1'))
-    unit_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='s_fk_1'))
-    anatomic_site_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='s_fk_1'))
-    disease_status_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='s_fk_1'))
+    specimen_type_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='s_fk_2'))
+    unit_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='s_fk_3'))
+    anatomic_site_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='s_fk_4'))
+    disease_status_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='s_fk_5'))
     # relationships
     person: so.Mapped[Optional['Person']] = so.relationship(foreign_keys=[person_id])
     # concept_relationships
