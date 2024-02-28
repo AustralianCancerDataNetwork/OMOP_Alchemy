@@ -117,7 +117,8 @@ def populate_db_from_file(filepath, interface, session):
 
 
 def rapid_load(path, target):
-    rapid_load_script = 'SET session_replication_role = replica;'
+    rapid_load_script = {'before_load': 'SET session_replication_role = replica;', 'load_script': []}
+
     for f in path.iterdir(): 
         if f.name in target:
 
@@ -126,8 +127,10 @@ def rapid_load(path, target):
                 for row in reader:
                     header = row
                     break
-            cols = '\',\''.join(list(header.keys()))
-            rapid_load_script += f'\n\copy {f.stem.lower()} (\'{cols}\') from {f} delimiter E\'\\t\' CSV HEADER QUOTE \'~\';'
+            rapid_load_script['load_script'].append({'file': f, 
+                                                     'table': f.stem.lower(), 
+                                                     'sep': '\t', 
+                                                     'columns': tuple(header.keys())})
     return rapid_load_script
 
 def populate_db_from_dict(to_load):
