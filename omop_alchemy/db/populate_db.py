@@ -116,6 +116,20 @@ def populate_db_from_file(filepath, interface, session):
         logger.debug(f'Error loading data file {filepath}. Have you unzipped it in the correct location ({oa_config.data_path})?')
 
 
+def rapid_load(path, target):
+    rapid_load_script = 'SET session_replication_role = \'replica\';'
+    for f in path.iterdir(): 
+        if f.name in target:
+
+            with open(f, 'r') as file:
+                reader = csv.DictReader(file, delimiter='\t')
+                for row in reader:
+                    header = row
+                    break
+            cols = '\',\''.join(list(header.keys()))
+            rapid_load_script += f'\n\copy {f.stem.lower()} (\'{cols}\') from {f} delimiter E\'\\t\' CSV HEADER QUOTE \'~\''
+    return rapid_load_script
+
 def populate_db_from_dict(to_load):
     with so.Session(oa_config.engine) as sess:
         folder = Path(oa_config.data_path) / to_load['folder']

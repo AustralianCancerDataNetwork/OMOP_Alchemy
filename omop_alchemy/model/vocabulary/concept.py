@@ -1,6 +1,7 @@
 import sqlalchemy as sa
 import sqlalchemy.orm as so
 from datetime import date
+from typing import Optional
 
 from ...db import Base
 
@@ -18,10 +19,10 @@ class Concept(Base):
     vocabulary: so.Mapped['Vocabulary'] = so.relationship(foreign_keys=[vocabulary_id])
     concept_class: so.Mapped['Concept_Class'] = so.relationship(foreign_keys=[concept_class_id])
 
-    standard_concept: so.Mapped[str]  = so.mapped_column(sa.String(1))
+    standard_concept: so.Mapped[Optional[str]]  = so.mapped_column(sa.String(1), nullable=True)
     valid_start_date: so.Mapped[date]  = so.mapped_column(sa.Date)
     valid_end_date: so.Mapped[date]  = so.mapped_column(sa.Date)
-    invalid_reason: so.Mapped[str]  = so.mapped_column(sa.String(1))
+    invalid_reason: so.Mapped[Optional[str]]  = so.mapped_column(sa.String(1), nullable=True)
 
     def __repr__(self):
         return f'<Concept {self.concept_id} - {self.concept_code} ({self.concept_name})>'

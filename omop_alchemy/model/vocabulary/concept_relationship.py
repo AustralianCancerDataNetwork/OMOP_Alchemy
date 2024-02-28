@@ -13,6 +13,7 @@ class Concept_Relationship(Base):
 
     valid_start_date: so.Mapped[Optional[date]] = so.mapped_column(sa.Date)
     valid_end_date: so.Mapped[Optional[date]] = so.mapped_column(sa.Date)
+    invalid_reason: so.Mapped[Optional[str]]  = so.mapped_column(sa.String(1), nullable=True)
 
     concept_1: so.Mapped['Concept'] = so.relationship(foreign_keys=[concept_id_1])
     concept_2: so.Mapped['Concept'] = so.relationship(foreign_keys=[concept_id_2])
