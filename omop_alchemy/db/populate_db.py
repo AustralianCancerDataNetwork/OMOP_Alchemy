@@ -127,10 +127,10 @@ def rapid_load(path, target):
                 for row in reader:
                     header = row
                     break
-            rapid_load_script['load_script'].append({'file': f, 
+            rapid_load_script['load_script'].append({'file': str(f), 
                                                      'table': f.stem.lower(), 
                                                      'sep': '\t', 
-                                                     'columns': tuple(header.keys())})
+                                                     'columns': list(header.keys())})
     return rapid_load_script
 
 def populate_db_from_dict(to_load):
