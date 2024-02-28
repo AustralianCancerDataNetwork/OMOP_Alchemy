@@ -23,6 +23,16 @@ to_load_vocabulary = {'folder': 'ohdsi_vocabs',
                       'CONCEPT_RELATIONSHIP.csv': Concept_Relationship,
                       'CONCEPT_ANCESTOR.csv': Concept_Ancestor}
 
+to_load_vocab_skip_relationships = {'folder': 'ohdsi_vocabs',
+                                    'VOCABULARY.csv': Vocabulary, 
+                                    'CONCEPT.csv': Concept, 
+                                    'CONCEPT_CLASS.csv': Concept_Class, 
+                                    'DOMAIN.csv': Domain,
+                                    'RELATIONSHIP.csv': Relationship}
+
+to_load_just_concept_relationships = {'CONCEPT_RELATIONSHIP.csv': Concept_Relationship,
+                                      'CONCEPT_ANCESTOR.csv': Concept_Ancestor}
+
 to_load_health_system = {'folder': 'demo_data',
                          'CARE_SITE.csv': Care_Site,
                          'LOCATION.csv': Location,
