@@ -13,13 +13,13 @@ class Condition_Occurrence(Modifiable_Table):
     condition_occurrence_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('modifiable_table.modifier_id'), primary_key=True, autoincrement=True)
     # temporal
     condition_start_date: so.Mapped[date] = so.mapped_column(sa.Date)
-    condition_start_datetime: so.Mapped[Optional[datetime]] = so.mapped_column(sa.DateTime)
-    condition_end_date: so.Mapped[Optional[date]] = so.mapped_column(sa.Date)
-    condition_end_datetime: so.Mapped[Optional[datetime]] = so.mapped_column(sa.DateTime)
+    condition_start_datetime: so.Mapped[Optional[datetime]] = so.mapped_column(sa.DateTime, nullable=True)
+    condition_end_date: so.Mapped[Optional[date]] = so.mapped_column(sa.Date, nullable=True)
+    condition_end_datetime: so.Mapped[Optional[datetime]] = so.mapped_column(sa.DateTime, nullable=True)
     # strings
-    stop_reason: so.Mapped[Optional[str]] = so.mapped_column(sa.String(20))
-    condition_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50))
-    condition_status_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50))
+    stop_reason: so.Mapped[Optional[str]] = so.mapped_column(sa.String(20), nullable=True)
+    condition_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50), nullable=True)
+    condition_status_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50), nullable=True)
     # fks
     person_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('person.person_id', name='co_fk_1'))
     provider_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('provider.provider_id', name='co_fk_2'), nullable=True)
@@ -28,8 +28,8 @@ class Condition_Occurrence(Modifiable_Table):
     # concept fks
     condition_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='co_fk_5'))
     condition_type_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='co_fk_6'))
-    condition_status_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='co_fk_7'))
-    condition_source_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='co_fk_8'))
+    condition_status_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='co_fk_7'), nullable=True)
+    condition_source_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='co_fk_8'), nullable=True)
     # relationships
     person: so.Mapped['Person'] = so.relationship(foreign_keys=[person_id])
     provider: so.Mapped[Optional['Provider']] = so.relationship(foreign_keys=[provider_id])
