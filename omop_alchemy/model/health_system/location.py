@@ -13,6 +13,7 @@ class Location(Base):
     address_1: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50))
     address_2: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50))
     city: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50))
+    # todo: can we make this string length configurable? srsly states aren't always 2 chars guys
     state: so.Mapped[Optional[str]] = so.mapped_column(sa.String(2))
     zip_code: so.Mapped[Optional[str]] = so.mapped_column(sa.String(9)) # note column name change for python compatibility
     county: so.Mapped[Optional[str]] = so.mapped_column(sa.String(20))

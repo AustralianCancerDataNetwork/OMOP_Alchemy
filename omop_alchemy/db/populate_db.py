@@ -70,13 +70,13 @@ def convert_int(i):
     try:
         return int(i)
     except:
-        return 0
+        return None
     
 def convert_dec(i):
     try:
         return sss.Decimal(i)
     except:
-        return 0
+        return None
 
 type_map = {sss.BigInteger: convert_int, 
             sss.Integer: convert_int, 
@@ -127,7 +127,7 @@ def rapid_load(path, target):
                 for row in reader:
                     header = row
                     break
-            rapid_load_script['load_script'].append({'file': str(f), 
+            rapid_load_script['load_script'].append({'file': f.name, 
                                                      'table': f.stem.lower(), 
                                                      'sep': '\t', 
                                                      'columns': list(header.keys())})
