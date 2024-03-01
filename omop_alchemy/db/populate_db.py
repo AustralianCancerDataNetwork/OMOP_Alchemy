@@ -141,6 +141,6 @@ def populate_db_from_dict(to_load):
         folder = Path(oa_config.data_path) / to_load['folder']
         logger.debug(folder)
         for ohdsi_file, interface in to_load.items():
-            if interface != folder.name:
+            if interface != folder.name and (folder / ohdsi_file).exists():
                 populate_db_from_file(folder / ohdsi_file, interface, sess)
         sess.commit()
