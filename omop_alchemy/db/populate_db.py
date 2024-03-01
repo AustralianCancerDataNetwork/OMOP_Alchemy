@@ -117,20 +117,23 @@ def populate_db_from_file(filepath, interface, session):
 
 
 def rapid_load(path, target):
-    rapid_load_script = {'before_load': 'SET session_replication_role = replica;', 'load_script': []}
-
+    rapid_load_script = {'before_load': 'SET session_replication_role = replica;', 'load_script': [], 'not_loaded': []}
     for f in path.iterdir(): 
-        if f.name in target:
+        try:
+            if f.name in target:
 
-            with open(f, 'r') as file:
-                reader = csv.DictReader(file, delimiter='\t')
-                for row in reader:
-                    header = row
-                    break
-            rapid_load_script['load_script'].append({'file': f.name, 
-                                                     'table': f.stem.lower(), 
-                                                     'sep': '\t', 
-                                                     'columns': list(header.keys())})
+                with open(f, 'r') as file:
+                    reader = csv.DictReader(file, delimiter='\t')
+                    for row in reader:
+                        header = row
+                        break
+                rapid_load_script['load_script'].append({'file': f.name, 
+                                                         'table': f.stem.lower(), 
+                                                         'sep': '\t', 
+                                                         'columns': list(header.keys())})
+        except Exception as e:
+            rapid_load_script['not_loaded'].append({'file': f.name, 
+                                                    'error': str(e)[:500]})
     return rapid_load_script
 
 def populate_db_from_dict(to_load):
