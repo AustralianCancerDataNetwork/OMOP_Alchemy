@@ -84,7 +84,8 @@ type_map = {sss.BigInteger: convert_int,
             sss.DateTime: convert_datetime_col, 
             sss.Time: convert_time_col, 
             sss.String: callable_pass, 
-            sss.Date: convert_date_col}
+            sss.Date: convert_date_col,
+            sss.Enum: callable_pass}
 
 def get_type_lookup(interface):
     return {c.key: type_map[type(c.type)] for c in interface.__table__._columns}
