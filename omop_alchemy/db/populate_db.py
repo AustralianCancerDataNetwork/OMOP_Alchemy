@@ -87,9 +87,13 @@ type_map = {sss.BigInteger: convert_int,
             sss.Date: convert_date_col,
             sss.Enum: callable_pass}
 
-def get_type_lookup(interface):
-    return {c.key: type_map[type(c.type)] for c in interface.__table__._columns}
+def create_enum_lookup(enum_lookup):
+    def f(strval):
+        return enum_lookup._object_lookup[strval]
+    return f
 
+def get_type_lookup(interface):
+    return {c.key: type_map[type(c.type)] if type(c.type) != sss.Enum else create_enum_lookup(c.type) for c in interface.__table__._columns}
 
 def data_load_prep():
     # check if database is not sqlite and try turn off foreign keys if possible
