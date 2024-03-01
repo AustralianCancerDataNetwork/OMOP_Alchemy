@@ -109,7 +109,11 @@ def populate_db_from_file(filepath, interface, session):
         with open(filepath, 'r') as file:
             reader = csv.DictReader(file, delimiter='\t')
             field_map = get_type_lookup(interface)
-            
+            base_tables = [b for b in interface.__bases__ if hasattr(b, '__tablename__')]
+            if len(base_tables) > 0:
+                for b in base_tables:
+                    field_map.update(get_type_lookup(b))
+
             for row in reader:
                 record = {field:field_map[field](data) for field, data in row.items() if field in field_map}
                 o = interface(**record)
