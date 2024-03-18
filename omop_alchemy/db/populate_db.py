@@ -55,13 +55,19 @@ def datetime_conversion(dt, fmt):
         return datetime.strptime(dt, fmt)
     
 def convert_date_col(dt):
-    return datetime_conversion(dt, '%Y%m%d')
-    
+    try:
+       return datetime_conversion(dt, '%Y%m%d')
+    except:
+        return datetime_conversion(dt, '%Y-%m-%d')
+
 def convert_time_col(dt):
     return datetime_conversion(dt, '%H%M%S')
 
 def convert_datetime_col(dt):
-    return datetime_conversion(dt, '%Y%m%d%H%M%S')
+    try:
+        return datetime_conversion(dt, '%Y%m%d%H%M%S')
+    except:
+        return datetime_conversion(dt, '%Y-%m-%d %H:%M:%S')
 
 def callable_pass(s):
     return s

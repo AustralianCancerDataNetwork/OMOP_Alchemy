@@ -10,7 +10,7 @@ from oa_configurator import oa_config
 
 from ..db import Base
 from ..model.vocabulary import Concept, Concept_Relationship, Concept_Ancestor
-from .concept_enumerators import ConceptEnum
+from .concept_enumerators import ConceptEnum, TStageConcepts, NStageConcepts, MStageConcepts, GroupStageConcepts
 
 class VocabLookup:
     # base class for custom vocabulary lookups
@@ -27,6 +27,11 @@ class VocabLookup:
                  domain=None,         # otherwise we are grabbing by specification of domain
                  concept_class=None,  # and optionally concept_class
                  code_filter=None,    # last option - apply a string filter (this is required for grade as distinct from stage)
+                 correction=[],       # correction parameter holds an ordered list of callable corrections 
+                                      # - try match the raw input string first 
+                                      # - then apply corrections in order and return the first match 
+                                      # - examples of correction functions would be stripping punctuation, 
+                                      #   spelling correction functions
                  standard_only=True): # for when you want to toggle between grabbing children from standard concepts strictly or not
         self._unknown = unknown.value if isinstance(unknown, ConceptEnum) else unknown
         self._lookup = defaultdict(self.return_unknown)
@@ -38,7 +43,7 @@ class VocabLookup:
         # in all available matches - e.g. TNM stages, which can grab all concepts 
         # that fall under the parent concept from the concept_relationship table
         self._parent = parent.value if isinstance(parent, ConceptEnum) else parent
-        self._correction = None
+        self._correction = correction
         with so.Session(oa_config.engine) as session:
             # TBD: question - do we need to provide support for combining parent 
             # definition with domain def? is this a likely use-case? it won't fail 
@@ -133,13 +138,48 @@ class VocabLookup:
 
 from .concept_enumerators import ConditionModifiers
 
-tnm_lookup = VocabLookup(parent=ConditionModifiers.tnm)
+
+def remove_brackets(val):
+    return val.split('(')[0]
+
+def make_stage(val):
+    val = val.lower()
+    roman_lookup = [('-iii', '-3'), ('-iv', '-4'), ('-ii', '-2'), ('-i', '-1'), ('nos', '')]
+    for replacement in roman_lookup:
+        val = val.replace(*replacement)
+    return val
+
+class StagingLookup(VocabLookup):
+
+    def get_children(self, session, concepts):
+        children = session.query(Concept_Ancestor
+                                ).options(so.joinedload(Concept_Ancestor.descendant)
+                                ).filter(Concept_Ancestor.ancestor_concept_id.in_(concepts)).distinct().all()
+        return [c.descendant.concept_id for c in children]
+
+    def __init__(self):
+        super().__init__(parent=ConditionModifiers.tnm, correction=[remove_brackets, make_stage])
+        self.clinical_stage_concepts = [v for k, v in self._lookup.items() if k[0] == 'c' and v != 0]
+        self.path_stage_concepts = [v for k, v in self._lookup.items() if k[0] == 'p' and v != 0]
+
+        with so.Session(oa_config.engine) as session:
+            self.t_stage_concepts = self.get_children(session, TStageConcepts.member_values())
+            self.n_stage_concepts = self.get_children(session, NStageConcepts.member_values())
+            self.m_stage_concepts = self.get_children(session, MStageConcepts.member_values())
+            self.group_stage_concepts = self.get_children(session, GroupStageConcepts.member_values())
+    
+    def get_standard_hierarchy(self, session):
+        children = session.query(Concept_Ancestor
+                                ).options(so.joinedload(Concept_Ancestor.descendant)
+                                ).filter(Concept_Ancestor.ancestor_concept_id == self._parent).distinct().all()
+        return [c.descendant for c in children]
+        
+tnm_lookup = StagingLookup()
 grading_lookup = VocabLookup(domain="Measurement", concept_class="Staging/Grading", code_filter='grade')
 mets_lookup = VocabLookup(parent=ConditionModifiers.mets)
 gender_lookup = VocabLookup(domain="Gender")
 race_lookup = VocabLookup(domain="Race")
 ethnicity_lookup = VocabLookup(domain="Ethnicity")
-
 
 # class HierarchicalLookup():
 #     # this class holds an ordered list of standard vocabularies and 

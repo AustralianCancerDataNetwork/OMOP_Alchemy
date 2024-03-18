@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, date
 from typing import Optional, List
 from sqlalchemy.ext.hybrid import hybrid_property
 import sqlalchemy as sa
@@ -43,6 +43,7 @@ class Person(Base):#, Concept_Links):
     provider: so.Mapped[Optional['Provider']] = so.relationship(foreign_keys=[provider_id])
     care_site: so.Mapped[Optional['Care_Site']] = so.relationship(foreign_keys=[care_site_id])
     conditions: so.Mapped[List['Condition_Occurrence']] = so.relationship(back_populates="person", lazy="selectin")
+    observations: so.Mapped[List['Observation']] = so.relationship(back_populates="person", lazy="selectin")
     episodes: so.Mapped[List['Episode']] = so.relationship(back_populates="person_object", lazy="selectin")
     # concept_relationships
     gender: so.Mapped[Optional['Concept']] = so.relationship(foreign_keys=[gender_concept_id])
@@ -118,17 +119,35 @@ class Person(Base):#, Concept_Links):
     @property
     def dob(self):
         if self.birth_datetime:
-            return self.birth_datetime
+            return self.birth_datetime.date()
         if self.year_of_birth is None:
             return None
         day = self.day_of_birth or 1
         month = self.month_of_birth or 1
-        return datetime(self.year_of_birth, month, day)
-
+        return date(self.year_of_birth, month, day)
 
     @property
     def age(self, age_at=None):
-        age_at = age_at or datetime.now()
-        age_at = min(age_at, self.death_datetime) if self.death_datetime is not None else age_at
+        age_at = age_at or date.today()
+        age_at = min(age_at, self.death_datetime.date()) if self.death_datetime is not None else age_at
         return self.age_calc(age_at)
+    
+    @hybrid_property
+    def gender_label(self):
+        if self.gender:
+            return self.gender.concept_name
 
+    @hybrid_property
+    def primary_dx_eps(self):
+        return [e for e in self.episodes if e.is_overarching]
+
+    @hybrid_property
+    def current_cond(self):
+        if self.conditions:
+            return sorted(self.conditions, key=lambda x: x.event_date)[-1]
+
+    @hybrid_property
+    def age_current_dx(self):
+        cc = self.current_cond
+        if cc:
+            return self.age_calc(age_at = cc.event_date)
