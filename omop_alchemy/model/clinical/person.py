@@ -45,6 +45,8 @@ class Person(Base):#, Concept_Links):
     conditions: so.Mapped[List['Condition_Occurrence']] = so.relationship(back_populates="person", lazy="selectin")
     observations: so.Mapped[List['Observation']] = so.relationship(back_populates="person", lazy="selectin")
     episodes: so.Mapped[List['Episode']] = so.relationship(back_populates="person_object", lazy="selectin")
+    procedures: so.Mapped[List['Procedure_Occurrence']] = so.relationship(back_populates="person", lazy="selectin")
+    measurements: so.Mapped[List['Measurement']] = so.relationship(back_populates="person_object", lazy="selectin")
     # concept_relationships
     gender: so.Mapped[Optional['Concept']] = so.relationship(foreign_keys=[gender_concept_id])
     ethnicity: so.Mapped[Optional['Concept']] = so.relationship(foreign_keys=[ethnicity_concept_id])
