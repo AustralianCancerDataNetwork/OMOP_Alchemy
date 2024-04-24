@@ -1,3 +1,0 @@
-concept_id	concept_name	domain_id	vocabulary_id	concept_class_id	standard_concept	concept_code	valid_start_date	valid_end_date	invalid_reason
-4265162	Primary tumor size	Measurement	SNOMED	Observable Entity	S	399734001	20200101	20991231	
-4213085	Family history of prostate cancer	Observation	SNOMED	NAACCR Value	S	414205003	20200101	20991231	

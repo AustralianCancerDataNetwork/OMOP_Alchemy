@@ -1,4 +1,0 @@
-measurement_id	measurement_date	measurement_datetime	measurement_time	measurement_source_value	unit_source_value	value_source_value	value_as_number	range_low	range_high	modifier_of_event_id	person_id	provider_id	visit_occurrence_id	visit_detail_id	value_as_concept_id	unit_concept_id	measurement_concept_id	measurement_source_concept_id	measurement_type_concept_id	operator_concept_id	modifier_of_field_concept_id
-1	20150310									1	1				35919156		35918328		44818703		1147127
-2	20150310									1	1				35919673		35918383		44818703		1147127
-3	20150310						5			1	1					8588	4265162		44818703		1147127

@@ -19,11 +19,11 @@ class Episode(Modifiable_Table, Concept_Links):
 
     # temporal
     episode_start_datetime: so.Mapped[datetime] = so.mapped_column(sa.DateTime)
-    episode_end_datetime: so.Mapped[Optional[datetime]] = so.mapped_column(sa.DateTime)
+    episode_end_datetime: so.Mapped[Optional[datetime]] = so.mapped_column(sa.DateTime, nullable=True)
     # strings
-    episode_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50))
+    episode_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50), nullable=True)
     # numeric
-    episode_number: so.Mapped[Optional[int]] = so.mapped_column(sa.Integer)
+    episode_number: so.Mapped[Optional[int]] = so.mapped_column(sa.Integer, nullable=True)
     # fks
     person_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey("person.person_id"))
     episode_parent_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey("episode.episode_id"), nullable=True)
