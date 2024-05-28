@@ -10,7 +10,7 @@ from ...conventions.concept_enumerators import ModifierFields
 class Modifiable_Table(Base):
     __tablename__ = 'modifiable_table'
     modifier_id: so.Mapped[int] = so.mapped_column(primary_key=True, autoincrement=True)
-    modifier_of_field_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='mt_fk_1'))
+    modifier_of_field_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='mt_fk_1'), nullable=True)
 
     modifiers: so.Mapped[List['Measurement']] = so.relationship(
         backref="modifying_object", lazy="selectin", viewonly=True
