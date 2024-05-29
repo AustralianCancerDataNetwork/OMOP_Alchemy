@@ -83,6 +83,12 @@ def convert_dec(i):
         return sss.Decimal(i)
     except:
         return None
+    
+def convert_bool(i):
+    try:
+        return sss.Boolean(i)
+    except:
+        return None
 
 type_map = {sss.BigInteger: convert_int, 
             sss.Integer: convert_int, 
@@ -91,7 +97,8 @@ type_map = {sss.BigInteger: convert_int,
             sss.Time: convert_time_col, 
             sss.String: callable_pass, 
             sss.Date: convert_date_col,
-            sss.Enum: callable_pass}
+            sss.Boolean: callable_pass,
+            sss.Enum: convert_bool}
 
 def create_enum_lookup(enum_lookup):
     def f(strval):
