@@ -26,7 +26,7 @@ to_load_vocabulary = {'folder': 'ohdsi_vocabs',
                                 'CONCEPT_ANCESTOR.csv': Concept_Ancestor}}
 
 to_load_vocab_skip_relationships = {'folder': 'ohdsi_vocabs',
-                                    'chunkable': True,
+                                    'chunkable': False,
                                     'files':{'VOCABULARY.csv': Vocabulary, 
                                              'CONCEPT.csv': Concept, 
                                              'CONCEPT_CLASS.csv': Concept_Class, 

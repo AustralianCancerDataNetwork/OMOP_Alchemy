@@ -16,7 +16,8 @@ class Concept(Base):
     concept_class_id: so.Mapped[str] = so.mapped_column(sa.String(20), sa.ForeignKey('concept_class.concept_class_id', name='c_fk_3'))
     
     domain: so.Mapped['Domain'] = so.relationship(foreign_keys=[domain_id])
-    vocabulary: so.Mapped['Vocabulary'] = so.relationship(foreign_keys=[vocabulary_id])
+    vocabulary: so.Mapped['Vocabulary'] = so.relationship(foreign_keys=[vocabulary_id], back_populates='vocabulary_concept')
+    concept_vocabulary: so.Mapped['Vocabulary'] = so.relationship('Vocabulary', primaryjoin='Concept.concept_id==Vocabulary.vocabulary_concept_id')
     concept_class: so.Mapped['Concept_Class'] = so.relationship(foreign_keys=[concept_class_id])
 
     standard_concept: so.Mapped[Optional[str]]  = so.mapped_column(sa.String(1), nullable=True)

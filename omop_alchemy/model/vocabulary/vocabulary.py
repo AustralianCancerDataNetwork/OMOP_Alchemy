@@ -12,5 +12,6 @@ class Vocabulary(Base):
     vocabulary_version: so.Mapped[Optional[str]] = so.mapped_column(sa.String(255), nullable=True)
     vocabulary_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='v_fk_1'))
     
-    concept: so.Mapped['Concept'] = so.relationship(foreign_keys=[vocabulary_concept_id])
+    vocabulary_concept: so.Mapped['Concept'] = so.relationship('Concept', primaryjoin='Vocabulary.vocabulary_id==Concept.vocabulary_id')
+    concept: so.Mapped['Concept'] = so.relationship(foreign_keys=[vocabulary_concept_id], back_populates='concept_vocabulary')
 
