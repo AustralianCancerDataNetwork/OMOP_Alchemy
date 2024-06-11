@@ -5,6 +5,7 @@ import sqlalchemy.orm as so
 from sqlalchemy.ext.hybrid import hybrid_property
 
 from .modifiable_table import Modifiable_Table
+from ..vocabulary import Concept
 from ...db import Base
 
 class Condition_Occurrence(Modifiable_Table):
@@ -119,7 +120,19 @@ class Condition_Occurrence(Modifiable_Table):
     def condition_label(self):
         if self.condition_concept:
             return self.condition_concept.concept_name
-        
+    
+    
+    @hybrid_property
+    def condition_code(self):
+        if self.condition_concept:
+            return self.condition_concept.concept_code
+
+    
+    @condition_code.expression
+    @classmethod
+    def condition_code(cls) -> sa.ColumnElement[Optional[str]]:
+        return sa.select(Concept.concept_code).where(Concept.concept_id==cls.condition_concept_id).as_scalar()
+
     @condition_label.expression
     def _condition_label_expression(cls) -> sa.ColumnElement[Optional[str]]:
         return sa.cast("SQLColumnExpression[Optional[str]]", cls.condition_concept.concept_name)
