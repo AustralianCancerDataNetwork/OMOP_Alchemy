@@ -10,8 +10,8 @@ class Concept_Ancestor(Base):
     ancestor_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='ca_fk_1'), primary_key=True)
     descendant_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='ca_fk_2'), primary_key=True)
 
-    ancestor: so.Mapped['Concept'] = so.relationship(foreign_keys=[ancestor_concept_id])
-    descendant: so.Mapped['Concept'] = so.relationship(foreign_keys=[descendant_concept_id])
+    ancestor: so.Mapped['Concept'] = so.relationship('Concept', primaryjoin='Concept_Ancestor.ancestor_concept_id==Concept.concept_id')
+    descendant: so.Mapped['Concept'] = so.relationship('Concept', primaryjoin='Concept_Ancestor.descendant_concept_id==Concept.concept_id')
     min_levels_of_separation: so.Mapped[Optional[int]] = so.mapped_column(sa.Integer)
     max_levels_of_separation: so.Mapped[Optional[int]] = so.mapped_column(sa.Integer)
 

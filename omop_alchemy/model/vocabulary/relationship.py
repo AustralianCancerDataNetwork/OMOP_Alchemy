@@ -12,7 +12,7 @@ class Relationship(Base):
     reverse_relationship_id: so.Mapped[str] = so.mapped_column(sa.ForeignKey('relationship.relationship_id', name='r_fk_2'))
     relationship_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='r_fk_1'))
 
-    concept: so.Mapped['Concept'] = so.relationship(foreign_keys=[relationship_concept_id])
+    concept: so.Mapped['Concept'] = so.relationship('Concept', primaryjoin='Relationship.relationship_concept_id==Concept.concept_id')
     reverse: so.Mapped['Relationship'] = so.relationship(foreign_keys=[reverse_relationship_id])
 
     def __repr__(self):
