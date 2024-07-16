@@ -173,8 +173,7 @@ def rapid_load(path, target):
     rapid_load_script = {'before_load': 'SET session_replication_role = replica;', 'load_script': [], 'not_loaded': []}
     for f in path.iterdir(): 
         try:
-            if f.name in target:
-
+            if f.name in target['files']:
                 with open(f, 'r') as file:
                     reader = csv.DictReader(file, delimiter='\t')
                     for row in reader:
