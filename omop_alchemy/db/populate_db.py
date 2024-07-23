@@ -40,6 +40,7 @@ to_load_just_concept_relationships = {'folder': 'ohdsi_vocabs',
 to_load_just_ancestry = {'folder': 'ohdsi_vocabs',
                          'chunkable': True,
                          'files':{'CONCEPT_ANCESTOR.csv': Concept_Ancestor}}
+                         
 
 to_load_health_system = {'folder': 'demo_data',
                          'chunkable': False,
