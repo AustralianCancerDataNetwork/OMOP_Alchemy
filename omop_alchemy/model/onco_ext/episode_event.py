@@ -5,6 +5,7 @@ from typing import List, Optional
 from datetime import datetime
 from ...db import Base
 from ...conventions.concept_enumerators import ModifierFields
+from sqlalchemy.ext.associationproxy import AssociationProxy, association_proxy
 
 
 class Episode_Event(Base):
@@ -17,6 +18,13 @@ class Episode_Event(Base):
     episode_object: so.Mapped['Episode'] = so.relationship(foreign_keys=[episode_id])
     event_polymorphic: so.Mapped['Modifiable_Table'] = so.relationship(foreign_keys=[event_id])
 
+    episode_start_datetime: AssociationProxy[datetime] = association_proxy("episode_object", "episode_start_datetime")
+
+
+    @property
+    def primary_ep(self):
+        if self.episode_object:
+            return self.episode_object.primary_ep
 
     def __init__(self, 
                  episode_id, 

@@ -4,6 +4,8 @@ from sqlalchemy.ext.hybrid import hybrid_property
 from typing import List, Optional
 from datetime import datetime
 from ...conventions import Modality, DiseaseEpisodeConcepts, TreatmentEpisode
+from ...conventions.concept_enumerators import ModifierFields
+
 from ...db import Base
 from ..clinical.measurement import Measurement
 from ..clinical.modifiable_table import Modifiable_Table
@@ -45,18 +47,30 @@ class Episode(Modifiable_Table, Concept_Links):
                  episode_parent_id=None,
                  *args, 
                  **kwargs):
-        if episode_concept_id != DiseaseEpisodeConcepts.episode_of_care.value:
-            if episode_parent_id is None:
-                raise ValueError('All episodes other than top level episode of care must have a parent value')
+        # TODO: removing for now, as it is required for bulk loads if there's an arbitrary depth of parent/child
+        # TODO: can this check be put somewhere else, made optional, supported thru limitation of depth instead?
+        # if episode_concept_id != DiseaseEpisodeConcepts.episode_of_care.value:
+        #     if episode_parent_id is None:
+        #         raise ValueError('All episodes other than top level episode of care must have a parent value')
         super().__init__(episode_concept_id=episode_concept_id, 
                          episode_type_concept_id=episode_type_concept_id,
                          episode_parent_id=episode_parent_id, 
+                         modifier_of_field_concept_id = ModifierFields.episode_id.value,
                          *args, **kwargs)
     
+
     def __repr__(self):
         ep_type = 'Treatment ' if self.is_tx else 'Diagnostic '
         return f'{ep_type} Episode: episode_id = {self.episode_id}'
     
+    @property 
+    def primary_ep(self):
+        # todo: recursion risk - check depth on assignment?
+        if self.is_overarching:
+            return self.episode_id
+        if self.episode_parent_object:
+            return self.episode_parent_object.primary_ep
+
     @hybrid_property
     def is_overarching(self):
         return self.episode_concept_id == DiseaseEpisodeConcepts.episode_of_care.value

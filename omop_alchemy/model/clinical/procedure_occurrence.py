@@ -6,6 +6,7 @@ from sqlalchemy.ext.hybrid import hybrid_property
 
 from .modifiable_table import Modifiable_Table
 from ...db import Base
+from ...conventions.concept_enumerators import ModifierFields
 
 class Procedure_Occurrence(Modifiable_Table):
     __tablename__ = 'procedure_occurrence'
@@ -40,6 +41,39 @@ class Procedure_Occurrence(Modifiable_Table):
     modifier_concept: so.Mapped[Optional['Concept']] = so.relationship(foreign_keys=[modifier_concept_id])
     procedure_concept: so.Mapped[Optional['Concept']] = so.relationship(foreign_keys=[procedure_concept_id])
     procedure_source_concept: so.Mapped[Optional['Concept']] = so.relationship(foreign_keys=[procedure_source_concept_id])
+
+
+    def __init__(self, 
+                 person_id,
+                 procedure_date,
+                 procedure_type_concept_id,
+                 procedure_concept_id,
+                 procedure_datetime=None,
+                 procedure_source_value=None,
+                 modifier_source_value=None,
+                 quantity=None,
+                 provider_id=None,
+                 visit_occurrence_id=None,
+                 visit_detail_id=None,
+                 modifier_concept_id=None,
+                 procedure_source_concept_id=None,
+                 *args, 
+                 **kwargs):
+        super().__init__(person_id=person_id,
+                         procedure_date=procedure_date,
+                         procedure_datetime=procedure_datetime,
+                         procedure_source_value=procedure_source_value,
+                         modifier_source_value=modifier_source_value,
+                         quantity=quantity,
+                         provider_id=provider_id,
+                         visit_occurrence_id=visit_occurrence_id,
+                         visit_detail_id=visit_detail_id,
+                         procedure_type_concept_id=procedure_type_concept_id,
+                         modifier_concept_id=modifier_concept_id,
+                         procedure_concept_id=procedure_concept_id,
+                         modifier_of_field_concept_id = ModifierFields.procedure_occurrence_id.value,
+                         *args, **kwargs)
+
 
     __mapper_args__ = {
         "polymorphic_identity": "procedure",

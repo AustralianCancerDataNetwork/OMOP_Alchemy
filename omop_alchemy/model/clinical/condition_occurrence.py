@@ -7,6 +7,7 @@ from sqlalchemy.ext.hybrid import hybrid_property
 from .modifiable_table import Modifiable_Table
 from ..vocabulary import Concept
 from ...db import Base
+from ...conventions.concept_enumerators import ModifierFields
 
 class Condition_Occurrence(Modifiable_Table):
     __tablename__ = 'condition_occurrence'
@@ -27,7 +28,6 @@ class Condition_Occurrence(Modifiable_Table):
                  visit_occurrence_id=None,
                  visit_detail_id=None,
                  condition_status_concept_id=None,
-                 visit_detail=None,
                  *args, 
                  **kwargs):
         condition_start_datetime = condition_start_datetime or datetime.combine(condition_start_date, datetime.min.time())
@@ -45,7 +45,7 @@ class Condition_Occurrence(Modifiable_Table):
                          visit_occurrence_id=visit_occurrence_id,
                          visit_detail_id=visit_detail_id,
                          condition_status_concept_id=condition_status_concept_id,
-                         visit_detail=visit_detail,
+                         modifier_of_field_concept_id = ModifierFields.condition_occurrence_id.value,
                          *args, **kwargs)
 
 

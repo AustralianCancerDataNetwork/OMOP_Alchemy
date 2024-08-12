@@ -5,6 +5,7 @@ import sqlalchemy.orm as so
 from sqlalchemy.ext.hybrid import hybrid_property
 from .modifiable_table import Modifiable_Table
 from ...db import Base
+from ...conventions.concept_enumerators import ModifierFields
 
 class Drug_Exposure(Modifiable_Table):
     __tablename__ = 'drug_exposure'    
@@ -54,6 +55,9 @@ class Drug_Exposure(Modifiable_Table):
         "polymorphic_identity": "drug_exposure",
         'inherit_condition': (drug_exposure_id == Modifiable_Table.modifier_id)
     }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(modifier_of_field_concept_id = ModifierFields.drug_exposure_id.value, *args, **kwargs)
 
 
     @hybrid_property

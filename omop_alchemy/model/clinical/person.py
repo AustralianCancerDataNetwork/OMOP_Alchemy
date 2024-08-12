@@ -108,6 +108,7 @@ class Person(Base):#, Concept_Links):
             y = age['age_years']
             d = age['age_days']
             p += f'; age={y} years and {d} days'
+        # todo: this can actually be a bit annoying as it triggers a lazy load so depending on session scope, consider removing?
         if self.gender:
             p += f'; {self.gender.concept_name}'
         return p

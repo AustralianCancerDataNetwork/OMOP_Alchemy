@@ -1,9 +1,9 @@
 # need to import at least these objects to make sure all tables are added to the metadata properly by the time we want to use them
 from .db import Base
 from .model.vocabulary import Concept
+from .model.health_system import Provider
 from .model.clinical import Person, Condition_Occurrence
 from .model.onco_ext import episode
-from .model.health_system import Provider
 from .db.create_db import create_db 
 
 

@@ -3,6 +3,7 @@ from typing import Optional, List
 from decimal import Decimal
 import sqlalchemy as sa
 import sqlalchemy.orm as so
+from sqlalchemy.ext.associationproxy import AssociationProxy, association_proxy
 
 from ...db import Base
 from ...conventions.concept_enumerators import ModifierFields
@@ -10,7 +11,7 @@ from ...conventions.concept_enumerators import ModifierFields
 class Modifiable_Table(Base):
     __tablename__ = 'modifiable_table'
     modifier_id: so.Mapped[int] = so.mapped_column(primary_key=True, autoincrement=True)
-    modifier_of_field_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='mt_fk_1'), nullable=True)
+    modifier_of_field_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='mt_fk_1'))
 
     modifiers: so.Mapped[List['Measurement']] = so.relationship(
         backref="modifying_object", lazy="selectin", viewonly=True
@@ -23,6 +24,13 @@ class Modifiable_Table(Base):
     related_events: so.Mapped[List['Episode_Event']] = so.relationship(
         backref="event_object", lazy="selectin", viewonly=True
     )
+
+    modifier_concepts: AssociationProxy[List[int]] = association_proxy("modifiers", "measurement_concept_id")
+    modifier_value_concepts: AssociationProxy[List[int]] = association_proxy("modifiers", "value_as_concept_id")
+
+    @property
+    def primary_event(self):
+        return [event.primary_ep for event in self.related_events]
     
     # TODO - need to play with this so that the same base class can be polymorphic with both measurement table
     # modifiers and linked observations. Not possible to have two base classes both representing tables. 
