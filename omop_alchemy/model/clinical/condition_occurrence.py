@@ -121,12 +121,10 @@ class Condition_Occurrence(Modifiable_Table):
         if self.condition_concept:
             return self.condition_concept.concept_name
     
-    
     @hybrid_property
     def condition_code(self):
         if self.condition_concept:
             return self.condition_concept.concept_code
-
     
     @condition_code.expression
     @classmethod
@@ -136,6 +134,11 @@ class Condition_Occurrence(Modifiable_Table):
     @condition_label.expression
     def _condition_label_expression(cls) -> sa.ColumnElement[Optional[str]]:
         return sa.cast("SQLColumnExpression[Optional[str]]", cls.condition_concept.concept_name)
+    
+    @property
+    def event_date(self):
+        return  self.condition_start_datetime.date() if self.condition_start_datetime is not None else self.condition_start_date
+
 
     # # TODO: Down the line we should consider if all of these oncology-extension-specific properties need to be refactored out into a subclass?
 
@@ -176,8 +179,3 @@ class Condition_Occurrence(Modifiable_Table):
     #         return self._m[0]
     #     except:
     #         return None
-    
-    # @hybrid_property
-    # def event_date(self):
-    #     return  self.condition_start_datetime.date() if self.condition_start_datetime is not None else self.condition_start_date
-

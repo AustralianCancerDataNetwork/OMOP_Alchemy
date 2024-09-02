@@ -3,6 +3,8 @@ import sqlalchemy.orm as so
 from sqlalchemy.ext.hybrid import hybrid_property
 from typing import List, Optional
 from datetime import datetime
+from sqlalchemy.ext.associationproxy import AssociationProxy, association_proxy
+
 from ...conventions import Modality, DiseaseEpisodeConcepts, TreatmentEpisode
 from ...conventions.concept_enumerators import ModifierFields
 
@@ -86,8 +88,12 @@ class Episode(Modifiable_Table, Concept_Links):
     @property
     def is_dx(self):
         return self.episode_concept_id in DiseaseEpisodeConcepts.member_values()
-
     
+    @property
+    def event_date(self):
+        return  self.episode_start_datetime.date()
+
+
     @hybrid_property
     def modality(self):
         if self.is_dx:

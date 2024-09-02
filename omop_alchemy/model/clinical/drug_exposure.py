@@ -4,6 +4,7 @@ import sqlalchemy as sa
 import sqlalchemy.orm as so
 from sqlalchemy.ext.hybrid import hybrid_property
 from .modifiable_table import Modifiable_Table
+from ..vocabulary import Concept
 from ...db import Base
 from ...conventions.concept_enumerators import ModifierFields
 
@@ -59,7 +60,17 @@ class Drug_Exposure(Modifiable_Table):
     def __init__(self, *args, **kwargs):
         super().__init__(modifier_of_field_concept_id = ModifierFields.drug_exposure_id.value, *args, **kwargs)
 
-
-    @hybrid_property
+    @property
     def event_date(self):
         return  self.drug_exposure_start_datetime.date() if self.drug_exposure_start_datetime is not None else self.drug_exposure_start_date
+
+    @property
+    def drug_label(self):
+        if self.drug_concept:
+            return self.drug_concept.concept_name
+    
+    @property
+    def route_label(self):
+        if self.route_concept:
+            return self.route_concept.concept_name
+    

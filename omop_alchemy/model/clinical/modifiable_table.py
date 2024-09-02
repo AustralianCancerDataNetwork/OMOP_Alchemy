@@ -32,11 +32,10 @@ class Modifiable_Table(Base):
     def primary_event(self):
         return [event.primary_ep for event in self.related_events]
     
-    # TODO - need to play with this so that the same base class can be polymorphic with both measurement table
-    # modifiers and linked observations. Not possible to have two base classes both representing tables. 
-    # only measurement-based modifiers currently work, although the observation class looks like it has been 
-    # partially updated already 
-    # EDIT - think this has been achieved, but needs to be validated
+    @property
+    def event_date(self):
+        return None
+
 
     __mapper_args__ = {
             "polymorphic_on":sa.case(
@@ -47,3 +46,7 @@ class Modifiable_Table(Base):
             "polymorphic_identity":"measurement"
         }
     
+    
+    @property
+    def polymorphic_label(self):
+        return self.__mapper_args__['polymorphic_identity']
