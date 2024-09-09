@@ -1,7 +1,7 @@
 import sqlalchemy as sa
 import sqlalchemy.orm as so
 from datetime import date
-from typing import Optional
+from typing import Optional, List
 
 from ...db import Base
 
@@ -19,10 +19,7 @@ class Concept(Base):
     vocabulary: so.Mapped['Vocabulary'] = so.relationship('Vocabulary', primaryjoin='Concept.vocabulary_id==Vocabulary.vocabulary_id', post_update=True)#foreign_keys=[vocabulary_id], back_populates='vocabulary_concept')
     concept_class: so.Mapped['Concept_Class'] = so.relationship('Concept_Class', primaryjoin='Concept.concept_class_id==Concept_Class.concept_class_id', post_update=True)#foreign_keys=[concept_class_id])
 
-    # domain: so.Mapped['Domain'] = so.relationship(foreign_keys=[domain_id])
-    # vocabulary: so.Mapped['Vocabulary'] = so.relationship(foreign_keys=[vocabulary_id], back_populates='vocabulary_concept')
-    # concept_vocabulary: so.Mapped['Vocabulary'] = so.relationship('Vocabulary', primaryjoin='Concept.concept_id==Vocabulary.vocabulary_concept_id')
-    # concept_class: so.Mapped['Concept_Class'] = so.relationship(foreign_keys=[concept_class_id])
+    concept_relationships: so.Mapped[List['Concept_Relationship']] = so.relationship('Concept_Relationship', back_populates='concept_1', primaryjoin='Concept.concept_id==Concept_Relationship.concept_id_1')
 
     standard_concept: so.Mapped[Optional[str]]  = so.mapped_column(sa.String(1), nullable=True)
     valid_start_date: so.Mapped[date]  = so.mapped_column(sa.Date)
