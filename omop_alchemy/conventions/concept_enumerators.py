@@ -9,11 +9,36 @@ class ConceptEnum(enum.Enum):
     @classmethod
     def is_member(cls, val):
         return not val or val in [s.value for s in cls]
-
+    
     @classmethod
     def labels(cls):
         return [s.name for s in cls]
+
+    @classmethod
+    def get_name(cls, val):
+        try:
+            return cls(val).name
+        except:
+            return ''
     
+class Unknown(ConceptEnum):
+    generic = 4129922    # SNOMED Unknown
+    gender = 4214687     # SNOMED Gender Unkown
+    condition = 44790729 # SNOMED Unknown problem
+    cancer = 36402660    # ICDO3 Unknown histology of unknown primary site
+    grade = 4264626      # SNOMED Grade not determined
+    stage = 36768646     # Cancer Modifier Origin Grade X: Unknown or no information, Not documented in patient record
+    stage_edition = 1634449 # For unknown edition, default to current (8th)
+    
+    # unknown treatment regimen assignments
+    drug_trial = 4090378          # clinical drug trial (SNOMED)
+    therapeutic_regimen = 4207655 # prescription of therapeutic regimen concept (SNOMED)
+
+    @classmethod
+    def is_unknown(cls, val):
+        return not val or val in [s.value for s in cls]
+
+
 class ModifierFields(ConceptEnum):
     condition_occurrence_id = 1147127
     drug_exposure_id = 1147707
@@ -99,3 +124,30 @@ class GroupStageConcepts(ConceptEnum):
     stageII = 1634209
     stageIII = 1633650
     stageIV = 1633650
+
+class ConditionConcepts(ConceptEnum):
+    ehr_problem_list = 32840
+    resolved_condition = 32906
+    confirmed_diagnosis = 32893
+
+class StageType(ConceptEnum):
+    c = 0
+    p = 1
+
+class StageEdition(ConceptEnum):
+    _6th = 1634647
+    _7th = 1633496
+    _8th = 1634449
+
+class ModifierConcepts(ConceptEnum):
+    grade = 35918328
+    laterality = 35918306
+    derived_value = 45754907
+    tumor_size = 4139794
+    primary_tumor = 36768229
+
+
+class DrugExposureConcepts(ConceptEnum):
+    drug_dose = 4162374
+    ehr_drug_admin = 32818
+    placebo = 1379408

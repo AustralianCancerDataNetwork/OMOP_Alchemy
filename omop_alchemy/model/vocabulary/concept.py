@@ -15,9 +15,9 @@ class Concept(Base):
     vocabulary_id: so.Mapped[str] = so.mapped_column(sa.String(20), sa.ForeignKey('vocabulary.vocabulary_id', name='c_fk_2'))
     concept_class_id: so.Mapped[str] = so.mapped_column(sa.String(20), sa.ForeignKey('concept_class.concept_class_id', name='c_fk_3'))
     
-    domain: so.Mapped['Domain'] = so.relationship('Domain', primaryjoin='Concept.domain_id==Domain.domain_id', post_update=True)
-    vocabulary: so.Mapped['Vocabulary'] = so.relationship('Vocabulary', primaryjoin='Concept.vocabulary_id==Vocabulary.vocabulary_id', post_update=True)#foreign_keys=[vocabulary_id], back_populates='vocabulary_concept')
-    concept_class: so.Mapped['Concept_Class'] = so.relationship('Concept_Class', primaryjoin='Concept.concept_class_id==Concept_Class.concept_class_id', post_update=True)#foreign_keys=[concept_class_id])
+    domain: so.Mapped['Domain'] = so.relationship('Domain', primaryjoin='Concept.domain_id==Domain.domain_id', post_update=True, cascade="all")
+    vocabulary: so.Mapped['Vocabulary'] = so.relationship('Vocabulary', primaryjoin='Concept.vocabulary_id==Vocabulary.vocabulary_id', post_update=True, cascade="all")#foreign_keys=[vocabulary_id], back_populates='vocabulary_concept')
+    concept_class: so.Mapped['Concept_Class'] = so.relationship('Concept_Class', primaryjoin='Concept.concept_class_id==Concept_Class.concept_class_id', post_update=True, cascade="all")#foreign_keys=[concept_class_id])
 
     concept_relationships: so.Mapped[List['Concept_Relationship']] = so.relationship('Concept_Relationship', back_populates='concept_1', primaryjoin='Concept.concept_id==Concept_Relationship.concept_id_1')
 

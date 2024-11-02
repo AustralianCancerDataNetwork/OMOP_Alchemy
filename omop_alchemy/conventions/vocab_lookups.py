@@ -10,7 +10,66 @@ from oa_configurator import oa_config
 
 from ..db import Base
 from ..model.vocabulary import Concept, Concept_Relationship, Concept_Ancestor
-from .concept_enumerators import ConceptEnum, TStageConcepts, NStageConcepts, MStageConcepts, GroupStageConcepts
+from .concept_enumerators import ConceptEnum, TStageConcepts, NStageConcepts, MStageConcepts, GroupStageConcepts, Unknown
+
+class MappingLookup:
+    """ 
+    simple version of the vocab lookup, which relies on knowing which custom map you are 
+    looking for, and its context and providing very fast lookup functionality if so, as it 
+    attempts no correction and no iteration through options and instead exposes the lookup 
+    dict directly
+
+    if no context relevant to that col, just uses single 'all' context
+
+    To create a new mapping lookup object, define the following:
+
+    - Appropriate value for unknown in this context - if not specified, generic unknown value is selected
+    - Custom mappings in CTL.custom_vocabulary_maps - these should be specified in cava_app/vocabs/custom_vocabularies/custom_vocabulary_maps.csv and loaded via the SetupCustomMaps task
+
+    """
+
+    def return_unknown(self):
+        """
+        Set unknown value that will be used in this specific context at instantiation time
+        """
+        if self._unknown:
+            return self._unknown.value
+    
+    def lookup(self, val, col=None, context='all', null_override=False):
+        """
+        Returns mapped value - if not found returns relevant unknown value
+        """
+        if val:
+            value = self._lookup[col or self._column][context][val.strip().lower()]
+            for c in self._correction:
+                if value != self._unknown.value:
+                    break
+                value = self._lookup[col or self._column][context][c(val).strip().lower()]
+            if null_override and value == self._unknown.value:
+                return
+            return value
+        else: 
+            if null_override:
+                return
+            return self.return_unknown()
+
+    def __init__(self, table, column, control_schema_object, engine, unknown=Unknown.generic, corrections=[]):
+        self._unknown = unknown
+        self._lookup = defaultdict(lambda: defaultdict(lambda: defaultdict(self.return_unknown)))
+        self._correction = corrections
+        if type(column) == str:
+            self._column=column
+            column=[column]
+        else:
+            self._column = None
+        column_filter = [control_schema_object.column.ilike(c) for c in column]
+        with so.Session(engine) as ctl_sess:
+            concepts = ctl_sess.query(control_schema_object
+                                        ).filter(control_schema_object.table.ilike(table)
+                                        ).filter(sa.or_(*column_filter))
+        for c in concepts:
+            self._lookup[c.column][c.context or 'all'][c.value.strip().lower()] = c.concept_id
+
 
 class VocabLookup:
     # base class for custom vocabulary lookups
@@ -26,6 +85,7 @@ class VocabLookup:
                  parent=None,         # used when you want to pull all child concepts under a given parent into the lookup
                  domain=None,         # otherwise we are grabbing by specification of domain
                  concept_class=None,  # and optionally concept_class
+                 vocabulary_id=None,  # and optionally vocabulary
                  code_filter=None,    # last option - apply a string filter (this is required for grade as distinct from stage)
                  correction=[],       # correction parameter holds an ordered list of callable corrections 
                                       # - try match the raw input string first 
@@ -37,6 +97,7 @@ class VocabLookup:
         self._lookup = defaultdict(self.return_unknown)
         self._domain = domain
         self._concept_class = concept_class
+        self._vocabulary_id = vocabulary_id
         self._standard_only = standard_only
         self._code_filter = code_filter
         # parent parameter is the high-level concept under which you want to pull
@@ -65,7 +126,11 @@ class VocabLookup:
         if self._domain:
             q = q.filter(Concept.domain_id==self._domain)
         if self._concept_class:
-            q = q.filter(Concept.concept_class_id==self._concept_class)
+            class_filter = sa.or_(*[Concept.concept_class_id==c for c in self._concept_class])
+            q = q.filter(class_filter)
+        if self._vocabulary_id:
+            vocab_filter = sa.or_(*[Concept.vocabulary_id==v for v in self._vocabulary_id])
+            q = q.filter(vocab_filter)
         if self._standard_only:
             q = q.filter(Concept.standard_concept=='S')
         if self._code_filter:
@@ -138,7 +203,6 @@ class VocabLookup:
 
 from .concept_enumerators import ConditionModifiers
 
-
 def remove_brackets(val):
     return val.split('(')[0]
 
@@ -148,6 +212,18 @@ def make_stage(val):
     for replacement in roman_lookup:
         val = val.replace(*replacement)
     return val
+
+def site_to_NOS(icdo_topog):
+    split_topog = icdo_topog.split('.')
+    if '.' not in icdo_topog:
+        return f'{icdo_topog}.9'
+    # a couple of codes have a third decimal point?
+    elif len(split_topog[-1]) > 2:
+        return ''.join(split_topog[:-1] + ['.', split_topog[-1][:2]])
+    return icdo_topog
+
+def strip_uicc(code):
+    return code.lower().replace('ajcc', 'ajcc/uicc')
 
 class StagingLookup(VocabLookup):
 
@@ -175,132 +251,31 @@ class StagingLookup(VocabLookup):
         return [c.descendant for c in children]
         
 tnm_lookup = StagingLookup()
-grading_lookup = VocabLookup(domain="Measurement", concept_class="Staging/Grading", code_filter='grade')
+grading_lookup = VocabLookup(domain="Measurement", concept_class=["Staging/Grading"], code_filter='grade')
 mets_lookup = VocabLookup(parent=ConditionModifiers.mets)
+stage_edition_lookup = VocabLookup(parent=ConditionModifiers.tnm, correction=[strip_uicc])
 gender_lookup = VocabLookup(domain="Gender")
+unit_lookup = VocabLookup(domain="Unit")
 race_lookup = VocabLookup(domain="Race")
 ethnicity_lookup = VocabLookup(domain="Ethnicity")
+icdo_condition_lookup = VocabLookup(domain='Condition', concept_class=['ICDO Condition'], standard_only=False, correction=[site_to_NOS])
+icd10_condition_lookup = VocabLookup(domain='Condition', concept_class=['ICD10 Hierarchy', 'ICD10 code'], standard_only=False, correction=[site_to_NOS])
+relaxed_condition_lookup = VocabLookup(domain='Condition', vocabulary_id=['ICD10', 'ICD10CM', 'ICD9CM'], standard_only=False)
 
-# class HierarchicalLookup():
-#     # this class holds an ordered list of standard vocabularies and 
-#     # will try match them in order of priority, restricted
-#     # to the target domain
+class CustomLookups():
 
-#     def __init__(self, domain, vocab_list, unknown=Unknown.generic.value, corrections=None):
-#         self._unknown = unknown
-#         self._lookup_list = [StandardVocabLookup(v, domain, unknown, corrections) for v in vocab_list]
+    # todo: refactor the control schema so that it can be merged with OMOP_Alchemy and not have to pass around the engines and objects in such a silly way
 
-#     def lookup(self, term):
-#         value = self._unknown
-#         for l in self._lookup_list:
-#             if value != self._unknown:
-#                 break
-#             value = l.lookup_exact(term)
-#         for l in self._lookup_list:
-#             if value != self._unknown:
-#                 break
-#             value = l.lookup(term)
-#         return value
+    def __init__(self, engine, control_schema_object):
+        
+        self._engine = engine
 
-# def remove_slash(term):
-#     return term.replace('/', '')
-
-# def insert_slash(term):
-#     try:
-#         return f'{term[:-1]}/{term[-1]}'
-#     except:
-#         return ''
-
-# def regexp_find_icd(term):
-#     # match full ICD10 code of form C00.00
-#     return re.search('[a-zA-Z]\d{1,2}\.\d{1,2}|$', term).group()
-
-# def regexp_icd_group(term):
-#     # match higher (less specific) ICD term when full term 
-#     # isn't possible e.g. C92
-#     return re.search('[a-zA-Z]\d{1,2}|$', term).group()
-
-# class ConditionLookup(VocabLookup):
-    
-#     # a condition lookup object can be used to map a combination of 
-#     # fields into a single target.
-#     # it was originally created so that morph and topog could
-#     # be combined to lookup condition, using the object 
-#     # CTL.condition_lookup, but could be used validly to lookup
-#     # any n:1 concept lookup by populating a similar control
-#     # schema table.
-
-#     def __init__(self, unknown, object_lookup, source, target, vocabulary):
-#         super().__init__(unknown)
-#         self._correction = None
-#         get_custom_lookup(object_lookup, source, target, vocabulary, self._lookup)
-    
-
-# def get_custom_lookup(ObjectLookup, source, target, vocabulary, lookup):
-    
-#     with db_session(control_engine) as ctl_sess:
-#         object_lookup = dataframe_from_query(ctl_sess.query(ObjectLookup)).fillna('0')
-#         object_lookup['source']=object_lookup.apply(lambda x: '-'.join(list(x[source])), axis=1)
-#         object_lookup['target']=object_lookup.apply(lambda x: '-'.join(list(x[target])), axis=1)
-
-#         concept_filter = tuple(object_lookup.target.dropna().unique())
-#         with db_session(target_engine) as targ_sess:
-#             concept_lookup = dataframe_from_query(targ_sess.query(CDM.concept)
-#                                                   .filter(CDM.concept.concept_code.in_(concept_filter))
-#                                                   .filter(CDM.concept.vocabulary_id==vocabulary))
-#         object_lookup = object_lookup.merge(concept_lookup, left_on='target', right_on='concept_code')
-#         for k, v in zip(object_lookup.source, object_lookup.concept_id):
-#             lookup[k.lower()]=v
-
-# class CoordinatedCondition(HierarchicalLookup):
-#     def __init__(self):
-#         super().__init__(domain='Condition', 
-#                          vocab_list=['ICDO3'], 
-#                          unknown=Unknown.condition,
-#                          corrections=[remove_slash, regexp_find_icd, 
-#                                       regexp_icd_group, insert_slash])
-
-# class GenderLookup(VocabLookup):
-#     def __init__(self):
-#         super().__init__(unknown=Unknown.gender, domain='Gender')
-#                          #parent=SNOMED_hierarchy.sex)  
-
-# class LanguageLookup(VocabLookup):
-#     def __init__(self):
-#         super().__init__(unknown=Unknown.generic, 
-#                          parent=SNOMED_hierarchy.language,
-#                          table='prompt', 
-#                          context='admin.language_spoken_pro_id') 
-#         self._correction = [self.append_language]
-
-#     def append_language(self, term):
-#         return term.lower().strip() + ' language'
-
-# class RaceLookup(VocabLookup):
-
-#     def __init__(self):
-#         super().__init__(unknown=Unknown.generic, 
-#                          parent=None, 
-#                          table='prompt', 
-#                          context='race.pro_id')
-
-# #try:
-# cava_log.log('Loading custom concept lookup objects', 'debug')
-# lookup_language = LanguageLookup()
-# lookup_race = RaceLookup()
-# lookup_condition = ConditionLookup(unknown=Unknown.cancer, object_lookup=CTL.condition_lookup, source=['morph', 'topog'], target=['condition'], vocabulary='ICDO3') # Unknown histology of unknown primary site
-# #    lookup_observation = ConditionLookup('Observation')
-# #    lookup_coordinated = CoordinatedCondition()
-# lookup_icd = HierarchicalLookup('Condition', ['ICD10', 'ICD9CM', 'ICDO3'], Unknown.condition, [remove_slash, insert_slash, regexp_find_icd, regexp_icd_group])
-# lookup_laterality = MappingLookup('medical', 'paired_organ')
-# lookup_stage = MappingLookup('tnmstage', ['t_stage', 'n_stage', 'm_stage', 'stage'])
-# lookup_grade = MappingLookup('medical', 'hist_grade')
-# lookup_drugs = MappingLookup('drug', 'drug')
-# lookup_units = MappingLookup('drug', 'unit')
-# lookup_route = MappingLookup('drug', 'route')
-# lookup_eviq = MappingLookup('eviq', ['component', 'regimen'])
-
-# cava_log.log('Custom concept lookup loading complete', 'debug')
-# # except Exception as e:
-# #     cava_log.log('Unable to load custom concept lookup objects', 'error')
-# #     cava_log.log(f'{e}', 'error')
+        self.lookup_laterality = MappingLookup('medical', 'paired_organ', control_schema_object, self._engine)
+        self.lookup_condition = MappingLookup('medical', 'combined_condition', control_schema_object, self._engine, corrections=[site_to_NOS])
+        self.lookup_stage = MappingLookup('tnmstage', ['t_stage', 'n_stage', 'm_stage', 'stage'], control_schema_object, self._engine)
+        self.lookup_grade = MappingLookup('medical', 'hist_grade', control_schema_object, self._engine)
+        self.lookup_drugs = MappingLookup('drug', 'drug', control_schema_object, self._engine)
+        self.lookup_units = MappingLookup('drug', 'unit', control_schema_object, self._engine)
+        self.lookup_route = MappingLookup('drug', 'route', control_schema_object, self._engine)
+        self.lookup_mets = MappingLookup('medical', 'dist_mets', control_schema_object, self._engine)
+        self.lookup_eviq = MappingLookup('eviq', ['component', 'regimen'], control_schema_object, self._engine)
