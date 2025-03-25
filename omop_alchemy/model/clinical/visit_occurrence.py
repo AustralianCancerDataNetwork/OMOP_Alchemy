@@ -15,20 +15,20 @@ class Visit_Occurrence(Base):
     visit_end_date: so.Mapped[Optional[date]] = so.mapped_column(sa.Date)
     visit_end_datetime: so.Mapped[Optional[datetime]] = so.mapped_column(sa.DateTime)
     # strings
-    visit_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50))
-    admitted_from_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50))
-    discharge_to_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50))
+    visit_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50), nullable=True)
+    admitted_from_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50), nullable=True)
+    discharge_to_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50), nullable=True)
     # numeric
-    admitted_from_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.Integer)
+    admitted_from_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.Integer, nullable=True)
     # fks
     person_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('person.person_id', name='vo_fk_1'))
-    provider_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('provider.provider_id', name='vo_fk_2'))
-    care_site_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('care_site.care_site_id', name='vo_fk_3'))
-    preceding_visit_occurrence_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('visit_occurrence.visit_occurrence_id', name='vo_fk_4'))
+    provider_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('provider.provider_id', name='vo_fk_2'), nullable=True)
+    care_site_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('care_site.care_site_id', name='vo_fk_3'), nullable=True)
+    preceding_visit_occurrence_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('visit_occurrence.visit_occurrence_id', name='vo_fk_4'), nullable=True)
     # concept fks
     visit_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='vo_fk_5'))
-    visit_source_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='vo_fk_6'))
-    discharge_to_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='vo_fk_7'))
+    visit_source_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='vo_fk_6'), nullable=True)
+    discharge_to_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='vo_fk_7'), nullable=True)
     visit_type_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='vo_fk_8'))
     # relationships
     person: so.Mapped[Optional['Person']] = so.relationship(foreign_keys=[person_id])

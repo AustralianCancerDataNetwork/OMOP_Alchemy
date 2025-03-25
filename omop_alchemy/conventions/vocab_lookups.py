@@ -103,13 +103,15 @@ class VocabLookup:
         # parent parameter is the high-level concept under which you want to pull
         # in all available matches - e.g. TNM stages, which can grab all concepts 
         # that fall under the parent concept from the concept_relationship table
-        self._parent = parent.value if isinstance(parent, ConceptEnum) else parent
+        if not isinstance(parent, list):
+            parent = [parent] if parent is not None else []
+        self._parent = [p.value if isinstance(p, ConceptEnum) else p for p in parent]
         self._correction = correction
         with so.Session(oa_config.engine) as session:
             # TBD: question - do we need to provide support for combining parent 
             # definition with domain def? is this a likely use-case? it won't fail 
             # for now, but perhaps check?
-            if parent is not None:
+            if len(parent) > 0:
                 self.get_lookup(session)
             if domain is not None:
                 self.get_domain_lookup(session)
@@ -143,8 +145,9 @@ class VocabLookup:
     def get_standard_hierarchy(self, session):
         children = session.query(Concept_Ancestor
                                 ).options(so.joinedload(Concept_Ancestor.descendant)
-                                ).filter(Concept_Ancestor.ancestor_concept_id == self._parent).distinct().all()
-        return [c.descendant for c in children]
+                                ).filter(Concept_Ancestor.ancestor_concept_id.in_(self._parent)
+                                ).distinct().all()
+        return [c.descendant for c in children if c.descendant is not None]
         
     def get_all_hierarchy(self, this_level, concepts, session):
         # TODO: check if we want to do this thru Concept_Ancestor strictly
@@ -169,7 +172,7 @@ class VocabLookup:
         # concepts under a given parent concept and the
         # appropriate unknown value for the target context
         if not self._standard_only:
-            concepts = self.get_all_hierarchy(tuple([self._parent]), [], session)
+            concepts = self.get_all_hierarchy(tuple(self._parent), [], session)
         else:
             concepts = self.get_standard_hierarchy(session)
         for c in concepts:
@@ -244,11 +247,19 @@ class StagingLookup(VocabLookup):
             self.m_stage_concepts = self.get_children(session, MStageConcepts.member_values())
             self.group_stage_concepts = self.get_children(session, GroupStageConcepts.member_values())
     
-    def get_standard_hierarchy(self, session):
-        children = session.query(Concept_Ancestor
-                                ).options(so.joinedload(Concept_Ancestor.descendant)
-                                ).filter(Concept_Ancestor.ancestor_concept_id == self._parent).distinct().all()
-        return [c.descendant for c in children]
+
+    # def get_standard_hierarchy(self, session):
+    #     children = session.query(Concept_Ancestor
+    #                             ).options(so.joinedload(Concept_Ancestor.descendant)
+    #                             ).filter(Concept_Ancestor.ancestor_concept_id.in_(self._parent)
+    #                             ).distinct().all()
+    #     return [c.descendant for c in children if c.descendant is not None]
+
+    # def get_standard_hierarchy(self, session):
+    #     children = session.query(Concept_Ancestor
+    #                             ).options(so.joinedload(Concept_Ancestor.descendant)
+    #                             ).filter(Concept_Ancestor.ancestor_concept_id == self._parent).distinct().all()
+    #     return [c.descendant for c in children]
         
 tnm_lookup = StagingLookup()
 grading_lookup = VocabLookup(domain="Measurement", concept_class=["Staging/Grading"], code_filter='grade')
@@ -279,3 +290,8 @@ class CustomLookups():
         self.lookup_route = MappingLookup('drug', 'route', control_schema_object, self._engine)
         self.lookup_mets = MappingLookup('medical', 'dist_mets', control_schema_object, self._engine)
         self.lookup_eviq = MappingLookup('eviq', ['component', 'regimen'], control_schema_object, self._engine)
+        self.lookup_cob = MappingLookup('admin', 'birth_place', control_schema_object, self._engine, unknown=Unknown.cob)
+        self.lookup_lang = MappingLookup('prompt', 'text', control_schema_object, self._engine)
+        self.lookup_stafftype = MappingLookup('staff', ['provider_type'], control_schema_object, self._engine,  unknown=None)
+        self.lookup_radiotherapy = MappingLookup('radiotherapy', ['rt_procedure', 'rt_site', 'rt_parameter'], control_schema_object, self._engine, unknown=None)
+        self.lookup_surg = MappingLookup('patcplan', 'cpact_name', control_schema_object, self._engine, unknown=None)

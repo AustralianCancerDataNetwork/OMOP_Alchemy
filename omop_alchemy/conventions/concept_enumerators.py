@@ -29,7 +29,7 @@ class Unknown(ConceptEnum):
     grade = 4264626      # SNOMED Grade not determined
     stage = 36768646     # Cancer Modifier Origin Grade X: Unknown or no information, Not documented in patient record
     stage_edition = 1634449 # For unknown edition, default to current (8th)
-    
+    cob = 40482029 # SNOMED Country of birth unknown
     # unknown treatment regimen assignments
     drug_trial = 4090378          # clinical drug trial (SNOMED)
     therapeutic_regimen = 4207655 # prescription of therapeutic regimen concept (SNOMED)
@@ -78,6 +78,7 @@ class EpisodeTypes(ConceptEnum):
     ehr_prescription = 32838          # EHR prescription
     ehr_planned_dispensing = 32837    # EHR planned dispensation
     ehr_encounter_record = 32827      # EHR encounter
+    ehr_admin_record = 32818          # EHR administration record
     
 class ConditionModifiers(ConceptEnum):
     # for measurement_concept_id grouping
@@ -85,10 +86,22 @@ class ConditionModifiers(ConceptEnum):
     tnm = 734320                      # Cancer Modifier - Parent AJCC/UICC concept
     mets = 36769180                   # Cancer Modifier - Parent metastasis hierarchy parent
 
-
 class TreatmentModifiers(ConceptEnum):
-    ...
+    rt_parameter = 4036397            # Radiotherapy parameter parent
+    rt_projection = 4124464           # Radiotherapy projection parent
+    rt_site = 4240671                 # Radiotherapy anatomical site parent
 
+class CancerProcedureTypes(ConceptEnum):
+    surgical_procedure = 4301351
+    historical_procedure = 1340204
+    rt_procedure = 1242725            # Radiotherapy procedure parent
+    rn_procedure = 4161415            # Radionuclide parent
+    rt_externalbeam = 4141448         # ebrt parent
+
+
+class ProceduresByLocation(ConceptEnum):
+    procedure_on_lung = 4040549
+    operation_on_lung = 4301352
 
 class TStageConcepts(ConceptEnum):
     # used to group tnm mappings into their relevant subtypes
@@ -123,7 +136,7 @@ class GroupStageConcepts(ConceptEnum):
     stageI = 1633306
     stageII = 1634209
     stageIII = 1633650
-    stageIV = 1633650
+    stageIV = 1633308
 
 class ConditionConcepts(ConceptEnum):
     ehr_problem_list = 32840
@@ -151,3 +164,8 @@ class DrugExposureConcepts(ConceptEnum):
     drug_dose = 4162374
     ehr_drug_admin = 32818
     placebo = 1379408
+
+class DemographyConcepts(ConceptEnum):
+    cob = 4155450
+    language_spoken = 4052785
+    postcode = 4083591
