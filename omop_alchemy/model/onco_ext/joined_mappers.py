@@ -159,15 +159,28 @@ class Person_Episodes(Person):
     def all_agents(self):
         return list(set(chain.from_iterable([se.episode_agents for se in self.sact_episodes])))
 
-surgical = so.aliased(
-    Concept, 
-    sa.select(Concept).where(
-        sa.and_(
-            Concept.concept_id==Concept_Ancestor.descendant_concept_id,
-            Concept_Ancestor.ancestor_concept_id==CancerProcedureTypes.surgical_procedure.value
-        )
-    ).subquery(), 
-    name='surgical'
+# surgical = so.aliased(
+#     Concept, 
+#     sa.select(Concept).where(
+#         sa.and_(
+#             Concept.concept_id==Concept_Ancestor.descendant_concept_id,
+#             Concept_Ancestor.ancestor_concept_id==CancerProcedureTypes.surgical_procedure.value
+#         )
+#     ).subquery(), 
+#     name='surgical'
+# )
+
+
+surgical = (
+    sa.select(
+        Concept.concept_name,
+        Concept.concept_code,
+        Concept.concept_id,
+        srg_ca.descendant_concept_id
+    )
+    .join(srg_ca, Concept.concept_id == srg_ca.descendant_concept_id)
+    .filter(srg_ca.ancestor_concept_id==CancerProcedureTypes.surgical_procedure.value)
+    .subquery()
 )
 
 historical_procedure = so.aliased(
@@ -189,33 +202,7 @@ historical_surgery = (
     ).subquery()
 )
 
-class Historical_Surgical_Procedure(Base):
-    __table__ = historical_surgery
-    observation_id = historical_surgery.c.observation_id
-    person_id = historical_surgery.c.person_id
-    procedure_concept_id = historical_surgery.c.value_as_concept_id
-    history_datettime = so.column_property(historical_surgery.c.observation_datetime)
 
-
-surgical_procedure = (
-    sa.select(
-        Procedure_Occurrence.person_id,
-        Procedure_Occurrence.procedure_occurrence_id,
-        Procedure_Occurrence.procedure_concept_id,
-        Procedure_Occurrence.procedure_datetime,
-        surgical.concept_name,
-        surgical.concept_code
-    ).join(
-        surgical, surgical.concept_id == Procedure_Occurrence.procedure_concept_id
-    ).subquery()
-)
-
-class Dated_Surgical_Procedure(Base):
-    __table__ = surgical_procedure
-    procedure_occurrence_id = surgical_procedure.c.procedure_occurrence_id
-    person_id = surgical_procedure.c.person_id
-    procedure_concept_id = surgical_procedure.c.procedure_concept_id
-    procedure_datetime = so.column_property(surgical_procedure.c.procedure_datetime)
 
 
 rth_ca = so.aliased(Concept_Ancestor, name='rth_ca')
@@ -235,17 +222,6 @@ radiotherapy = (
     .subquery()
 )
 
-surgical = (
-    sa.select(
-        Concept.concept_name,
-        Concept.concept_code,
-        Concept.concept_id,
-        srg_ca.descendant_concept_id
-    )
-    .join(srg_ca, Concept.concept_id == srg_ca.descendant_concept_id)
-    .filter(srg_ca.ancestor_concept_id==CancerProcedureTypes.surgical_procedure.value)
-    .subquery()
-)
     
 surg_only = (
     sa.join(
@@ -278,6 +254,37 @@ class Dated_Surgical_Procedure(Base):
     concept_name = surgical_procedure.c.concept_name
     concept_code = surgical_procedure.c.concept_code
     procedure_datetime = so.column_property(surgical_procedure.c.procedure_datetime)
+
+
+class Historical_Surgical_Procedure(Base):
+    __table__ = historical_surgery
+    observation_id = historical_surgery.c.observation_id
+    person_id = historical_surgery.c.person_id
+    procedure_concept_id = historical_surgery.c.value_as_concept_id
+    history_datettime = so.column_property(historical_surgery.c.observation_datetime)
+
+
+
+
+# surgical_procedure = (
+#     sa.select(
+#         Procedure_Occurrence.person_id,
+#         Procedure_Occurrence.procedure_occurrence_id,
+#         Procedure_Occurrence.procedure_concept_id,
+#         Procedure_Occurrence.procedure_datetime,
+#         surgical.concept_name,
+#         surgical.concept_code
+#     ).join(
+#         surgical, surgical.concept_id == Procedure_Occurrence.procedure_concept_id
+#     ).subquery()
+# )
+
+# class Dated_Surgical_Procedure(Base):
+#     __table__ = surgical_procedure
+#     procedure_occurrence_id = surgical_procedure.c.procedure_occurrence_id
+#     person_id = surgical_procedure.c.person_id
+#     procedure_concept_id = surgical_procedure.c.procedure_concept_id
+#     procedure_datetime = so.column_property(surgical_procedure.c.procedure_datetime)
 
 
 # chemo_ep_with_dx = (
