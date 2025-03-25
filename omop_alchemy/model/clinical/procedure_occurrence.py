@@ -29,8 +29,8 @@ class Procedure_Occurrence(Modifiable_Table):
     # concept fks
     procedure_type_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='po_fk_6'))
     modifier_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='po_fk_7'), nullable=True)
-    procedure_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='po_fk_8'))
-    procedure_source_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='po_fk_9'), nullable=True)
+    procedure_concept_id: so.Mapped[int] = so.mapped_column(sa.BigInteger, sa.ForeignKey('concept.concept_id', name='po_fk_8'))
+    procedure_source_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.BigInteger, sa.ForeignKey('concept.concept_id', name='po_fk_9'), nullable=True)
     # relationships
     person: so.Mapped[Optional['Person']] = so.relationship(foreign_keys=[person_id])
     provider: so.Mapped[Optional['Provider']] = so.relationship(foreign_keys=[provider_id])

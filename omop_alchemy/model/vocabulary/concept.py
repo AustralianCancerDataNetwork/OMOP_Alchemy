@@ -1,5 +1,6 @@
 import sqlalchemy as sa
 import sqlalchemy.orm as so
+from sqlalchemy.types import BigInteger
 from datetime import date
 from typing import Optional, List
 
@@ -7,7 +8,7 @@ from ...db import Base
 
 class Concept(Base): 
     __tablename__ = 'concept'
-    concept_id: so.Mapped[int] = so.mapped_column(index=True, unique=True, primary_key=True)
+    concept_id: so.Mapped[int] = so.mapped_column(sa.BigInteger, index=True, unique=True, primary_key=True)
     concept_name: so.Mapped[str] = so.mapped_column(sa.String(255))
     concept_code: so.Mapped[str] = so.mapped_column(sa.String(50))
 
