@@ -62,12 +62,12 @@ class Condition_Episode(Base):
     #person_object: so.Mapped['Person_Episodes'] = so.relationship(back_populates="condition_episodes", foreign_keys=[person_id])
 
 
-
 # select all tx episodes that have at least one drug administration event 
 # and find the start of chemo administration for that episode
 # todo: should this filter on anti-cancer therapies?
 
 systemic_therapy = so.aliased(Drug_Exposure, flat=True)
+radiation_therapy = so.aliased(Procedure_Occurrence, flat=True)
 
 systemic_therapy_subquery = (
     sa.select(
@@ -87,6 +87,24 @@ systemic_therapy_subquery = (
     .subquery()
 )
 
+radiation_therapy_subquery = (
+    sa.select(
+        Episode.person_id,
+        Episode.episode_id.label('rad_episode_id'),
+        Episode.episode_parent_id,
+        radiation_therapy.procedure_datetime
+    )
+    .join(
+         Episode_Event,
+         Episode.episode_id==Episode_Event.episode_id
+     )
+    .join_from(
+        Episode_Event,
+        Episode_Event.event_polymorphic.of_type(radiation_therapy)
+    )
+    .subquery()
+)
+
 systemic_therapy_start = (
     sa.select(
         systemic_therapy_subquery.c.person_id,
@@ -98,6 +116,21 @@ systemic_therapy_start = (
         systemic_therapy_subquery.c.person_id,        
         systemic_therapy_subquery.c.episode_parent_id,
         systemic_therapy_subquery.c.sact_episode_id
+    )
+    .subquery()
+)
+
+radiation_therapy_start = (
+    sa.select(
+        radiation_therapy_subquery.c.person_id,
+        radiation_therapy_subquery.c.rad_episode_id,
+        radiation_therapy_subquery.c.episode_parent_id,
+        sa.func.min(radiation_therapy_subquery.c.procedure_datetime).label('rt_start')
+    )
+    .group_by(        
+        radiation_therapy_subquery.c.person_id,        
+        radiation_therapy_subquery.c.episode_parent_id,
+        radiation_therapy_subquery.c.rad_episode_id
     )
     .subquery()
 )
@@ -133,6 +166,19 @@ systemic_therapy_with_dx = (
     )
 )
 
+
+rt_therapy_with_dx = (
+    sa.join(
+        dx_subquery, 
+        radiation_therapy_start, 
+        sa.and_(
+            radiation_therapy_start.c.episode_parent_id==dx_subquery.c.dx_episode_id, 
+            radiation_therapy_start.c.person_id==dx_subquery.c.person_id
+        ),
+        isouter=True
+    )
+)
+
 class Systemic_Therapy_Episode(Base):
     __table__ = systemic_therapy_with_dx
     episode_id = systemic_therapy_start.c.sact_episode_id
@@ -141,8 +187,8 @@ class Systemic_Therapy_Episode(Base):
     
     dx_ep_id = dx_subquery.c.dx_episode_id
 
-    dx_object: so.Mapped[Optional['Episode']] = so.relationship(foreign_keys=[dx_ep_id])
-    person_object: so.Mapped['Person_Episodes'] = so.relationship(back_populates="sact_episodes", foreign_keys=[person_id])
+    dx_object: so.Mapped[Optional['Episode']] = so.relationship(foreign_keys=[dx_ep_id], viewonly=True)
+    #person_object: so.Mapped['Person_Episodes'] = so.relationship(back_populates="sact_episodes", foreign_keys=[person_id])
     episode_object: so.Mapped['Episode'] = so.relationship(foreign_keys=[episode_id])
     sact_events: AssociationProxy[List['Episode_Event']] = association_proxy("episode_object", "events")
 
@@ -150,14 +196,38 @@ class Systemic_Therapy_Episode(Base):
     def episode_agents(self):
         return list(set([s.event_polymorphic.drug_label for s in self.sact_events if s.event_polymorphic.polymorphic_label=='drug_exposure']))
 
+class Radiation_Therapy_Episode(Base):
+    __table__ = rt_therapy_with_dx
+    episode_id = radiation_therapy_start.c.rad_episode_id
+    person_id = radiation_therapy_start.c.person_id
+    rt_start = so.column_property(radiation_therapy_start.c.rt_start)
+    dx_ep_id = dx_subquery.c.dx_episode_id
 
-class Person_Episodes(Person):
-    #condition_episodes: so.Mapped[List['Condition_Episode']] = so.relationship(back_populates="person_object", lazy="selectin")
-    sact_episodes: so.Mapped[List['Systemic_Therapy_Episode']] = so.relationship(back_populates="person_object", order_by='Systemic_Therapy_Episode.sact_start')
+    dx_object: so.Mapped[Optional['Episode']] = so.relationship(foreign_keys=[dx_ep_id], viewonly=True)
+    #person_object: so.Mapped['Person_Episodes'] = so.relationship(back_populates="sact_episodes", foreign_keys=[person_id])
+    episode_object: so.Mapped['Episode'] = so.relationship(foreign_keys=[episode_id])
+    rt_events: AssociationProxy[List['Episode_Event']] = association_proxy("episode_object", "events")
 
-    @property
-    def all_agents(self):
-        return list(set(chain.from_iterable([se.episode_agents for se in self.sact_episodes])))
+
+# class Person_Episodes(Person):
+#     #condition_episodes: so.Mapped[List['Condition_Episode']] = so.relationship(back_populates="person_object", lazy="selectin")
+#     sact_episodes: so.Mapped[List['Systemic_Therapy_Episode']] = so.relationship(back_populates="person_object", order_by='Systemic_Therapy_Episode.sact_start')
+
+#     @property
+#     def all_agents(self):
+#         return list(set(chain.from_iterable([se.episode_agents for se in self.sact_episodes])))
+
+
+# Systemic_Therapy_Episode.person_object = so.relationship(
+#     Person_Episodes,
+#     primaryjoin=Systemic_Therapy_Episode.person_id == so.foreign(Person_Episodes.person_id)
+# )
+
+# Hemonc_Condition.condition_concept = so.relationship(
+#     Condition_Map,
+#     primaryjoin=Hemonc_Condition.condition_concept_id == so.foreign(Condition_Map.condition_concept_id)
+# )
+
 
 # surgical = so.aliased(
 #     Concept, 
