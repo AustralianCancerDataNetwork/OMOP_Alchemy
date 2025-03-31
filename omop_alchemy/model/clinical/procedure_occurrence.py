@@ -83,3 +83,9 @@ class Procedure_Occurrence(Modifiable_Table):
     @hybrid_property
     def event_date(self):
         return  self.procedure_datetime.date() if self.procedure_datetime is not None else self.procedure_date
+
+    @property
+    def proc_label(self):
+        if self.procedure_concept:
+            return self.procedure_concept.concept_name
+    

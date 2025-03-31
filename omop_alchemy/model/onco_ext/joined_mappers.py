@@ -171,6 +171,10 @@ class Person_Episodes(Person):
 # )
 
 
+rth_ca = so.aliased(Concept_Ancestor, name='rth_ca')
+srg_ca = so.aliased(Concept_Ancestor, name='srg_ca')
+
+
 surgical = (
     sa.select(
         Concept.concept_name,
@@ -198,15 +202,11 @@ historical_surgery = (
         historical_procedure.value_as_concept_id,
         historical_procedure.observation_datetime
     ).join(
-        surgical, surgical.concept_id == historical_procedure.value_as_concept_id
+        surgical, surgical.c.concept_id == historical_procedure.value_as_concept_id
     ).subquery()
 )
 
 
-
-
-rth_ca = so.aliased(Concept_Ancestor, name='rth_ca')
-srg_ca = so.aliased(Concept_Ancestor, name='srg_ca')
 
 radiotherapy = (
     sa.select(
