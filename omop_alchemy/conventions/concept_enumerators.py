@@ -111,9 +111,9 @@ class TStageConcepts(ConceptEnum):
     t2 = 1635562
     t3 = 1634376
     t4 = 1634654
-    ta = 1635682
+    ta = 1635114
     tx = 1635682
-    tis = 1635682
+    tis = 1634530
 
 class NStageConcepts(ConceptEnum):
     # as above for n...
@@ -169,3 +169,9 @@ class DemographyConcepts(ConceptEnum):
     cob = 4155450
     language_spoken = 4052785
     postcode = 4083591
+
+
+class GenomicValue(ConceptEnum):
+    positive = 9191
+    negative = 9189
+    equivocal = 4172976
