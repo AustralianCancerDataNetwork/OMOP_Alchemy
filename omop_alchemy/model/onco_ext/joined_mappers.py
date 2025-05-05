@@ -19,7 +19,7 @@ from ..clinical.procedure_occurrence import Procedure_Occurrence
 from ..clinical.observation import Observation
 from ..vocabulary.concept import Concept
 from ..vocabulary.concept_ancestor import Concept_Ancestor
-from ...conventions.concept_enumerators import ModifierFields, TreatmentEpisode, DiseaseEpisodeConcepts
+from ...conventions.concept_enumerators import ModifierFields, TreatmentEpisode, DiseaseEpisodeConcepts, DemographyConcepts
 
 
 # select all conditions that have been associated with an episode - TBC if we need to add filtering for overarching?
@@ -496,3 +496,125 @@ class Historical_Surgical_Procedure(Base):
 
 
 
+person_postcode = (
+    sa.select(
+        Observation.person_id,
+        Observation.value_as_number.label('post_code')
+    )
+    .filter(Observation.observation_concept_id==DemographyConcepts.postcode.value)
+    .subquery()
+)
+
+person_cob = (
+    sa.select(
+        Observation.person_id,
+        Concept.concept_name.label('country_of_birth')
+    )
+    .join(Concept, Concept.concept_id==Observation.value_as_concept_id)
+    .filter(Observation.observation_concept_id==DemographyConcepts.cob.value)
+    .subquery()
+)
+
+person_lang = (
+    sa.select(
+        Observation.person_id,
+        Concept.concept_name.label('language_spoken')
+    )
+    .join(Concept, Concept.concept_id==Observation.value_as_concept_id)
+    .filter(Observation.observation_concept_id==DemographyConcepts.language_spoken.value)
+    .subquery()
+)
+
+demographics_join = (
+    sa.select(
+        Person.person_id, 
+        Person.year_of_birth,
+        Person.death_datetime,
+        Concept.concept_name.label('gender'),
+        person_lang.c.language_spoken,
+        person_cob.c.country_of_birth,
+        person_postcode.c.post_code
+    )
+    .join(Concept, Concept.concept_id==Person.gender_concept_id)
+    .join(person_lang, person_lang.c.person_id==Person.person_id)
+    .join(person_cob, person_cob.c.person_id==Person.person_id)
+    .join(person_postcode, person_postcode.c.person_id==Person.person_id)
+).subquery()
+
+class PersonDemography(Base):
+    __table__ = demographics_join
+    person_id = demographics_join.c.person_id
+    year_of_birth = demographics_join.c.year_of_birth
+    death_datetime = demographics_join.c.death_datetime
+    language_spoken = demographics_join.c.language_spoken
+    country_of_birth = demographics_join.c.country_of_birth
+    person_postcode = demographics_join.c.post_code
+
+
+dx_treatment_window = (
+    sa.select(
+        cdm.clinical.Person.person_id,
+        cdm.clinical.Person.death_datetime,
+        Diagnosis.episode_id,
+        Diagnosis.episode_start_datetime,
+        Dated_Surgical_Procedure.procedure_datetime,
+        Dx_RT_Start.rt_start, 
+        Dx_SACT_Start.sact_start, 
+        Dx_RT_Start.rt_end, 
+        Dx_SACT_Start.sact_end 
+    )
+    .join(Diagnosis, Diagnosis.person_id==cdm.clinical.Person.person_id)
+    .join(Dated_Surgical_Procedure, Dated_Surgical_Procedure.person_id==Diagnosis.person_id, isouter=True)
+    .join(Dx_RT_Start, Dx_RT_Start.dx_id==Diagnosis.episode_id, isouter=True)
+    .join(Dx_SACT_Start, Dx_SACT_Start.dx_id==Diagnosis.episode_id, isouter=True)
+    .subquery()
+)
+
+class Treatment_Window(Base):
+    __table__ = dx_treatment_window
+    person_id = dx_treatment_window.c.person_id
+    episode_id = dx_treatment_window.c.episode_id
+    episode_start_datetime = so.column_property(dx_treatment_window.c.episode_start_datetime)
+    death_datetime = so.column_property(dx_treatment_window.c.death_datetime)
+    rt_start = so.column_property(dx_treatment_window.c.rt_start)
+    sact_start = so.column_property(dx_treatment_window.c.sact_start)
+    rt_end = so.column_property(dx_treatment_window.c.rt_end)
+    sact_end = so.column_property(dx_treatment_window.c.sact_end)
+    procedure_datetime = so.column_property(dx_treatment_window.c.procedure_datetime)
+
+    @sa.ext.hybrid.hybrid_property 
+    def treatment_days_before_death(self):
+        treat_ends = [d for d in [self.rt_end, self.sact_end, self.procedure_datetime] if d is not None]
+        if not(treat_ends) or not(self.death_datetime):
+            return None
+        latest_treatment = max(treat_ends)
+        delta = self.death_datetime.date() - latest_treatment
+        return delta.days
+
+    @treatment_days_before_death.expression
+    def treatment_days_before_death(cls):
+        latest_treat_expr = sa.func.greatest(
+            sa.case((cls.rt_end != None, cls.rt_end), else_=None),
+            sa.case((cls.sact_end != None, cls.sact_end), else_=None),
+            sa.case((cls.procedure_datetime != None, sa.cast(cls.procedure_datetime, sa.Date)), else_=None)
+        )
+        return sa.cast(cls.death_datetime, sa.Date) - latest_treat_expr
+
+    @sa.ext.hybrid.hybrid_property 
+    def treatment_days_after_dx(self):
+        treat_starts = [d for d in [self.rt_start, self.sact_start, self.procedure_datetime] if d is not None]
+        if not(treat_starts):
+            return None
+        first_treatment = min(treat_starts)
+        delta = self.episode_start_datetime.date() - first_treatment
+        return delta.days
+    
+    @treatment_days_after_dx.expression
+    def treatment_days_after_dx(cls):
+        earliest_treatment_expr = sa.func.least(
+            sa.case((cls.rt_end != None, cls.rt_start), else_=None),
+            sa.case((cls.sact_end != None, cls.sact_start), else_=None),
+            sa.case((cls.procedure_datetime != None, sa.cast(cls.procedure_datetime, sa.Date)), else_=None)
+        )
+        return earliest_treatment_expr - sa.cast(cls.episode_start_datetime, sa.Date)
+        
