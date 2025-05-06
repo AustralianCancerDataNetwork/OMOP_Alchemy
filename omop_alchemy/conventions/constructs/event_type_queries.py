@@ -2,13 +2,11 @@ import sqlalchemy as sa
 import sqlalchemy.orm as so
 
 from ...db import Base
-from .episode import Episode
-from .episode_event import Episode_Event
-from ..clinical.drug_exposure import Drug_Exposure
-from ..clinical.procedure_occurrence import Procedure_Occurrence
-from ..vocabulary.concept_ancestor import Concept_Ancestor
+from ...model.onco_ext import Episode, Episode_Event
+from ...model.clinical import Person, Modifiable_Table, Condition_Occurrence, Drug_Exposure, Procedure_Occurrence, Observation
+from ...model.vocabulary import Concept, Concept_Ancestor
 from ...conventions.concept_enumerators import ModifierFields, TreatmentEpisode, DiseaseEpisodeConcepts
-
+from .alias_definitions import radiation_therapy
 
 class SACT_Event(Episode_Event):
     __table__ = (

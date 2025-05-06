@@ -3,11 +3,8 @@ import sqlalchemy.orm as so
 
 from ...db import Base
 from ...conventions.concept_enumerators import CancerProcedureTypes
-from ..clinical.procedure_occurrence import Procedure_Occurrence
-from ..clinical.observation import Observation
-from ..vocabulary.concept import Concept
-from ..vocabulary.concept_ancestor import Concept_Ancestor
-
+from ...model.clinical import Procedure_Occurrence, Observation
+from ...model.vocabulary import Concept, Concept_Ancestor
 
 rth_ca = so.aliased(Concept_Ancestor, name='rth_ca')
 srg_ca = so.aliased(Concept_Ancestor, name='srg_ca')

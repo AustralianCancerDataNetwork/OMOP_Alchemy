@@ -1,25 +1,17 @@
-from datetime import date, datetime, time
-from typing import Optional, List
-from decimal import Decimal
+from typing import List
 from itertools import chain
 import sqlalchemy as sa
 import sqlalchemy.orm as so
-from sqlalchemy.ext.associationproxy import AssociationProxy, association_proxy
 from sqlalchemy.ext.hybrid import hybrid_property
 
 from ...db import Base
-from ...conventions.concept_enumerators import CancerProcedureTypes
-from .episode import Episode
-from .episode_event import Episode_Event
-from ..clinical.person import Person
-from ..clinical.modifiable_table import Modifiable_Table
-from ..clinical.condition_occurrence import Condition_Occurrence
-from ..clinical.drug_exposure import Drug_Exposure
-from ..clinical.procedure_occurrence import Procedure_Occurrence
-from ..clinical.observation import Observation
-from ..vocabulary.concept import Concept
-from ..vocabulary.concept_ancestor import Concept_Ancestor
-from ...conventions.concept_enumerators import ModifierFields, TreatmentEpisode, DiseaseEpisodeConcepts, DemographyConcepts
+from ...conventions.concept_enumerators import CancerProcedureTypes, ModifierFields, TreatmentEpisode, DiseaseEpisodeConcepts, DemographyConcepts
+from ...model.onco_ext import Episode, Episode_Event
+from ...model.clinical import Person, Modifiable_Table, Condition_Occurrence, Drug_Exposure, Procedure_Occurrence, Observation
+from ...model.vocabulary import Concept, Concept_Ancestor
+
+from .event_type_queries import Dx_RT_Start, Dx_SACT_Start, Diagnosis
+from .surgical_queries import Dated_Surgical_Procedure
 
 class Person_Episodes(Person):
     """
@@ -36,8 +28,8 @@ class Person_Episodes(Person):
 
 dx_treatment_window = (
     sa.select(
-        cdm.clinical.Person.person_id,
-        cdm.clinical.Person.death_datetime,
+        Person.person_id,
+        Person.death_datetime,
         Diagnosis.episode_id,
         Diagnosis.episode_start_datetime,
         Dated_Surgical_Procedure.procedure_datetime,
@@ -46,7 +38,7 @@ dx_treatment_window = (
         Dx_RT_Start.rt_end, 
         Dx_SACT_Start.sact_end 
     )
-    .join(Diagnosis, Diagnosis.person_id==cdm.clinical.Person.person_id)
+    .join(Diagnosis, Diagnosis.person_id==Person.person_id)
     .join(Dated_Surgical_Procedure, Dated_Surgical_Procedure.person_id==Diagnosis.person_id, isouter=True)
     .join(Dx_RT_Start, Dx_RT_Start.dx_id==Diagnosis.episode_id, isouter=True)
     .join(Dx_SACT_Start, Dx_SACT_Start.dx_id==Diagnosis.episode_id, isouter=True)
