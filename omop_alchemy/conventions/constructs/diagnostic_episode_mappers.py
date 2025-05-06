@@ -8,20 +8,10 @@ from sqlalchemy.ext.associationproxy import AssociationProxy, association_proxy
 from sqlalchemy.ext.hybrid import hybrid_property
 
 from ...db import Base
-from ...conventions.concept_enumerators import CancerProcedureTypes
-from .episode import Episode
-from .episode_event import Episode_Event
-from ..clinical.person import Person
-from ..clinical.modifiable_table import Modifiable_Table
-from ..clinical.condition_occurrence import Condition_Occurrence
-from ..clinical.drug_exposure import Drug_Exposure
-from ..clinical.procedure_occurrence import Procedure_Occurrence
-from ..clinical.observation import Observation
-from ..vocabulary.concept import Concept
-from ..vocabulary.concept_ancestor import Concept_Ancestor
-from ...conventions.concept_enumerators import ModifierFields, TreatmentEpisode, DiseaseEpisodeConcepts, DemographyConcepts
-
-
+from ...conventions.concept_enumerators import CancerProcedureTypes, ModifierFields, TreatmentEpisode, DiseaseEpisodeConcepts, DemographyConcepts
+from ...model.onco_ext import Episode, Episode_Event
+from ...model.clinical import Person, Modifiable_Table, Condition_Occurrence, Drug_Exposure, Procedure_Occurrence, Observation
+from ...model.vocabulary import Concept, Concept_Ancestor
 
 # select all conditions that have been associated with an episode - TBC if we need to add filtering for overarching?
 

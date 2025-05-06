@@ -1,26 +1,14 @@
-from datetime import date, datetime, time
 from typing import Optional, List
-from decimal import Decimal
-from itertools import chain
 import sqlalchemy as sa
 import sqlalchemy.orm as so
 from sqlalchemy.ext.associationproxy import AssociationProxy, association_proxy
-from sqlalchemy.ext.hybrid import hybrid_property
 
 from ...db import Base
-from ...conventions.concept_enumerators import CancerProcedureTypes
-from .episode import Episode
-from .episode_event import Episode_Event
-from ..clinical.person import Person
-from ..clinical.modifiable_table import Modifiable_Table
-from ..clinical.condition_occurrence import Condition_Occurrence
-from ..clinical.drug_exposure import Drug_Exposure
-from ..clinical.procedure_occurrence import Procedure_Occurrence
-from ..clinical.observation import Observation
-from ..vocabulary.concept import Concept
-from ..vocabulary.concept_ancestor import Concept_Ancestor
-from ...conventions.concept_enumerators import ModifierFields, TreatmentEpisode, DiseaseEpisodeConcepts, DemographyConcepts
-
+from ...conventions.concept_enumerators import CancerProcedureTypes, ModifierFields, TreatmentEpisode, DiseaseEpisodeConcepts, DemographyConcepts
+from ...model.onco_ext import Episode, Episode_Event
+from ...model.clinical import Person, Modifiable_Table, Condition_Occurrence, Drug_Exposure, Procedure_Occurrence, Observation
+from ...model.vocabulary import Concept, Concept_Ancestor
+from .alias_definitions import radiation_therapy, systemic_therapy
 
 
 # select all tx episodes that have at least one drug administration event 
@@ -28,9 +16,6 @@ from ...conventions.concept_enumerators import ModifierFields, TreatmentEpisode,
 # todo: should this filter on anti-cancer therapies?
 # no - this does not need to filter on anti-cancer therapies only, because we only
 # pull in drugs that have been attached to an episode
-
-systemic_therapy = so.aliased(Drug_Exposure, flat=True)
-radiation_therapy = so.aliased(Procedure_Occurrence, flat=True)
 
 systemic_therapy_subquery = (
     sa.select(

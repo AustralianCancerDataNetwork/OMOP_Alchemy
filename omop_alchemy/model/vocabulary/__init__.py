@@ -1,5 +1,3 @@
-from .cohort_definition import Cohort_Definition
-from .cohort import Cohort
 from .concept_ancestor import Concept_Ancestor
 from .concept_class import Concept_Class
 from .concept_relationship import Concept_Relationship
@@ -11,6 +9,6 @@ from .relationship import Relationship
 from .source_to_concept_map import Source_To_Concept_Map
 from .vocabulary import Vocabulary
 
-__all__ = [Cohort_Definition, Cohort, Concept_Ancestor, Concept_Class, Concept_Relationship, 
-           Concept_Synonym, Concept, Domain, Drug_Strength, Relationship, Source_To_Concept_Map, 
-           Vocabulary]
+__all__ = [Concept_Ancestor, Concept_Class, Concept_Relationship, 
+           Concept_Synonym, Concept, Domain, Drug_Strength, Relationship, 
+           Source_To_Concept_Map, Vocabulary]

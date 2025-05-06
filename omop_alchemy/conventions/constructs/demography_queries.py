@@ -1,4 +1,10 @@
+from ...db import Base
+from ...conventions.concept_enumerators import DemographyConcepts
+from ...model.clinical import Person, Observation
+from ...model.vocabulary import Concept
 
+import sqlalchemy as sa
+import sqlalchemy.orm as so
 
 person_postcode = (
     sa.select(

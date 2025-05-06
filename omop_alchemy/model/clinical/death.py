@@ -9,9 +9,11 @@ from ...db import Base
 class Death(Base):
     __tablename__ = 'death'
     
-    person_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('person.person_id', name='dth_fk_1'))
+    # we need a primary key here, so we enforce a single death record per person on a given day although this is not
+    # per CDM definition - to follow up - may want to add death key transparently instead?
+    person_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('person.person_id', name='dth_fk_1'), primary_key=True)
 
-    death_date: so.Mapped[Optional[date]] = so.mapped_column(sa.Date, nullable=True)
+    death_date: so.Mapped[date] = so.mapped_column(sa.Date, primary_key=True)
     death_datetime: so.Mapped[Optional[datetime]] = so.mapped_column(sa.DateTime, nullable=True)
     
     cause_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50), nullable=True)
