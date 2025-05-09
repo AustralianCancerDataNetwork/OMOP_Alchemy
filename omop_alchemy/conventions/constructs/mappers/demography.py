@@ -13,6 +13,7 @@ demographics_join = (
         Person.person_id, 
         Person.year_of_birth,
         Person.death_datetime,
+        Person.person_source_value.label('mrn'),
         Concept.concept_name.label('gender'),
         person_lang.c.language_spoken,
         person_cob.c.country_of_birth,
@@ -24,9 +25,10 @@ demographics_join = (
     .join(person_postcode, person_postcode.c.person_id==Person.person_id)
 ).subquery()
 
-class PersonDemography(Base):
+class Person_Demography(Base):
     __table__ = demographics_join
     person_id = demographics_join.c.person_id
+    mrn = demographics_join.c.mrn
     year_of_birth = demographics_join.c.year_of_birth
     death_datetime = demographics_join.c.death_datetime
     language_spoken = demographics_join.c.language_spoken
