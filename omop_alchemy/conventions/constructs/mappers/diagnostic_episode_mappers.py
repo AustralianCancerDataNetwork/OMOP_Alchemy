@@ -1,39 +1,13 @@
-from datetime import date, datetime, time
-from typing import Optional, List
-from decimal import Decimal
-from itertools import chain
 import sqlalchemy as sa
 import sqlalchemy.orm as so
-from sqlalchemy.ext.associationproxy import AssociationProxy, association_proxy
-from sqlalchemy.ext.hybrid import hybrid_property
 
-from ...db import Base
-from ...conventions.concept_enumerators import CancerProcedureTypes, ModifierFields, TreatmentEpisode, DiseaseEpisodeConcepts, DemographyConcepts
-from ...model.onco_ext import Episode, Episode_Event
-from ...model.clinical import Person, Modifiable_Table, Condition_Occurrence, Drug_Exposure, Procedure_Occurrence, Observation
-from ...model.vocabulary import Concept, Concept_Ancestor
+from ....db import Base
+from ....model.onco_ext import Episode, Episode_Event
+from ....model.clinical import Person, Modifiable_Table, Condition_Occurrence, Drug_Exposure, Procedure_Occurrence, Observation
+from ....model.vocabulary import Concept, Concept_Ancestor
+from ...concept_enumerators import ModifierFields
 
 # select all conditions that have been associated with an episode - TBC if we need to add filtering for overarching?
-
-diagnosis = so.aliased(Condition_Occurrence, flat=True)
-
-dx_episode_subquery = (
-    sa.select(
-        Episode_Event.episode_id.label('dx_episode_id'),
-        diagnosis.person_id,
-        diagnosis.condition_start_date,
-        Concept.concept_code
-    )
-    .join(
-        Episode_Event,
-        Episode_Event.event_polymorphic.of_type(diagnosis)
-    )
-    .join(
-        Concept,
-        Concept.concept_id==diagnosis.condition_concept_id
-    )
-    .subquery()
-)
 
 condition_ep_join = sa.join(Condition_Occurrence, Episode_Event, 
                              sa.and_(Condition_Occurrence.condition_occurrence_id==Modifiable_Table.modifier_id,

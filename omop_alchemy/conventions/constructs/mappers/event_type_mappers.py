@@ -1,19 +1,17 @@
 import sqlalchemy as sa
 import sqlalchemy.orm as so
 
-from ...db import Base
-from ...model.onco_ext import Episode, Episode_Event
-from ...model.clinical import Person, Modifiable_Table, Condition_Occurrence, Drug_Exposure, Procedure_Occurrence, Observation
-from ...model.vocabulary import Concept, Concept_Ancestor
-from ...conventions.concept_enumerators import ModifierFields, TreatmentEpisode, DiseaseEpisodeConcepts
-from .alias_definitions import radiation_therapy
+from ....db import Base
+from ....model.onco_ext import Episode, Episode_Event
+from ....model.clinical import Person, Modifiable_Table, Condition_Occurrence, Drug_Exposure, Procedure_Occurrence, Observation
+from ....model.vocabulary import Concept, Concept_Ancestor
+from ....conventions.concept_enumerators import ModifierFields, TreatmentEpisode, DiseaseEpisodeConcepts
+from ..definitions.alias_definitions import radiation_therapy
+from ..definitions.episode_event_subqueries import sact_episode_events, rt_episode_events, Regimen, Diagnosis
+from ..definitions.surgical_subqueries import surgical_procedure
 
 class SACT_Event(Episode_Event):
-    __table__ = (
-        sa.select(Episode_Event)
-        .where(Episode_Event.episode_event_field_concept_id==ModifierFields.drug_exposure_id.value)
-        .subquery()
-    )
+    __table__ = sact_episode_events
     
     regimen_id = so.column_property(__table__.c.episode_id)
     sact_id = so.column_property(__table__.c.event_id)
@@ -24,16 +22,8 @@ class SACT_Event(Episode_Event):
     }
 
 class RT_Event(Episode_Event):
-    """
-    TODO: this needs updating because it currently fails to actually filter down to 
-    TODO: RT-specific events, however it is not an issue, due to the fact that RT events are
-    TODO: the only ones mapped to episodes - this will break otherwise
-    """
-    __table__ = (
-        sa.select(Episode_Event)
-        .where(Episode_Event.event_polymorphic.of_type(radiation_therapy))
-        .subquery()
-    )
+    
+    __table__ = rt_episode_events
     
     regimen_id = so.column_property(__table__.c.episode_id)
     rt_id = so.column_property(__table__.c.event_id)
@@ -43,20 +33,6 @@ class RT_Event(Episode_Event):
         'inherit_condition': (Episode_Event.event_id == __table__.c.event_id)
     }
 
-regimen_subquery = (
-    sa.select(Episode)
-    .where(Episode.episode_concept_id==TreatmentEpisode.treatment_regimen.value)
-    .subquery()
-)
-
-diagnosis_subquery = (
-    sa.select(Episode)
-    .where(Episode.episode_concept_id==DiseaseEpisodeConcepts.episode_of_care.value)
-    .subquery()
-)
-
-Regimen = so.with_polymorphic(Episode, [], selectable=regimen_subquery)
-Diagnosis = so.with_polymorphic(Episode, [], selectable=diagnosis_subquery)
 
 dx_with_regimen = (
     sa.select(
@@ -101,6 +77,18 @@ dx_with_rt = (
     .subquery()
 )
 
+dx_with_surg = (
+    sa.select(
+        Condition_Occurrence.person_id, 
+        Condition_Occurrence.condition_occurrence_id.label('dx_id'), 
+        Condition_Occurrence.condition_start_datetime.label('dx_date'), 
+        surgical_procedure.c.procedure_concept_id.label('surgery_concept_id'),
+        surgical_procedure.c.procedure_datetime.label('surg_date')
+    )
+    .join(surgical_procedure, surgical_procedure.c.person_id==Condition_Occurrence.person_id, isouter=True)
+    .subquery()
+)
+
 class Dx_Treat_Start(Base):
     __table__ = dx_with_regimen
     person_id = dx_with_regimen.c.person_id
@@ -124,3 +112,10 @@ class Dx_RT_Start(Base):
     dx_date = dx_with_rt.c.dx_date
     rt_start = so.column_property(dx_with_rt.c.rt_start)
     rt_end = so.column_property(dx_with_rt.c.rt_end)
+
+class Dx_Surg(Base):
+    __table__ = dx_with_surg
+    person_id = dx_with_surg.c.person_id
+    dx_id = dx_with_surg.c.dx_id
+    dx_date = dx_with_surg.c.dx_date
+    surg_date = so.column_property(dx_with_surg.c.surg_date)

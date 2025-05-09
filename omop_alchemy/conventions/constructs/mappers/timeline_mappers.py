@@ -4,27 +4,14 @@ import sqlalchemy as sa
 import sqlalchemy.orm as so
 from sqlalchemy.ext.hybrid import hybrid_property
 
-from ...db import Base
-from ...conventions.concept_enumerators import CancerProcedureTypes, ModifierFields, TreatmentEpisode, DiseaseEpisodeConcepts, DemographyConcepts
-from ...model.onco_ext import Episode, Episode_Event
-from ...model.clinical import Person, Modifiable_Table, Condition_Occurrence, Drug_Exposure, Procedure_Occurrence, Observation
-from ...model.vocabulary import Concept, Concept_Ancestor
+from ....db import Base
+from ....conventions.concept_enumerators import CancerProcedureTypes, ModifierFields, TreatmentEpisode, DiseaseEpisodeConcepts, DemographyConcepts
+from ....model.onco_ext import Episode, Episode_Event
+from ....model.clinical import Person, Modifiable_Table, Condition_Occurrence, Drug_Exposure, Procedure_Occurrence, Observation
+from ....model.vocabulary import Concept, Concept_Ancestor
 
-from .event_type_queries import Dx_RT_Start, Dx_SACT_Start, Diagnosis
-from .surgical_queries import Dated_Surgical_Procedure
-
-class Person_Episodes(Person):
-    """
-    At the moment, this just returns all SACT eps linked to a person.
-    TODO: refine this mapper to have required relationships to all episode objects
-    """
-    #condition_episodes: so.Mapped[List['Condition_Episode']] = so.relationship(back_populates="person_object", lazy="selectin")
-    sact_episodes: so.Mapped[List['Systemic_Therapy_Episode']] = so.relationship(back_populates="person_object", order_by='Systemic_Therapy_Episode.sact_start')
-
-    @property
-    def all_agents(self):
-        return list(set(chain.from_iterable([se.episode_agents for se in self.sact_episodes])))
-
+from ..mappers.event_type_mappers import Dx_RT_Start, Dx_SACT_Start, Diagnosis
+from ..mappers.surgical_mappers import Dated_Surgical_Procedure
 
 dx_treatment_window = (
     sa.select(
@@ -69,6 +56,13 @@ class Treatment_Window(Base):
 
 
     @sa.ext.hybrid.hybrid_property 
+    def latest_treatment(self):
+        treat_ends = [d for d in [self.rt_end, self.sact_end, self.procedure_datetime] if d is not None]
+        if not(treat_ends):
+            return None        
+        return max(treat_ends)
+
+    @sa.ext.hybrid.hybrid_property 
     def treatment_days_before_death(self):
         """ 
         Hybrid properties like this need to have python and SQL version of their definition, in order
@@ -83,21 +77,23 @@ class Treatment_Window(Base):
             -> client-side, the python property will be invoked instead
             len([t.treatment_days_before_death for t in tw if t.treatment_days_before_death])
         """
-        treat_ends = [d for d in [self.rt_end, self.sact_end, self.procedure_datetime] if d is not None]
-        if not(treat_ends) or not(self.death_datetime):
+        latest_treatment = self.latest_treatment
+        if not(latest_treatment) or not(self.death_datetime):
             return None
-        latest_treatment = max(treat_ends)
         delta = self.death_datetime.date() - latest_treatment
         return delta.days
 
-    @treatment_days_before_death.expression
-    def treatment_days_before_death(cls):
-        latest_treat_expr = sa.func.greatest(
+    @latest_treatment.expression
+    def latest_treatment(cls):
+        return sa.func.greatest(
             sa.case((cls.rt_end != None, cls.rt_end), else_=None),
             sa.case((cls.sact_end != None, cls.sact_end), else_=None),
             sa.case((cls.procedure_datetime != None, sa.cast(cls.procedure_datetime, sa.Date)), else_=None)
         )
-        return sa.cast(cls.death_datetime, sa.Date) - latest_treat_expr
+
+    @treatment_days_before_death.expression
+    def treatment_days_before_death(cls):
+        return sa.cast(cls.death_datetime, sa.Date) - cls.latest_treatment
 
     @sa.ext.hybrid.hybrid_property 
     def treatment_days_after_dx(self):
