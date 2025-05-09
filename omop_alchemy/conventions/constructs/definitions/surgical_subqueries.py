@@ -1,13 +1,11 @@
 import sqlalchemy as sa
 import sqlalchemy.orm as so
 
-from ...db import Base
-from ...conventions.concept_enumerators import CancerProcedureTypes
-from ...model.clinical import Procedure_Occurrence, Observation
-from ...model.vocabulary import Concept, Concept_Ancestor
-
-rth_ca = so.aliased(Concept_Ancestor, name='rth_ca')
-srg_ca = so.aliased(Concept_Ancestor, name='srg_ca')
+from ....db import Base
+from ....conventions.concept_enumerators import CancerProcedureTypes
+from ....model.clinical import Procedure_Occurrence, Observation
+from ....model.vocabulary import Concept, Concept_Ancestor
+from .alias_definitions import rth_ca, srg_ca, diagnosis
 
 """
 Note that there are some concepts that have ancestry defined under surgical procedure
@@ -63,19 +61,6 @@ surgical_procedure = (
     .subquery()
 )
 
-class Dated_Surgical_Procedure(Base):
-    """
-    Denoted as dated - distinct from historical, because we know at least some
-    details of when this event occurred. 
-    """
-    __table__ = surgical_procedure
-    procedure_occurrence_id = surgical_procedure.c.procedure_occurrence_id
-    person_id = surgical_procedure.c.person_id
-    procedure_concept_id = surgical_procedure.c.procedure_concept_id
-    concept_name = surgical_procedure.c.concept_name
-    concept_code = surgical_procedure.c.concept_code
-    procedure_datetime = so.column_property(surgical_procedure.c.procedure_datetime)
-
 
 historical_procedure = so.aliased(
     Observation,
@@ -96,22 +81,3 @@ historical_surgery = (
         surgical, surgical.c.concept_id == historical_procedure.value_as_concept_id
     ).subquery()
 )
-
-class Historical_Surgical_Procedure(Base):
-    """
-    Some procedures may be noted as an observation as part of clinical history - these 
-    procedures will not have an available date.
-
-    They can be used to filter cohorts in certain situations ('no prior surgery' etc.),
-    but won't typically be used directly in terms of measured outcomes or review of guideline
-    adherence. 
-
-    They should be noted as an observation, with 
-    observation_concept_id = CancerProcedureTypes.historical_procedure.value
-    """
-    __table__ = historical_surgery
-    observation_id = historical_surgery.c.observation_id
-    person_id = historical_surgery.c.person_id
-    procedure_concept_id = historical_surgery.c.value_as_concept_id
-    history_datettime = so.column_property(historical_surgery.c.observation_datetime)
-
