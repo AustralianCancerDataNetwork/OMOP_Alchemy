@@ -1,5 +1,6 @@
 import sqlalchemy as sa
 import sqlalchemy.orm as so
+import datetime
 
 from ....db import Base
 from ....model.onco_ext import Episode, Episode_Event
@@ -89,6 +90,67 @@ dx_with_surg = (
     .subquery()
 )
 
+
+concurrent_chemort = (
+    sa.select(
+        dx_with_sact.c.person_id,
+        dx_with_sact.c.dx_id,
+        dx_with_sact.c.dx_date,
+        dx_with_sact.c.sact_start,
+        dx_with_sact.c.sact_end,
+        dx_with_rt.c.rt_start,
+        dx_with_rt.c.rt_end,
+        sa.func.min([dx_with_sact.c.sact_start,dx_with_rt.c.rt_start]).label('concurrent_start'),
+        sa.func.max([dx_with_sact.c.sact_end,dx_with_rt.c.rt_end]).label('concurrent_end')
+    )
+    .join(dx_with_rt, dx_with_rt.c.dx_id==dx_with_sact.c.dx_id, isouter=True)
+    .filter(
+        sa.or_(
+            sa.and_(
+                dx_with_sact.c.sact_start <= dx_with_rt.c.rt_end + datetime.timedelta(days=30),
+                dx_with_sact.c.sact_start >= dx_with_rt.c.rt_start - datetime.timedelta(days=30),
+            ),
+            sa.and_(
+                dx_with_sact.c.sact_end <= dx_with_rt.c.rt_end + datetime.timedelta(days=30),
+                dx_with_sact.c.sact_end >= dx_with_rt.c.rt_start - datetime.timedelta(days=30),
+            )
+        )
+    )
+    .subquery()
+)
+
+
+concurrent_chemort = (
+    sa.select(
+        dx_with_sact.c.person_id,
+        dx_with_sact.c.dx_id,
+        dx_with_sact.c.dx_date,
+        dx_with_sact.c.sact_start,
+        dx_with_sact.c.sact_end,
+        dx_with_rt.c.rt_start,
+        dx_with_rt.c.rt_end,
+        sa.func.least(dx_with_sact.c.sact_start,dx_with_rt.c.rt_start).label('concurrent_start'),
+        sa.func.greatest(dx_with_sact.c.sact_end,dx_with_rt.c.rt_end).label('concurrent_end')
+    )
+    .join(dx_with_rt, dx_with_rt.c.dx_id==dx_with_sact.c.dx_id, isouter=True)
+    .filter(
+        sa.or_(
+            sa.and_(
+                dx_with_sact.c.sact_start <= dx_with_rt.c.rt_end + datetime.timedelta(days=30),
+                dx_with_sact.c.sact_start >= dx_with_rt.c.rt_start - datetime.timedelta(days=30),
+            ),
+            sa.and_(
+                dx_with_sact.c.sact_end <= dx_with_rt.c.rt_end + datetime.timedelta(days=30),
+                dx_with_sact.c.sact_end >= dx_with_rt.c.rt_start - datetime.timedelta(days=30),
+            )
+        )
+    )
+    .subquery()
+)
+
+
+
+
 class Dx_Treat_Start(Base):
     __table__ = dx_with_regimen
     person_id = dx_with_regimen.c.person_id
@@ -119,3 +181,14 @@ class Dx_Surg(Base):
     dx_id = dx_with_surg.c.dx_id
     dx_date = dx_with_surg.c.dx_date
     surg_date = so.column_property(dx_with_surg.c.surg_date)
+
+
+class Dx_Concurrent_Start(Base):
+    __table__ = concurrent_chemort
+    person_id = concurrent_chemort.c.person_id
+    dx_id = concurrent_chemort.c.dx_id
+    dx_date = concurrent_chemort.c.dx_date
+    treatment_start = so.column_property(concurrent_chemort.c.concurrent_start)
+    treatment_end = so.column_property(concurrent_chemort.c.concurrent_end)
+
+
