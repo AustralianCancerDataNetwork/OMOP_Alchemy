@@ -28,3 +28,5 @@ class Condition_Episode(Base):
     condition_code = Condition_Occurrence.condition_code
     modifier_concepts = Condition_Occurrence.modifier_concepts
     episode_start_datetime = Episode_Event.episode_start_datetime
+
+

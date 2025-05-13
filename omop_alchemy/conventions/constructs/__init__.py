@@ -4,3 +4,4 @@ from .mappers.event_type_mappers import Dx_RT_Start, Dx_SACT_Start, Dx_Treat_Sta
 from .mappers.treatment_mappers import Systemic_Therapy_Episode, Radiation_Therapy_Episode, Person_Episodes
 from .mappers.timeline_mappers import Treatment_Window 
 from .mappers.demography import Person_Demography
+from .mappers.consult_visit_mappers import Specialist_Consult, Treatment_Consult_Window

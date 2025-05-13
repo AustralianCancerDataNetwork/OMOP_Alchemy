@@ -90,36 +90,6 @@ dx_with_surg = (
     .subquery()
 )
 
-
-concurrent_chemort = (
-    sa.select(
-        dx_with_sact.c.person_id,
-        dx_with_sact.c.dx_id,
-        dx_with_sact.c.dx_date,
-        dx_with_sact.c.sact_start,
-        dx_with_sact.c.sact_end,
-        dx_with_rt.c.rt_start,
-        dx_with_rt.c.rt_end,
-        sa.func.min([dx_with_sact.c.sact_start,dx_with_rt.c.rt_start]).label('concurrent_start'),
-        sa.func.max([dx_with_sact.c.sact_end,dx_with_rt.c.rt_end]).label('concurrent_end')
-    )
-    .join(dx_with_rt, dx_with_rt.c.dx_id==dx_with_sact.c.dx_id, isouter=True)
-    .filter(
-        sa.or_(
-            sa.and_(
-                dx_with_sact.c.sact_start <= dx_with_rt.c.rt_end + datetime.timedelta(days=30),
-                dx_with_sact.c.sact_start >= dx_with_rt.c.rt_start - datetime.timedelta(days=30),
-            ),
-            sa.and_(
-                dx_with_sact.c.sact_end <= dx_with_rt.c.rt_end + datetime.timedelta(days=30),
-                dx_with_sact.c.sact_end >= dx_with_rt.c.rt_start - datetime.timedelta(days=30),
-            )
-        )
-    )
-    .subquery()
-)
-
-
 concurrent_chemort = (
     sa.select(
         dx_with_sact.c.person_id,
@@ -147,8 +117,6 @@ concurrent_chemort = (
     )
     .subquery()
 )
-
-
 
 
 class Dx_Treat_Start(Base):

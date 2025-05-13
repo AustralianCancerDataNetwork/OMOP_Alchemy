@@ -98,6 +98,9 @@ class CancerProcedureTypes(ConceptEnum):
     rn_procedure = 4161415            # Radionuclide parent
     rt_externalbeam = 4141448         # ebrt parent
 
+class CancerConsultTypes(ConceptEnum):
+    medonc = 4147722
+    clinonc = 4139715 # there is no suitable radonc code? only radiotherapist?
 
 class ProceduresByLocation(ConceptEnum):
     procedure_on_lung = 4040549
@@ -175,3 +178,38 @@ class GenomicValue(ConceptEnum):
     positive = 9191
     negative = 9189
     equivocal = 4172976
+
+class CancerConsultTypes(ConceptEnum):
+    medonc = 4147722
+    clinonc = 4139715 # there is no suitable radonc code? only radiotherapist?
+    oncology_referral = 4084352
+    pall_care_referral = 4127745
+
+class ProviderSpecialty(ConceptEnum):
+    radonc = 35621987
+    medonc = 4151173
+    pall_care = 4202942
+    dietetitian = 4220638
+    occupational_therapist = 4213188
+    speech_therapist = 4010130
+    haematologist = 4221826
+    geneticist = 4009808
+    gynaecologist = 17036
+    radiation_therapist = 4143746
+    medical_doctor = 4010577
+
+
+class WeightConcepts(ConceptEnum):
+    weight = 4099154
+    height = 607590
+    bsa = 4201235
+    weight_change = 4086522
+
+class WeightUnits(ConceptEnum):
+    lb = 8739
+    pct = 4041099
+    kg = 9529
+    cm = 8582
+    inch = 9327
+    m2 = 8617
+
