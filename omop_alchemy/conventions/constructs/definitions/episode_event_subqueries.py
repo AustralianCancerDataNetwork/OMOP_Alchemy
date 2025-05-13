@@ -45,9 +45,6 @@ diagnosis_subquery = (
 Regimen = so.with_polymorphic(Episode, [], selectable=regimen_subquery)
 Diagnosis = so.with_polymorphic(Episode, [], selectable=diagnosis_subquery)
 
-
-
-
 # select all tx episodes that have at least one drug administration event 
 # and find the start of chemo administration for that episode
 # todo: should this filter on anti-cancer therapies?
