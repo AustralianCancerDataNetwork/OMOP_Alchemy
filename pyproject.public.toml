@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "omop_alchemy"
+version="0.1b2"
+description = "SQLAlchemy Models for OHDSI OMOP Common Data Model"
+authors = ["georgie <georgina.kennedy@unsw.edu.au>"]
+license = "CC-BY-NC-SA-4.0"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+SQLAlchemy = "^2.0.25"
+keyring = "^24.3.0"
+pyyaml = "^6.0.1"
+python-dotenv = "^1.0.1"
+oa-configurator = {git = "https://github.com/AustralianCancerDataNetwork/oa_configurator"}
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0.0"
+ipykernel = "^6.29.0"
+sphinx = "^7.2.6"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
