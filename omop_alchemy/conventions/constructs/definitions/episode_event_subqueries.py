@@ -5,7 +5,8 @@ from ....db import Base
 from ....model.onco_ext import Episode, Episode_Event
 from ....model.clinical import Person, Modifiable_Table, Condition_Occurrence, Drug_Exposure, Procedure_Occurrence, Observation
 from ....model.vocabulary import Concept, Concept_Ancestor
-from ....conventions.concept_enumerators import ModifierFields, TreatmentEpisode, DiseaseEpisodeConcepts
+from ...concept_enumerators import ModifierFields, TreatmentEpisode, DiseaseEpisodeConcepts
+from ...vocab_lookups import radiotherapy_procedures
 from .alias_definitions import radiation_therapy, systemic_therapy
 
 sact_episode_events = (
@@ -15,17 +16,34 @@ sact_episode_events = (
     )
 
 
-"""
-    TODO: this needs updating because it currently fails to actually filter down to 
-    TODO: RT-specific events, however it is not an issue, due to the fact that RT events are
-    TODO: the only ones mapped to episodes - this will break otherwise
-"""
-
 rt_episode_events = (
-        sa.select(Episode_Event)
-        .where(Episode_Event.event_polymorphic.of_type(radiation_therapy))
-        .subquery()
+    sa.select(
+        Episode_Event.event_id, Episode_Event.episode_id, Procedure_Occurrence.procedure_occurrence_id, Procedure_Occurrence.procedure_datetime, Concept.concept_id, Concept.concept_name
     )
+    .join(
+        Procedure_Occurrence, 
+        sa.and_(
+            Procedure_Occurrence.procedure_occurrence_id==Episode_Event.event_id,
+            Episode_Event.episode_event_field_concept_id==ModifierFields.procedure_occurrence_id
+        )
+    )
+    .join(Concept, Procedure_Occurrence.procedure_concept_id==Concept.concept_id)
+    .filter(Procedure_Occurrence.procedure_concept_id.in_(radiotherapy_procedures.all_concepts))
+).subquery()
+
+
+
+# """
+#     TODO: this needs updating because it currently fails to actually filter down to 
+#     TODO: RT-specific events, however it is not an issue, due to the fact that RT events are
+#     TODO: the only ones mapped to episodes - this will break otherwise
+# """
+
+# rt_episode_events = (
+#         sa.select(Episode_Event)
+#         .where(Episode_Event.event_polymorphic.of_type(radiation_therapy))
+#         .subquery()
+#     )
 
 
 regimen_subquery = (
@@ -39,8 +57,6 @@ diagnosis_subquery = (
     .where(Episode.episode_concept_id==DiseaseEpisodeConcepts.episode_of_care.value)
     .subquery()
 )
-
-
 
 Regimen = so.with_polymorphic(Episode, [], selectable=regimen_subquery)
 Diagnosis = so.with_polymorphic(Episode, [], selectable=diagnosis_subquery)
@@ -56,7 +72,8 @@ systemic_therapy_subquery = (
         Episode.person_id,
         Episode.episode_id.label('sact_episode_id'),
         Episode.episode_parent_id,
-        systemic_therapy.drug_exposure_start_date
+        systemic_therapy.drug_exposure_start_date,
+        Concept.concept_name
     )
     .join(
          Episode_Event,
@@ -66,26 +83,55 @@ systemic_therapy_subquery = (
         Episode_Event,
         Episode_Event.event_polymorphic.of_type(systemic_therapy)
     )
+    .join_from(
+        systemic_therapy,
+        Concept, 
+        Concept.concept_id==systemic_therapy.drug_concept_id
+    )
     .subquery()
 )
+
 
 radiation_therapy_subquery = (
     sa.select(
         Episode.person_id,
         Episode.episode_id.label('rad_episode_id'),
         Episode.episode_parent_id,
-        radiation_therapy.procedure_datetime
+        radiation_therapy.procedure_datetime, 
+        Concept.concept_name
     )
     .join(
          Episode_Event,
          Episode.episode_id==Episode_Event.episode_id
      )
-    .join_from(
-        Episode_Event,
-        Episode_Event.event_polymorphic.of_type(radiation_therapy)
+    .join(
+        radiation_therapy,
+        sa.and_(
+            radiation_therapy.procedure_occurrence_id==Episode_Event.event_id,
+            Episode_Event.episode_event_field_concept_id==ModifierFields.procedure_occurrence_id.value
+        )
     )
+    .join(Concept, radiation_therapy.procedure_concept_id==Concept.concept_id)
     .subquery()
 )
+
+# radiation_therapy_subquery = (
+#     sa.select(
+#         Episode.person_id,
+#         Episode.episode_id.label('rad_episode_id'),
+#         Episode.episode_parent_id,
+#         radiation_therapy.procedure_datetime
+#     )
+#     .join(
+#          Episode_Event,
+#          Episode.episode_id==Episode_Event.episode_id
+#      )
+#     .join_from(
+#         Episode_Event,
+#         Episode_Event.event_polymorphic.of_type(radiation_therapy)
+#     )
+#     .subquery()
+# )
 
 systemic_therapy_start = (
     sa.select(

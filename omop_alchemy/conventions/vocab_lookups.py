@@ -10,7 +10,17 @@ from oa_configurator import oa_config
 
 from ..db import Base
 from ..model.vocabulary import Concept, Concept_Relationship, Concept_Ancestor
-from .concept_enumerators import ConceptEnum, TStageConcepts, NStageConcepts, MStageConcepts, GroupStageConcepts, Unknown
+from .concept_enumerators import ConceptEnum, TStageConcepts, NStageConcepts, MStageConcepts, GroupStageConcepts, Unknown, CancerProcedureTypes
+
+
+def flatten_lookup(l):
+    concepts = []
+    for k, v in l.items():
+        if isinstance(v, int):
+            concepts.append(v)
+        elif type(v) == defaultdict:
+            concepts.extend(flatten_lookup(v))
+    return concepts
 
 class MappingLookup:
     """ 
@@ -69,6 +79,11 @@ class MappingLookup:
                                         ).filter(sa.or_(*column_filter))
         for c in concepts:
             self._lookup[c.column][c.context or 'all'][c.value.strip().lower()] = c.concept_id
+
+
+    @property
+    def all_concepts(self):
+        return flatten_lookup(self._lookup)
 
 
 class VocabLookup:
@@ -204,6 +219,10 @@ class VocabLookup:
         if isinstance(item, str):
             return item in self._lookup.keys() and self.lookup(item) != self.return_unknown()
 
+    @property
+    def all_concepts(self):
+        return list(set(self._lookup.values()))
+
 from .concept_enumerators import ConditionModifiers
 
 def remove_brackets(val):
@@ -272,6 +291,7 @@ ethnicity_lookup = VocabLookup(domain="Ethnicity")
 icdo_condition_lookup = VocabLookup(domain='Condition', concept_class=['ICDO Condition'], standard_only=False, correction=[site_to_NOS])
 icd10_condition_lookup = VocabLookup(domain='Condition', concept_class=['ICD10 Hierarchy', 'ICD10 code'], standard_only=False, correction=[site_to_NOS])
 relaxed_condition_lookup = VocabLookup(domain='Condition', vocabulary_id=['ICD10', 'ICD10CM', 'ICD9CM'], standard_only=False)
+radiotherapy_procedures = VocabLookup(parent=CancerProcedureTypes.rt_procedure)
 
 class CustomLookups():
 
@@ -289,9 +309,10 @@ class CustomLookups():
         self.lookup_units = MappingLookup('drug', 'unit', control_schema_object, self._engine)
         self.lookup_route = MappingLookup('drug', 'route', control_schema_object, self._engine)
         self.lookup_mets = MappingLookup('medical', 'dist_mets', control_schema_object, self._engine)
-        self.lookup_eviq = MappingLookup('eviq', ['component', 'regimen'], control_schema_object, self._engine)
+        self.lookup_eviq = MappingLookup('eviq', ['component', 'regimen'], control_schema_object, self._engine, unknown=Unknown.therapeutic_regimen)
         self.lookup_cob = MappingLookup('admin', 'birth_place', control_schema_object, self._engine, unknown=Unknown.cob)
         self.lookup_lang = MappingLookup('prompt', 'text', control_schema_object, self._engine)
         self.lookup_stafftype = MappingLookup('staff', ['provider_type'], control_schema_object, self._engine,  unknown=None)
         self.lookup_radiotherapy = MappingLookup('radiotherapy', ['rt_procedure', 'rt_site', 'rt_parameter'], control_schema_object, self._engine, unknown=None)
         self.lookup_surg = MappingLookup('patcplan', 'cpact_name', control_schema_object, self._engine, unknown=None)
+        self.intent = MappingLookup('treatment', 'intent', control_schema_object, self._engine, unknown=None)

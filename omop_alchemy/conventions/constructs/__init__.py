@@ -5,3 +5,4 @@ from .mappers.treatment_mappers import Systemic_Therapy_Episode, Radiation_Thera
 from .mappers.timeline_mappers import Treatment_Window 
 from .mappers.demography import Person_Demography
 from .mappers.consult_visit_mappers import Specialist_Consult, Treatment_Consult_Window
+from .mappers.cancer_diagnosis_mapper import Cancer, DxPathStage, EpisodeStage

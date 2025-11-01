@@ -20,9 +20,9 @@ demographics_join = (
         person_postcode.c.post_code
     )
     .join(Concept, Concept.concept_id==Person.gender_concept_id)
-    .join(person_lang, person_lang.c.person_id==Person.person_id)
-    .join(person_cob, person_cob.c.person_id==Person.person_id)
-    .join(person_postcode, person_postcode.c.person_id==Person.person_id)
+    .join(person_lang, person_lang.c.person_id==Person.person_id, isouter=True)
+    .join(person_cob, person_cob.c.person_id==Person.person_id, isouter=True)
+    .join(person_postcode, person_postcode.c.person_id==Person.person_id, isouter=True)
 ).subquery()
 
 class Person_Demography(Base):

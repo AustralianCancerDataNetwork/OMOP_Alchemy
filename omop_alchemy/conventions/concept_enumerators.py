@@ -4,7 +4,7 @@ class ConceptEnum(enum.Enum):
 
     @classmethod
     def member_values(cls):
-        return (s.value for s in cls)
+        return [s.value for s in cls]
     
     @classmethod
     def is_member(cls, val):
@@ -37,6 +37,7 @@ class Unknown(ConceptEnum):
     @classmethod
     def is_unknown(cls, val):
         return not val or val in [s.value for s in cls]
+
 
 
 class ModifierFields(ConceptEnum):
@@ -79,7 +80,18 @@ class EpisodeTypes(ConceptEnum):
     ehr_planned_dispensing = 32837    # EHR planned dispensation
     ehr_encounter_record = 32827      # EHR encounter
     ehr_admin_record = 32818          # EHR administration record
+    ehr_outpatient_note = 32834       # EHR outpatient note
+    rt_care_plan = 42539609           # RT care plan
     
+class DocumentType(ConceptEnum):
+    oncology_note = 706266
+
+class DocumentEncoding(ConceptEnum):
+    UTF8 = 32678
+
+class Language(ConceptEnum):
+    english = 4180186
+
 class ConditionModifiers(ConceptEnum):
     # for measurement_concept_id grouping
     init_diag = 734306                # Cancer Modifier - Initial Diagnosis
@@ -91,12 +103,19 @@ class TreatmentModifiers(ConceptEnum):
     rt_projection = 4124464           # Radiotherapy projection parent
     rt_site = 4240671                 # Radiotherapy anatomical site parent
 
+class TreatmentIntent(ConceptEnum):
+    neoadjuvant = 4161587
+    adjuvant = 4191637
+    curative = 4162591
+    palliative = 4179711
+
 class CancerProcedureTypes(ConceptEnum):
     surgical_procedure = 4301351
     historical_procedure = 1340204
     rt_procedure = 1242725            # Radiotherapy procedure parent
     rn_procedure = 4161415            # Radionuclide parent
     rt_externalbeam = 4141448         # ebrt parent
+    rt_course = 37163499              # overall RT course as a procedure - used to hold intent modifier, as well as to compare intended vs. delivered treatment events
 
 class CancerConsultTypes(ConceptEnum):
     medonc = 4147722

@@ -13,20 +13,20 @@ class Note_NLP(Base):
     nlp_date: so.Mapped[Optional[date]] = so.mapped_column(sa.Date)
     nlp_datetime: so.Mapped[Optional[datetime]] = so.mapped_column(sa.DateTime)
     # strings
-    snippet: so.Mapped[Optional[str]] = so.mapped_column(sa.String(250))
-    offset: so.Mapped[Optional[str]] = so.mapped_column(sa.String(250))
-    lexical_variant: so.Mapped[Optional[str]] = so.mapped_column(sa.String(250))
-    nlp_system: so.Mapped[Optional[str]] = so.mapped_column(sa.String(250))
-    term_temporal: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50))
-    term_modifiers: so.Mapped[Optional[str]] = so.mapped_column(sa.String(2000))
-    term_exists: so.Mapped[Optional[str]] = so.mapped_column(sa.String(1))
+    snippet: so.Mapped[Optional[str]] = so.mapped_column(sa.String(250), nullable=True)
+    offset: so.Mapped[Optional[str]] = so.mapped_column(sa.String(250), nullable=True)
+    lexical_variant: so.Mapped[Optional[str]] = so.mapped_column(sa.String(250), nullable=True)
+    nlp_system: so.Mapped[Optional[str]] = so.mapped_column(sa.String(250), nullable=True)
+    term_temporal: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50), nullable=True)
+    term_modifiers: so.Mapped[Optional[str]] = so.mapped_column(sa.String(2000), nullable=True)
+    term_exists: so.Mapped[Optional[str]] = so.mapped_column(sa.String(1), nullable=True)
     # numeric
     # fks    
     note_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('note.note_id'))
     # concept fks
-    section_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='nn_fk_1'))
-    note_nlp_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='nn_fk_2'))
-    note_nlp_source_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='nn_fk_3'))
+    section_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='nn_fk_1'), nullable=True)
+    note_nlp_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='nn_fk_2'), nullable=True)
+    note_nlp_source_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='nn_fk_3'), nullable=True)
     # relationships
     note: so.Mapped[Optional['Note']] = so.relationship(foreign_keys=[note_id])
     # concept_relationships
