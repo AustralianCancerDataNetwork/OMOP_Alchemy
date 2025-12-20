@@ -12,7 +12,7 @@ SQLAlchemy = "^2.0.25"
 keyring = "^24.3.0"
 pyyaml = "^6.0.1"
 python-dotenv = "^1.0.1"
-oa-configurator = {path = "../oa_configurator", develop=true}
+oa-configurator = {git = "https://github.com/AustralianCancerDataNetwork/oa_configurator"}
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0.0"
