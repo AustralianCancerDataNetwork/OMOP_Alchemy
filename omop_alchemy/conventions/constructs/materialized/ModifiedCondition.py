@@ -6,7 +6,7 @@ from omop_alchemy.model.vocabulary import Concept, Concept_Ancestor
 from omop_alchemy.model.clinical import Condition_Occurrence, Person, Observation, Procedure_Occurrence, Measurement, Modifiable_Table, Drug_Exposure, Procedure_Occurrence
 from .MaterializedViewMixin import MaterializedViewMixin
 from ...concept_enumerators import ModifierFields, ModifierConcepts
-from ...vocab_lookups import CustomLookups, grading_lookup, tnm_lookup
+from ...vocab_lookups import CustomLookups, grading_lookup, tnm_lookup, mets_lookup
 from ....db import Base
 from ....model.onco_ext import Episode_Event
 
@@ -28,6 +28,7 @@ stage_select = (
 
 path_stage_select = stage_select.filter(Measurement.measurement_concept_id.in_(tnm_lookup.path_stage_concepts))
 clin_stage_select = stage_select.filter(Measurement.measurement_concept_id.in_(tnm_lookup.clinical_stage_concepts))
+
 
 def get_stage_subtype(stage_type_select, path_or_clin_select, label):
     q = sa.intersect(stage_type_select, path_or_clin_select).subquery()
@@ -51,7 +52,6 @@ def get_overall_for_stage_type(subset):
     )
     return sa.select(*ranked.c).where(ranked.c.rn==1)
 
-all_stage_select = stage_select.filter(Measurement.measurement_concept_id.in_(tnm_lookup.all_concepts))
 t_stage_select = get_overall_for_stage_type(tnm_lookup.t_stage_concepts)
 n_stage_select = get_overall_for_stage_type(tnm_lookup.n_stage_concepts)
 m_stage_select = get_overall_for_stage_type(tnm_lookup.m_stage_concepts)
@@ -65,7 +65,6 @@ class StageColumns:
     person_id = sa.Column(sa.Integer)
     stage_id = sa.Column(primary_key=True)
     stage_date = sa.Column(sa.Date)
-    stage_datetime = sa.Column(sa.DateTime)
     stage_concept_id = sa.Column(sa.Integer)
     stage_label = sa.Column(sa.String)
     modifier_of_event_id = sa.Column(sa.Integer)
@@ -91,6 +90,29 @@ class GroupStage(MaterializedViewMixin, StageColumns, Base):
     __mv_select__ = group_stage_select.select()
     __tablename__ = __mv_name__
 
+all_stage_select = stage_select.filter(Measurement.measurement_concept_id.in_(tnm_lookup.all_concepts)).subquery()
+
+condition_stage_select = (
+    sa.select(
+        Condition_Occurrence.condition_start_date, 
+        Condition_Occurrence.condition_occurrence_id,
+        Condition_Occurrence.condition_source_value,
+        Condition_Occurrence.condition_concept_id,
+        condition_concept.concept_name.label('condition_concept'),
+        Episode_Event.episode_id.label('condition_episode'),
+        *all_stage_select.c
+    )
+    .join(all_stage_select, all_stage_select.c.modifier_of_event_id==Condition_Occurrence.condition_occurrence_id)#, isouter=True)
+    .join(
+        Episode_Event, 
+        sa.and_(
+            Condition_Occurrence.condition_occurrence_id==Episode_Event.event_id,
+            Episode_Event.episode_event_field_concept_id==ModifierFields.condition_occurrence_id.value
+            )
+    )
+    .join(condition_concept, condition_concept.concept_id==Condition_Occurrence.condition_concept_id)
+)
+        
 class StageModifier(MaterializedViewMixin, StageColumns, Base):
     # this class contains all stage modifier records
     # no matter the sub-type, nor does it preference 
@@ -98,8 +120,14 @@ class StageModifier(MaterializedViewMixin, StageColumns, Base):
     # with the identifier to link to condition record
     # where present
     __mv_name__ = 'stage_modifier_mv'
-    __mv_select__ = all_stage_select.select()
+    __mv_select__ = condition_stage_select.select()
     __tablename__ = __mv_name__
+    condition_start_date = sa.Column(sa.Date)
+    condition_occurrence_id = sa.Column(sa.Integer)
+    condition_source_value = sa.Column(sa.String)
+    condition_concept_id = sa.Column(sa.Integer)
+    condition_concept = sa.Column(sa.String)
+    condition_episode = sa.Column(sa.Integer)
 
 
 def get_eav_modifier_query(modifier_concept_id, target_cols=[Measurement.value_as_concept_id], join_col=Measurement.value_as_concept_id):
@@ -111,6 +139,7 @@ def get_eav_modifier_query(modifier_concept_id, target_cols=[Measurement.value_a
             Measurement.measurement_id, 
             Measurement.measurement_date, 
             modifier_concept.concept_name,
+            modifier_concept.concept_id,
             *target_cols
         )
         .join(modifier_concept, modifier_concept.concept_id==join_col, isouter=True)
@@ -155,7 +184,8 @@ class MeasModCols:
     person_id = sa.Column(sa.Integer)
     measurement_id = sa.Column(primary_key=True)
     measurement_date = sa.Column(sa.Date)
-    concept_name = sa.Column(sa.Integer)
+    concept_name = sa.Column(sa.String)
+    concept_id = sa.Column(sa.Integer)
     modifier_of_event_id = sa.Column(sa.Integer)
     modifier_of_field_concept_id = sa.Column(sa.Integer)
     
@@ -177,6 +207,61 @@ class LatModifier(MaterializedViewMixin, MeasModCols, Base):
     __mv_select__ = laterality_select.select()
     __tablename__ = __mv_name__
     value_as_concept_id = sa.Column(sa.Integer)
+
+mets_select = (
+    sa.select(
+        sa.func.row_number().over().label('mv_id'),
+        Condition_Occurrence.person_id, 
+        Condition_Occurrence.condition_occurrence_id,
+        Condition_Occurrence.condition_start_date, 
+        Condition_Occurrence.condition_source_value,
+        Condition_Occurrence.condition_concept_id,
+        condition_concept.concept_name.label('condition_concept'),
+        Episode_Event.episode_id.label('condition_episode'),
+        Measurement.measurement_id.label('mets_id'),
+        Measurement.measurement_date.label('mets_date'),
+        Measurement.measurement_concept_id.label('mets_concept_id'),
+        Measurement.modifier_of_event_id,
+        Measurement.modifier_of_field_concept_id,
+        modifier_concept.concept_name.label('mets_label')
+    )
+    .join(
+        Measurement, 
+        sa.and_(
+            Measurement.modifier_of_event_id==Condition_Occurrence.condition_occurrence_id,
+            Measurement.modifier_of_field_concept_id==ModifierFields.condition_occurrence_id.value
+            )#, isouter=True)
+    )
+    .join(
+        Episode_Event, 
+        sa.and_(
+            Condition_Occurrence.condition_occurrence_id==Episode_Event.event_id,
+            Episode_Event.episode_event_field_concept_id==ModifierFields.condition_occurrence_id.value
+            )
+    )
+    .join(modifier_concept, modifier_concept.concept_id==Measurement.measurement_concept_id, isouter=True)
+    .join(condition_concept, condition_concept.concept_id==Condition_Occurrence.condition_concept_id)
+    .filter(Measurement.measurement_concept_id.in_(mets_lookup.all_concepts))
+)
+
+class MetsModifier(MaterializedViewMixin, Base):
+    __mv_pk__ = ["mv_id"]
+    __table_args__ = {"extend_existing": True}
+    __mv_name__ = 'mets_modifier_mv'
+    __mv_select__ = mets_select.select()
+    __tablename__ = __mv_name__
+    mv_id = sa.Column(primary_key=True)
+    person_id = sa.Column(sa.Integer)
+    condition_occurrence_id = sa.Column(sa.Integer)
+    condition_start_date = sa.Column(sa.Date)
+    condition_source_value = sa.Column(sa.String)
+    condition_concept_id = sa.Column(sa.Integer)
+    condition_concept = sa.Column(sa.String)
+    condition_episode = sa.Column(sa.Integer)
+    mets_id = sa.Column(sa.Integer)
+    mets_date = sa.Column(sa.Date)
+    mets_concept_id = sa.Column(sa.Integer)
+    mets_label = sa.Column(sa.String)
 
 
 modified_conditions_join = (
@@ -207,14 +292,17 @@ modified_conditions_join = (
     	GroupStage.stage_label.label('group_stage_label'),
         GradeModifier.measurement_id.label('grade_id'),
     	GradeModifier.measurement_date.label('grade_date'),
-    	GradeModifier.concept_name.label('grade_concept'),
+    	GradeModifier.concept_name.label('grade_label'),
+    	GradeModifier.concept_id.label('grade_concept_id'),
     	SizeModifier.measurement_id.label('size_id'),
     	SizeModifier.measurement_date.label('size_date'),
     	SizeModifier.value_as_number.label('size_value'),
-    	SizeModifier.concept_name.label('size_concept'),
+    	SizeModifier.concept_name.label('size_label'),
+    	SizeModifier.concept_id.label('size_concept_id'),
     	LatModifier.measurement_id.label('laterality_id'),
     	LatModifier.measurement_date.label('laterality_date'),
-    	LatModifier.concept_name.label('laterality_concept'),
+    	LatModifier.concept_name.label('laterality_label'),
+    	LatModifier.concept_id.label('laterality_concept_id'),
     )
     .join(
         Episode_Event, 
@@ -298,10 +386,6 @@ class ModifiedCondition(MaterializedViewMixin, Base):
     condition_concept_id = sa.Column(sa.Integer)
     condition_concept = sa.Column(sa.String)
     condition_episode = sa.Column(sa.Integer)
-    stage_id = sa.Column(sa.Integer)
-    stage_date = sa.Column(sa.Date)
-    stage_concept_id = sa.Column(sa.Integer)
-    stage_label = sa.Column(sa.String)
     grade_id = sa.Column(sa.Integer)
     grade_date = sa.Column(sa.Date)
     grade_concept_id = sa.Column(sa.Integer)
@@ -314,3 +398,19 @@ class ModifiedCondition(MaterializedViewMixin, Base):
     laterality_date = sa.Column(sa.Date)
     laterality_concept_id = sa.Column(sa.Integer)
     laterality_label = sa.Column(sa.String)
+    t_stage_id = sa.Column(sa.Integer)
+    t_stage_date = sa.Column(sa.Date)
+    t_stage_concept_id = sa.Column(sa.Integer)
+    t_stage_label = sa.Column(sa.String)
+    n_stage_id = sa.Column(sa.Integer)
+    n_stage_date = sa.Column(sa.Date)
+    n_stage_concept_id = sa.Column(sa.Integer)
+    n_stage_label = sa.Column(sa.String)
+    m_stage_id = sa.Column(sa.Integer)
+    m_stage_date = sa.Column(sa.Date)
+    m_stage_concept_id = sa.Column(sa.Integer)
+    m_stage_label = sa.Column(sa.String)
+    group_stage_id = sa.Column(sa.Integer)
+    group_stage_date = sa.Column(sa.Date)
+    group_stage_concept_id = sa.Column(sa.Integer)
+    group_stage_label = sa.Column(sa.String)

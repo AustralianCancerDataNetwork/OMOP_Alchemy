@@ -1,7 +1,7 @@
 from ....model.vocabulary import Concept
 from ....model.health_system import Provider, Location
 from ....model.clinical import Visit_Occurrence, Drug_Exposure, Procedure_Occurrence, Observation, Condition_Occurrence, Person
-from ...concept_enumerators import CancerConsultTypes, ProviderSpecialty
+from ...concept_enumerators import CancerConsultTypes, ProviderSpecialty, CancerObservations
 from ..mappers.timeline_mappers import dx_treatment_window
 from .episode_event_subqueries import radiation_therapy_start, systemic_therapy_start
 from .surgical_subqueries import surgical_procedure
@@ -37,7 +37,7 @@ first_specialist = (
         sa.func.min(oncologist_consults.observation_datetime).label('first_specialist_consult'),
         sa.func.max(oncologist_consults.observation_datetime).label('last_specialist_consult')
     )
-    .filter(oncologist_consults.observation_concept_id.in_([CancerConsultTypes.medonc.value, CancerConsultTypes.clinonc.value]))
+    .filter(oncologist_consults.observation_concept_id.in_([CancerObservations.medonc.value, CancerObservations.clinonc.value]))
     .group_by(oncologist_consults.person_id)
     .subquery(name='first_specialist')
 )
@@ -47,7 +47,7 @@ gp_referral = (
         oncologist_consults.person_id,
         sa.func.min(oncologist_consults.observation_datetime).label('initial_gp_referral')
     )
-    .filter(oncologist_consults.observation_concept_id.in_([CancerConsultTypes.oncology_referral.value]))
+    .filter(oncologist_consults.observation_concept_id.in_([CancerObservations.oncology_referral.value]))
     .group_by(oncologist_consults.person_id)
     .subquery(name='gp_referral')
 )
@@ -57,7 +57,7 @@ pall_care_referral = (
         oncologist_consults.person_id,
         sa.func.min(oncologist_consults.observation_datetime).label('first_pall_care_referral')
     )
-    .filter(oncologist_consults.observation_concept_id.in_([CancerConsultTypes.pall_care_referral.value]))
+    .filter(oncologist_consults.observation_concept_id.in_([CancerObservations.pall_care_referral.value]))
     .group_by(oncologist_consults.person_id,
     )
     .subquery(name='pall_care_referral')

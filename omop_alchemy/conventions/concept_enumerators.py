@@ -193,17 +193,6 @@ class DemographyConcepts(ConceptEnum):
     postcode = 4083591
 
 
-class GenomicValue(ConceptEnum):
-    positive = 9191
-    negative = 9189
-    equivocal = 4172976
-
-class CancerConsultTypes(ConceptEnum):
-    medonc = 4147722
-    clinonc = 4139715 # there is no suitable radonc code? only radiotherapist?
-    oncology_referral = 4084352
-    pall_care_referral = 4127745
-
 class ProviderSpecialty(ConceptEnum):
     radonc = 35621987
     medonc = 4151173
@@ -216,7 +205,6 @@ class ProviderSpecialty(ConceptEnum):
     gynaecologist = 17036
     radiation_therapist = 4143746
     medical_doctor = 4010577
-
 
 class WeightConcepts(ConceptEnum):
     weight = 4099154
@@ -232,3 +220,39 @@ class WeightUnits(ConceptEnum):
     inch = 9327
     m2 = 8617
 
+class EAVMeasurements(ConceptEnum):
+    weight = 4099154
+    ecog = 36305384
+    creatinine_clearance = 4275203
+    egfr = 37208635
+    body_weight = 4099154
+    weight_change = 607590
+    body_height = 4086522
+    bsa = 4201235
+    distress_thermometer = 601349
+    smoking_pyh = 4151768
+    fev1 = 3024653
+
+class GenomicMeasurements(ConceptEnum):
+    alk = 35963763
+    egfr = 35962802
+    ros1 = 35957723
+    braf = 35948173
+    ret = 35952943
+
+class GenomicValue(ConceptEnum):
+    positive = 9191
+    negative = 9189
+    equivocal = 4172976
+class CancerConsultTypes(ConceptEnum):
+    mdt_discussion = 44790273
+    care_coordination = 4295043
+
+
+class CancerObservations(ConceptEnum):
+    smoking_status = 43054909
+    pall_care_referral = 4127745
+    oncology_referral = 4084352
+    medonc = 4147722
+    clinonc = 4139715 # there is no suitable radonc code? only radiotherapist?
+    pet_scan = 4230986

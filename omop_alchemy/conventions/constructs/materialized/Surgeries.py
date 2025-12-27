@@ -75,7 +75,7 @@ historical_procedure = (
     sa.select(
         Observation.person_id,
         Observation.observation_id.label('surgery_occurrence_id'),
-        Observation.observation_concept_id.label('surgery_concept_id'),
+        Observation.value_as_concept_id.label('surgery_concept_id'),
         Observation.observation_datetime.label('surgery_datetime'),
         surg_obs_concept.concept_name.label('surgery_name'),
         surg_obs_concept.concept_code.label('surgery_concept_code'),
