@@ -1,10 +1,10 @@
-from datetime import datetime
-from typing import Optional
 import sqlalchemy as sa
 import sqlalchemy.orm as so
+from omop_alchemy.cdm.base import ReferenceTable, Base, cdm_table, CDMTableBase
 
-from ...db import Base
-
-class Concept_Synonym(Base):
-    __tablename__ = 'concept_synonym'
-    concept_synonym_id: so.Mapped[int] = so.mapped_column(index=True, unique=True, primary_key=True)
+@cdm_table
+class Concept_Synonym(Base, ReferenceTable, CDMTableBase):
+    __tablename__ = "concept_synonym"
+    concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey("concept.concept_id"),primary_key=True)
+    concept_synonym_name: so.Mapped[str] = so.mapped_column(sa.String(1000),primary_key=True)
+    language_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey("concept.concept_id"),nullable=False)

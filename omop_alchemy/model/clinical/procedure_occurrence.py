@@ -1,91 +1,135 @@
-from datetime import datetime, date
-from typing import Optional
+from __future__ import annotations
 import sqlalchemy as sa
 import sqlalchemy.orm as so
-from sqlalchemy.ext.hybrid import hybrid_property
+from typing import Optional, TYPE_CHECKING
+from datetime import date
+from omop_alchemy.cdm.base import (
+    Base,
+    cdm_table,
+    CDMTableBase,
+    optional_concept_fk,
+    required_concept_fk,
+    PersonScoped,
+    optional_int,
+    HealthSystemContext,
+    ReferenceContextMixin,
+    DomainValidationMixin,
+    ExpectedDomain,
+)
+if TYPE_CHECKING:
+    from ..vocabulary import Concept
+    from ..clinical import Person
+    from ..health_system import Provider, Visit_Occurrence, Visit_Detail
 
-from .modifiable_table import Modifiable_Table
-from ...db import Base
-from ...conventions.concept_enumerators import ModifierFields
+@cdm_table
+class ProcedureOccurrence(CDMTableBase, Base, PersonScoped, HealthSystemContext):
+    __tablename__ = "procedure_occurrence"
+    procedure_occurrence_id: so.Mapped[int] = so.mapped_column(primary_key=True)
+    procedure_concept_id: so.Mapped[int] = required_concept_fk()
+    procedure_date: so.Mapped[date] = so.mapped_column(sa.Date, nullable=False)
+    procedure_datetime: so.Mapped[Optional[date]] = so.mapped_column(sa.DateTime,nullable=True,)
+    procedure_end_date: so.Mapped[Optional[date]] = so.mapped_column(sa.Date,nullable=True,)
+    procedure_end_datetime: so.Mapped[Optional[date]] = so.mapped_column(sa.DateTime,nullable=True,)
+    procedure_type_concept_id: so.Mapped[int] = required_concept_fk()
+    modifier_concept_id: so.Mapped[Optional[int]] = optional_concept_fk()
+    quantity: so.Mapped[Optional[int]] = optional_int()
+    procedure_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50),nullable=True,)
+    procedure_source_concept_id: so.Mapped[Optional[int]] = optional_concept_fk()
 
-class Procedure_Occurrence(Modifiable_Table):
-    __tablename__ = 'procedure_occurrence'
-    # identifier
-    procedure_occurrence_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('modifiable_table.modifier_id', name='po_fk_1'), primary_key=True, autoincrement=True) 
+    modifier_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50),nullable=True,)
 
-    # temporal
-    procedure_date: so.Mapped[date] = so.mapped_column(sa.Date)
-    procedure_datetime: so.Mapped[Optional[datetime]] = so.mapped_column(sa.DateTime, nullable=True)
-    # strings
-    procedure_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50), nullable=True)
-    modifier_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50), nullable=True)
-    # numeric
-    quantity: so.Mapped[Optional[int]] = so.mapped_column(sa.Integer, nullable=True)
-    # fks
-    person_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('person.person_id', name='po_fk_2'))
-    provider_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('provider.provider_id', name='po_fk_3'), nullable=True)
-    visit_occurrence_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('visit_occurrence.visit_occurrence_id', name='po_fk_4'), nullable=True)
-    visit_detail_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('visit_detail.visit_detail_id', name='po_fk_5'), nullable=True)
-    # concept fks
-    procedure_type_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='po_fk_6'))
-    modifier_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='po_fk_7'), nullable=True)
-    procedure_concept_id: so.Mapped[int] = so.mapped_column(sa.BigInteger, sa.ForeignKey('concept.concept_id', name='po_fk_8'))
-    procedure_source_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.BigInteger, sa.ForeignKey('concept.concept_id', name='po_fk_9'), nullable=True)
-    # relationships
-    person: so.Mapped[Optional['Person']] = so.relationship(foreign_keys=[person_id])
-    provider: so.Mapped[Optional['Provider']] = so.relationship(foreign_keys=[provider_id])
-    visit_occurrence: so.Mapped[Optional['Visit_Occurrence']] = so.relationship(foreign_keys=[visit_occurrence_id])
-    visit_detail: so.Mapped[Optional['Visit_Detail']] = so.relationship(foreign_keys=[visit_detail_id])
-    # concept_relationships
-    procedure_type_concept: so.Mapped[Optional['Concept']] = so.relationship(foreign_keys=[procedure_type_concept_id])
-    modifier_concept: so.Mapped[Optional['Concept']] = so.relationship(foreign_keys=[modifier_concept_id])
-    procedure_concept: so.Mapped[Optional['Concept']] = so.relationship(foreign_keys=[procedure_concept_id])
-    procedure_source_concept: so.Mapped[Optional['Concept']] = so.relationship(foreign_keys=[procedure_source_concept_id])
-
-
-    def __init__(self, 
-                 person_id,
-                 procedure_date,
-                 procedure_type_concept_id,
-                 procedure_concept_id,
-                 procedure_datetime=None,
-                 procedure_source_value=None,
-                 modifier_source_value=None,
-                 quantity=None,
-                 provider_id=None,
-                 visit_occurrence_id=None,
-                 visit_detail_id=None,
-                 modifier_concept_id=None,
-                 procedure_source_concept_id=None,
-                 *args, 
-                 **kwargs):
-        super().__init__(person_id=person_id,
-                         procedure_date=procedure_date,
-                         procedure_datetime=procedure_datetime,
-                         procedure_source_value=procedure_source_value,
-                         modifier_source_value=modifier_source_value,
-                         quantity=quantity,
-                         provider_id=provider_id,
-                         visit_occurrence_id=visit_occurrence_id,
-                         visit_detail_id=visit_detail_id,
-                         procedure_type_concept_id=procedure_type_concept_id,
-                         modifier_concept_id=modifier_concept_id,
-                         procedure_concept_id=procedure_concept_id,
-                         modifier_of_field_concept_id = ModifierFields.procedure_occurrence_id.value,
-                         *args, **kwargs)
+    def __repr__(self) -> str:
+        return f"<ProcedureOccurrence {self.procedure_occurrence_id}>"
 
 
-    __mapper_args__ = {
-        "polymorphic_identity": "procedure",
-        'inherit_condition': (procedure_occurrence_id == Modifiable_Table.modifier_id)
+class ProcedureOccurrenceContext(ReferenceContextMixin):
+    person: so.Mapped["Person"] = ReferenceContextMixin._reference_relationship(
+        target="Person",
+        local_fk="person_id",
+        remote_pk="person_id",
+    )  # type: ignore[assignment]
+
+    procedure_concept: so.Mapped["Concept"] = ReferenceContextMixin._reference_relationship(
+        target="Concept",
+        local_fk="procedure_concept_id",
+        remote_pk="concept_id",
+    )  # type: ignore[assignment]
+
+    procedure_type_concept: so.Mapped["Concept"] = ReferenceContextMixin._reference_relationship(
+        target="Concept",
+        local_fk="procedure_type_concept_id",
+        remote_pk="concept_id",
+    )  # type: ignore[assignment]
+
+    modifier_concept: so.Mapped[Optional["Concept"]] = (
+        ReferenceContextMixin._reference_relationship(
+            target="Concept",
+            local_fk="modifier_concept_id",
+            remote_pk="concept_id",
+        )
+    )  # type: ignore[assignment]
+
+    provider: so.Mapped[Optional["Provider"]] = ReferenceContextMixin._reference_relationship(
+        target="Provider",
+        local_fk="provider_id",
+        remote_pk="provider_id",
+    )  # type: ignore[assignment]
+
+    visit_occurrence: so.Mapped[Optional["Visit_Occurrence"]] = (
+        ReferenceContextMixin._reference_relationship(
+            target="VisitOccurrence",
+            local_fk="visit_occurrence_id",
+            remote_pk="visit_occurrence_id",
+        )
+    )  # type: ignore[assignment]
+
+    visit_detail: so.Mapped[Optional["Visit_Detail"]] = (
+        ReferenceContextMixin._reference_relationship(
+            target="VisitDetail",
+            local_fk="visit_detail_id",
+            remote_pk="visit_detail_id",
+        )
+    )  # type: ignore[assignment]
+
+    procedure_source_concept: so.Mapped[Optional["Concept"]] = (
+        ReferenceContextMixin._reference_relationship(
+            target="Concept",
+            local_fk="procedure_source_concept_id",
+            remote_pk="concept_id",
+        )
+    )  # type: ignore[assignment]
+
+
+class ProcedureOccurrenceView(
+    ProcedureOccurrence,
+    ProcedureOccurrenceContext,
+    DomainValidationMixin,
+):
+    __tablename__ = "procedure_occurrence"
+    __mapper_args__ = {"concrete": False}
+
+    __expected_domains__ = {
+        "procedure_concept_id": ExpectedDomain("Procedure"),
+        "procedure_type_concept_id": ExpectedDomain("Type Concept"),
     }
 
-    @hybrid_property
-    def event_date(self):
-        return  self.procedure_datetime.date() if self.procedure_datetime is not None else self.procedure_date
+    @property
+    def start(self):
+        """Best-effort start datetime."""
+        return self.procedure_datetime or self.procedure_date
 
     @property
-    def proc_label(self):
-        if self.procedure_concept:
-            return self.procedure_concept.concept_name
-    
+    def end(self):
+        """Best-effort end datetime."""
+        return (
+            self.procedure_end_datetime
+            or self.procedure_end_date
+            or self.start
+        )
+
+    def __repr__(self) -> str:
+        return (
+            f"<ProcedureOccurrence {self.procedure_occurrence_id}: "
+            f"{self.procedure_concept_id} "
+            f"({self.procedure_date})>"
+        )

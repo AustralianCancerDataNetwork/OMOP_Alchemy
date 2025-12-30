@@ -1,29 +1,29 @@
-from typing import Optional
 import sqlalchemy as sa
 import sqlalchemy.orm as so
-from decimal import Decimal
-from ...db import Base
+from typing import Optional
 
-class Location(Base):
-    __tablename__ = 'location'
-    # identifier
-    location_id: so.Mapped[int] = so.mapped_column(primary_key=True, unique=True, autoincrement=True) 
-    # temporal
-    # strings
-    address_1: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50))
-    address_2: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50))
-    city: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50))
-    # todo: can we make this string length configurable? srsly states aren't always 2 chars guys
-    state: so.Mapped[Optional[str]] = so.mapped_column(sa.String(2))
-    zip_code: so.Mapped[Optional[str]] = so.mapped_column(sa.String(9)) # note column name change for python compatibility
-    county: so.Mapped[Optional[str]] = so.mapped_column(sa.String(20))
-    country: so.Mapped[Optional[str]] = so.mapped_column(sa.String(100))
-    location_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50))
-    # numeric
-    latitude: so.Mapped[Optional[Decimal]] = so.mapped_column(sa.Numeric)
-    longitude: so.Mapped[Optional[Decimal]] = so.mapped_column(sa.Numeric)
-    # fks
-    # concept fks
-    # relationships
-    # concept relationships
+from omop_alchemy.cdm.base import (
+    Base,
+    cdm_table,
+    CDMTableBase,
+    optional_concept_fk,
+)
 
+@cdm_table
+class Location(CDMTableBase, Base):
+    __tablename__ = "location"
+    location_id: so.Mapped[int] = so.mapped_column(primary_key=True)
+    address_1: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50), nullable=True)
+    address_2: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50), nullable=True)
+    city: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50), nullable=True)
+    state: so.Mapped[Optional[str]] = so.mapped_column(sa.String(2), nullable=True)
+    zip: so.Mapped[Optional[str]] = so.mapped_column(sa.String(9), nullable=True)
+    county: so.Mapped[Optional[str]] = so.mapped_column(sa.String(20), nullable=True)
+    location_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50), nullable=True)
+    country_concept_id: so.Mapped[Optional[int]] = optional_concept_fk(index=True)
+    country_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(80), nullable=True)
+    latitude: so.Mapped[Optional[float]] = so.mapped_column(sa.Float, nullable=True)
+    longitude: so.Mapped[Optional[float]] = so.mapped_column(sa.Float, nullable=True)
+
+    def __repr__(self) -> str:
+        return f"<Location {self.location_id}>"

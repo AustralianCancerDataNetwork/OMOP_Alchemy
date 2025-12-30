@@ -1,31 +1,106 @@
 import sqlalchemy as sa
 import sqlalchemy.orm as so
-from sqlalchemy.types import BigInteger
+from sqlalchemy.ext.declarative import declared_attr
+from typing import Optional, TYPE_CHECKING, List
 from datetime import date
-from typing import Optional, List
+if TYPE_CHECKING:
+    from .domain import Domain
+    from .vocabulary import Vocabulary
+    from .concept_class import Concept_Class
+    from .concept_ancestor import Concept_Ancestor
+    from .concept_relationship import Concept_Relationship
 
-from ...db import Base
+from omop_alchemy.cdm.base import ReferenceTable, Base, cdm_table, CDMTableBase, ReferenceContextMixin
 
-class Concept(Base): 
-    __tablename__ = 'concept'
-    concept_id: so.Mapped[int] = so.mapped_column(sa.BigInteger, index=True, unique=True, primary_key=True)
-    concept_name: so.Mapped[str] = so.mapped_column(sa.String(255))
-    concept_code: so.Mapped[str] = so.mapped_column(sa.String(50))
+@cdm_table
+class Concept(
+    ReferenceTable,
+    CDMTableBase,
+    Base
+):
+    __tablename__ = "concept"
+    concept_id: so.Mapped[int] = so.mapped_column(primary_key=True)
+    concept_name: so.Mapped[str] = so.mapped_column(sa.String(255), nullable=False)
+    domain_id: so.Mapped[str] = so.mapped_column(sa.ForeignKey("domain.domain_id"), nullable=False, index=True)
+    vocabulary_id: so.Mapped[str] = so.mapped_column(sa.ForeignKey("vocabulary.vocabulary_id"), nullable=False, index=True)
+    concept_class_id: so.Mapped[str] = so.mapped_column(sa.ForeignKey("concept_class.concept_class_id"), nullable=False, index=True)
+    standard_concept: so.Mapped[Optional[str]] = so.mapped_column(sa.String(1))
+    concept_code: so.Mapped[str] = so.mapped_column(sa.String(50), nullable=False)
+    valid_start_date: so.Mapped[date] = so.mapped_column(nullable=False)
+    valid_end_date: so.Mapped[date] = so.mapped_column(nullable=False)
+    invalid_reason: so.Mapped[Optional[str]] = so.mapped_column(sa.String(1))
 
-    domain_id: so.Mapped[str] = so.mapped_column(sa.String(20), sa.ForeignKey('domain.domain_id', name='c_fk_1'))
-    vocabulary_id: so.Mapped[str] = so.mapped_column(sa.String(20), sa.ForeignKey('vocabulary.vocabulary_id', name='c_fk_2'))
-    concept_class_id: so.Mapped[str] = so.mapped_column(sa.String(20), sa.ForeignKey('concept_class.concept_class_id', name='c_fk_3'))
+class ConceptContext(ReferenceContextMixin):
+    """
+    Navigational relationships for Concept.
+
+    This mixin defines read-only ORM relationships that resolve
+    foreign keys into reference tables and hierarchy navigation.
+    """
     
-    domain: so.Mapped['Domain'] = so.relationship('Domain', primaryjoin='Concept.domain_id==Domain.domain_id', post_update=True, cascade="all")
-    vocabulary: so.Mapped['Vocabulary'] = so.relationship('Vocabulary', primaryjoin='Concept.vocabulary_id==Vocabulary.vocabulary_id', post_update=True, cascade="all")#foreign_keys=[vocabulary_id], back_populates='vocabulary_concept')
-    concept_class: so.Mapped['Concept_Class'] = so.relationship('Concept_Class', primaryjoin='Concept.concept_class_id==Concept_Class.concept_class_id', post_update=True, cascade="all")#foreign_keys=[concept_class_id])
+    domain: so.Mapped["Domain"] = ReferenceContextMixin._reference_relationship(target="Domain",local_fk="domain_id",remote_pk="domain_id") # type: ignore[assignment]
+    vocabulary: so.Mapped["Vocabulary"] = ReferenceContextMixin._reference_relationship(target="Vocabulary",local_fk="vocabulary_id",remote_pk="vocabulary_id") # type: ignore[assignment]
+    concept_class: so.Mapped["Concept_Class"] = ReferenceContextMixin._reference_relationship(target="Concept_Class",local_fk="concept_class_id",remote_pk="concept_class_id") # type: ignore[assignment]
 
-    concept_relationships: so.Mapped[List['Concept_Relationship']] = so.relationship('Concept_Relationship', back_populates='concept_1', primaryjoin='Concept.concept_id==Concept_Relationship.concept_id_1')
+    @declared_attr
+    def outgoing_relationships(cls) -> so.Mapped[List["Concept_Relationship"]]:
+        return so.relationship(
+            "Concept_Relationship",
+            primaryjoin=f"{cls.__name__}.concept_id == Concept_Relationship.concept_id_1", # type: ignore
+            foreign_keys="Concept_Relationship.concept_id_1",
+            viewonly=True,
+            lazy="selectin",
+        )
 
-    standard_concept: so.Mapped[Optional[str]]  = so.mapped_column(sa.String(1), nullable=True)
-    valid_start_date: so.Mapped[date]  = so.mapped_column(sa.Date)
-    valid_end_date: so.Mapped[date]  = so.mapped_column(sa.Date)
-    invalid_reason: so.Mapped[Optional[str]]  = so.mapped_column(sa.String(1), nullable=True)
+    @declared_attr
+    def incoming_relationships(cls) -> so.Mapped[List["Concept_Relationship"]]:
+        return so.relationship(
+            "Concept_Relationship",
+            primaryjoin=f"{cls.__name__}.concept_id == Concept_Relationship.concept_id_2", # type: ignore
+            foreign_keys="Concept_Relationship.concept_id_2",
+            viewonly=True,
+            lazy="selectin",
+        )
 
-    def __repr__(self):
-        return f'<Concept {self.concept_id} - {self.concept_code} ({self.concept_name})>'
+    @declared_attr
+    def ancestors(cls) -> so.Mapped[List["Concept_Ancestor"]]:
+        return so.relationship(
+            "Concept_Ancestor",
+            primaryjoin=f"{cls.__name__}.concept_id == Concept_Ancestor.descendant_concept_id", # type: ignore
+            foreign_keys="Concept_Ancestor.descendant_concept_id",
+            viewonly=True,
+            lazy="selectin",
+        )
+
+    @declared_attr
+    def descendants(cls) -> so.Mapped[List["Concept_Ancestor"]]:
+        return so.relationship(
+            "Concept_Ancestor",
+            primaryjoin=f"{cls.__name__}.concept_id == Concept_Ancestor.ancestor_concept_id", # type: ignore
+            foreign_keys="Concept_Ancestor.ancestor_concept_id",
+            viewonly=True,
+            lazy="selectin",
+        )
+
+class ConceptView(Concept, ConceptContext):
+    """
+    Rich, navigable Concept mapping.
+
+    Use when:
+    - traversing vocabulary relationships
+    - exploring hierarchies
+    - semantic inspection
+
+    Avoid in tight loops or ETL paths.
+    """
+    __tablename__ = "concept"
+    __mapper_args__ = {"concrete": False}
+
+
+    @property
+    def is_standard(self) -> bool:
+        return self.standard_concept == "S"
+
+    @property
+    def is_valid(self) -> bool:
+        return self.invalid_reason is None

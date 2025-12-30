@@ -1,21 +1,16 @@
 import sqlalchemy as sa
 import sqlalchemy.orm as so
-from ...db import Base
+from omop_alchemy.cdm.base import ReferenceTable, Base, cdm_table, CDMTableBase
 
-
-class Relationship(Base): 
-    __tablename__ = 'relationship'
+@cdm_table
+class Relationship(Base, ReferenceTable, CDMTableBase):
+    __tablename__ = "relationship"
     relationship_id: so.Mapped[str] = so.mapped_column(sa.String(20), primary_key=True)
-    relationship_name: so.Mapped[str] = so.mapped_column(sa.String(255))
-    is_hierarchical: so.Mapped[str]  = so.mapped_column(sa.String(1))
-    defines_ancestry: so.Mapped[str]  = so.mapped_column(sa.String(1))
-    reverse_relationship_id: so.Mapped[str] = so.mapped_column(sa.ForeignKey('relationship.relationship_id', name='r_fk_2'))
-    relationship_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='r_fk_1'))
-
-    concept: so.Mapped['Concept'] = so.relationship('Concept', primaryjoin='Relationship.relationship_concept_id==Concept.concept_id')
-    reverse: so.Mapped['Relationship'] = so.relationship(foreign_keys=[reverse_relationship_id])
+    relationship_name: so.Mapped[str] = so.mapped_column(sa.String(255), nullable=False)
+    is_hierarchical: so.Mapped[str] = so.mapped_column(sa.String(1), nullable=False)
+    defines_ancestry: so.Mapped[str] = so.mapped_column(sa.String(1), nullable=False)
+    reverse_relationship_id: so.Mapped[str] = so.mapped_column(sa.ForeignKey("relationship.relationship_id"),nullable=False)
+    relationship_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey("concept.concept_id"),nullable=False,)
 
     def __repr__(self):
-        return f'<Relationship {self.relationship_id} - {self.relationship_name}>'
-    
-
+        return f"<Relationship {self.relationship_id}>"

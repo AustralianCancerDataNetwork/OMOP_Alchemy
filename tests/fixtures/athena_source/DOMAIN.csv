@@ -1,0 +1,12 @@
+domain_id	domain_name	domain_concept_id
+Condition	Condition	100
+Procedure	Procedure	200
+Drug	Drug	300
+Device	Device	400
+Measurement	Measurement	500
+Observation	Observation	600
+Episode	Episode	700
+Metadata	Metadata	800
+Type Concept	Type Concept	900
+Unit	Unit	1000
+Meas Value	Meas Value	1100

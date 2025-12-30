@@ -1,0 +1,43 @@
+concept_id	concept_name	domain_id	vocabulary_id	concept_class_id	standard_concept	concept_code	valid_start_date	valid_end_date	invalid_reason
+100	Condition	Metadata	OMOP	Metadata	S	OMOP_CONDITION	01-JAN-1970	31-DEC-2099	
+101	Lung cancer	Condition	SNOMED	Clinical Finding	S	SNOMED_LUNG_CA	01-JAN-2000	31-DEC-2099	
+200	Procedure	Metadata	OMOP	Metadata	S	OMOP_PROCEDURE	01-JAN-1970	31-DEC-2099	
+201	Chemotherapy administration	Procedure	SNOMED	Procedure	S	SNOMED_CHEMO	01-JAN-2000	31-DEC-2099	
+300	Drug	Metadata	OMOP	Metadata	S	OMOP_DRUG	01-JAN-1970	31-DEC-2099	
+301	Cisplatin	Drug	RxNorm	Drug	S	RXNORM_CISPLATIN	24-AUG-2017	31-DEC-2099	
+400	Device	Metadata	OMOP	Metadata	S	OMOP_DEVICE	01-JAN-1970	31-DEC-2099	
+401	Implanted venous port	Device	SNOMED	Device	S	SNOMED_PORT	01-JAN-2005	31-DEC-2099	
+500	Episode	Metadata	OMOP	Metadata	S	OMOP_EPISODE	01-JAN-2018	31-DEC-2099	
+501	Line of therapy	Episode	OMOP	Episode	S	EPISODE_LOT	01-JAN-2018	31-DEC-2099	
+600	Observation	Metadata	OMOP	Metadata	S	OMOP_OBSERVATION	01-JAN-1970	31-DEC-2099
+700	Episode	Metadata	OMOP	Metadata	S	OMOP_EPISODE	01-JAN-1970	31-DEC-2099
+800	Metadata	Metadata	OMOP	Metadata	S	OMOP_METADATA	01-JAN-1970	31-DEC-2099	
+801	NLP assertion	Metadata	OMOP	Metadata	S	METADATA_NLP	01-JAN-2020	31-DEC-2099	
+900	TypeConcept	Metadata	OMOP	Metadata	S	TYPE_EHR	01-JAN-1970	31-DEC-2099	
+901	NLP system	Type Concept	OMOP	Type Concept	S	TYPE_NLP	01-JAN-2020	31-DEC-2099	
+1000	milliliter	Unit	UCUM	Unit	S	mL	01-JAN-1970	31-DEC-2099	
+1100	Discharge summary	Meas Value	LOINC	Doc Kind	S	LOINC_DS	01-JAN-1995	31-DEC-2099	
+9000001	PROCEDURE_OCCURRENCE_ID	Metadata	OMOP	Metadata	S	CDM_PROC_ID	01-JAN-1970	31-DEC-2099	
+9000002	DEVICE_EXPOSURE_ID	Metadata	OMOP	Metadata	S	CDM_DEVICE_ID	01-JAN-1970	31-DEC-2099	
+9000003	NOTE_ID	Metadata	OMOP	Metadata	S	CDM_NOTE_ID	01-JAN-1970	31-DEC-2099	
+2000000001	SNOMED CT	Metadata	OMOP	Vocabulary	S	OMOP generated	01-JAN-1970	31-DEC-2099	
+2000000002	RxNorm	Metadata	OMOP	Vocabulary	S	OMOP generated	01-JAN-1970	31-DEC-2099	
+2000000003	LOINC	Metadata	OMOP	Vocabulary	S	OMOP generated	01-JAN-1970	31-DEC-2099	
+2000000004	OMOP Generated	Metadata	OMOP	Vocabulary	S	OMOP generated	01-JAN-1970	31-DEC-2099	
+2000000005	UCUM	Metadata	OMOP	Vocabulary	S	OMOP generated	01-JAN-1970	31-DEC-2099
+3000000001	Clinical Finding	Metadata	OMOP	Vocabulary	S	OMOP generated	01-JAN-1970	31-DEC-2099
+3000000002	Procedure	Metadata	OMOP	Vocabulary	S	OMOP generated	01-JAN-1970	31-DEC-2099
+3000000003	Drug	Metadata	OMOP	Vocabulary	S	OMOP generated	01-JAN-1970	31-DEC-2099
+3000000004	Device	Metadata	OMOP	Vocabulary	S	OMOP generated	01-JAN-1970	31-DEC-2099
+3000000005	Type Concept	Metadata	OMOP	Vocabulary	S	OMOP generated	01-JAN-1970	31-DEC-2099
+3000000006	Unit	Metadata	OMOP	Vocabulary	S	OMOP generated	01-JAN-1970	31-DEC-2099
+3000000007	Episode	Metadata	OMOP	Vocabulary	S	OMOP generated	01-JAN-1970	31-DEC-2099
+3000000008	Metadata	Metadata	OMOP	Vocabulary	S	OMOP generated	01-JAN-1970	31-DEC-2099
+3000000009	Doc Kind	Metadata	OMOP	Vocabulary	S	OMOP generated	01-JAN-1970	31-DEC-2099
+3000000010	Vocabulary	Metadata	OMOP	Vocabulary	S	OMOP generated	01-JAN-1970	31-DEC-2099
+4000000001	Has context	Metadata	OMOP	Vocabulary	S	OMOP generated	01-JAN-1970	31-DEC-2099
+4000000002	Context of	Metadata	OMOP	Vocabulary	S	OMOP generated	01-JAN-1970	31-DEC-2099
+4000000003	Uses drug	Metadata	OMOP	Vocabulary	S	OMOP generated	01-JAN-1970	31-DEC-2099
+4000000004	Used in	Metadata	OMOP	Vocabulary	S	OMOP generated	01-JAN-1970	31-DEC-2099
+4000000005	Drug used by	Metadata	OMOP	Vocabulary	S	OMOP generated	01-JAN-1970	31-DEC-2099
+4000000006	Uses device	Metadata	OMOP	Vocabulary	S	OMOP generated	01-JAN-1970	31-DEC-2099

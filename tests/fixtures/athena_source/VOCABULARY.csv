@@ -1,0 +1,6 @@
+vocabulary_id	vocabulary_name	vocabulary_reference	vocabulary_version	vocabulary_concept_id
+SNOMED	SNOMED CT	http://snomed.info	2024-01-01	2000000001
+RxNorm	RxNorm	http://www.nlm.nih.gov/research/umls/rxnorm	2024-01-01	2000000002
+LOINC	LOINC	http://loinc.org	2024-01-01	2000000003
+OMOP	OMOP Generated	http://ohdsi.org	2024-01-01	2000000004
+UCUM	UCUM	http://unitsofmeasure.org	2024-01-01	2000000005

@@ -1,0 +1,85 @@
+import sqlalchemy as sa
+import sqlalchemy.orm as so
+from typing import Optional, TYPE_CHECKING
+from datetime import date, datetime
+
+from omop_alchemy.cdm.base import (
+    Base,
+    PersonScoped, 
+    ReferenceContextMixin,
+    CDMTableBase,
+    cdm_table, 
+    required_concept_fk,
+    optional_concept_fk,
+    optional_int,
+    DomainValidationMixin,
+    ExpectedDomain,
+    HealthSystemContext
+)
+
+if TYPE_CHECKING:
+    from ..vocabulary import Concept
+    from ..clinical import Visit_Occurrence, Visit_Detail, Person
+    from ..health_system import Provider
+
+@cdm_table
+
+class Note_NLP(CDMTableBase, Base):
+    __tablename__ = "note_nlp"
+
+    note_nlp_id: so.Mapped[int] = so.mapped_column(primary_key=True)
+
+    note_id: so.Mapped[int] = so.mapped_column(
+        sa.ForeignKey("note.note_id"),
+        nullable=False,
+        index=True,
+    )
+
+    section_concept_id: so.Mapped[Optional[int]] = optional_concept_fk()
+
+    snippet: so.Mapped[Optional[str]] = so.mapped_column(
+        sa.String(250),
+        nullable=True,
+    )
+
+    offset: so.Mapped[Optional[str]] = so.mapped_column(
+        sa.String(50),
+        nullable=True,
+    )
+
+    lexical_variant: so.Mapped[str] = so.mapped_column(
+        sa.String(250),
+        nullable=False,
+    )
+
+    note_nlp_concept_id: so.Mapped[Optional[int]] = optional_concept_fk()
+    note_nlp_source_concept_id: so.Mapped[Optional[int]] = optional_concept_fk()
+
+    nlp_system: so.Mapped[Optional[str]] = so.mapped_column(
+        sa.String(250),
+        nullable=True,
+    )
+
+    nlp_date: so.Mapped[date] = so.mapped_column(sa.Date, nullable=False)
+    nlp_datetime: so.Mapped[Optional[date]] = so.mapped_column(
+        sa.DateTime,
+        nullable=True,
+    )
+
+    term_exists: so.Mapped[Optional[str]] = so.mapped_column(
+        sa.String(1),
+        nullable=True,
+    )
+
+    term_temporal: so.Mapped[Optional[str]] = so.mapped_column(
+        sa.String(50),
+        nullable=True,
+    )
+
+    term_modifiers: so.Mapped[Optional[str]] = so.mapped_column(
+        sa.String(2000),
+        nullable=True,
+    )
+
+    def __repr__(self) -> str:
+        return f"<NoteNLP {self.note_nlp_id}>"

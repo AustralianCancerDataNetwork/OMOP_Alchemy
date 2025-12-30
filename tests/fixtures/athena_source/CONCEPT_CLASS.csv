@@ -1,0 +1,11 @@
+concept_class_id	concept_class_name	concept_class_concept_id
+Clinical Finding	Clinical Finding	3000000001
+Procedure	Procedure	3000000002
+Drug	Product	3000000003
+Device	Device	3000000004
+Type Concept	Type Concept	3000000005
+Unit	Unit	3000000006
+Episode	Episode	3000000007
+Metadata	Metadata	3000000008
+Doc Kind	Doc Kind	3000000009
+Vocabulary	Vocabulary	3000000010

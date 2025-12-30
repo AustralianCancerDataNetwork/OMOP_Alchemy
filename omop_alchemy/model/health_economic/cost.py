@@ -1,0 +1,46 @@
+import sqlalchemy as sa
+import sqlalchemy.orm as so
+from typing import Optional
+from datetime import date
+from omop_alchemy.cdm.base import (
+    Base,
+    cdm_table,
+    CDMTableBase,
+    optional_concept_fk,
+    required_concept_fk,
+)
+
+@cdm_table
+class Cost(CDMTableBase, Base):
+    __tablename__ = "cost"
+
+    cost_id: so.Mapped[int] = so.mapped_column(primary_key=True)
+    cost_event_id: so.Mapped[int] = so.mapped_column(nullable=False)
+    cost_domain_id: so.Mapped[str] = so.mapped_column(sa.String(20), nullable=False)
+    cost_type_concept_id: so.Mapped[int] = required_concept_fk()
+
+    currency_concept_id: so.Mapped[Optional[int]] = optional_concept_fk()
+
+    total_charge: so.Mapped[Optional[float]] = so.mapped_column(nullable=True)
+    total_cost: so.Mapped[Optional[float]] = so.mapped_column(nullable=True)
+    total_paid: so.Mapped[Optional[float]] = so.mapped_column(nullable=True)
+
+    paid_by_payer: so.Mapped[Optional[float]] = so.mapped_column(nullable=True)
+    paid_by_patient: so.Mapped[Optional[float]] = so.mapped_column(nullable=True)
+    paid_patient_copay: so.Mapped[Optional[float]] = so.mapped_column(nullable=True)
+    paid_patient_coinsurance: so.Mapped[Optional[float]] = so.mapped_column(nullable=True)
+    paid_patient_deductible: so.Mapped[Optional[float]] = so.mapped_column(nullable=True)
+
+    paid_by_primary: so.Mapped[Optional[float]] = so.mapped_column(nullable=True)
+    paid_ingredient_cost: so.Mapped[Optional[float]] = so.mapped_column(nullable=True)
+    paid_dispensing_fee: so.Mapped[Optional[float]] = so.mapped_column(nullable=True)
+
+    payer_plan_period_id: so.Mapped[Optional[int]] = so.mapped_column(nullable=True)
+
+    amount_allowed: so.Mapped[Optional[float]] = so.mapped_column(nullable=True)
+
+    revenue_code_concept_id: so.Mapped[Optional[int]] = optional_concept_fk()
+    revenue_code_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50), nullable=True)
+
+    drg_concept_id: so.Mapped[Optional[int]] = optional_concept_fk()
+    drg_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(3), nullable=True)

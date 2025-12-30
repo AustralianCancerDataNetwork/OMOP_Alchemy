@@ -1,22 +1,19 @@
-# need to import at least these objects to make sure all tables are added to the metadata properly by the time we want to use them
-from .db import Base
+from .cdm.base import Base, create_db
 from .model.vocabulary import Concept
-from .model.health_system import Provider
-from .model.clinical import Person, Condition_Occurrence
-from .model.onco_ext import episode
-from .db.create_db import create_db 
+# from .model.health_system import Provider
+# from .model.clinical import Person, Condition_Occurrence
+# from .model.onco_ext import episode
+from .cdm.utils import get_logger
 
+# for table in [Person, Condition_Occurrence]:
+#     table.set_validators()
 
-# this script will create a new sqlite db file with the tables to reflect the specified objects in 
-# clinical and reference directories. needs to be made more friendly for re-create / update etc, but 
-# will do for now :)
-
-from oa_configurator import oa_config, logger
-create_db(Base, oa_config.engine)
-
-from .conventions import ConditionModifiers
-from .conventions.vocab_lookups import tnm_lookup, grading_lookup, mets_lookup, gender_lookup, race_lookup, ethnicity_lookup, VocabLookup
-
-
-for table in [Person, Condition_Occurrence]:
-    table.set_validators()
+__all__ = [
+    "Base",
+    "Concept",
+    # "Provider",
+    # "Person",
+    # "Condition_Occurrence",
+    "create_db",
+    "get_logger",
+]

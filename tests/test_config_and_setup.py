@@ -1,15 +1,15 @@
 import pytest
-from omop_alchemy.db import Config
+# from omop_alchemy.db import Config
 
-def test_config_create():
-    assert Config() is not None
+# def test_config_create():
+#     assert Config() is not None
 
-def test_config_contents():
-# TODO: figure out how to override config file to make sure we can reflect settings correctly
-    ...
+# def test_config_contents():
+# # TODO: figure out how to override config file to make sure we can reflect settings correctly
+#     ...
 
-def test_schema_creation():
-    ...
+# def test_schema_creation():
+#     ...
 
 
 # @pytest.fixture

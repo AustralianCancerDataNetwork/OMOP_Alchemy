@@ -1,0 +1,2 @@
+class CDMValidationError(RuntimeError):
+    pass

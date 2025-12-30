@@ -1,0 +1,81 @@
+import sqlalchemy as sa
+import sqlalchemy.orm as so
+from sqlalchemy.ext.declarative import declared_attr
+from typing import Optional, TYPE_CHECKING, List
+from datetime import date
+from sqlalchemy.ext.hybrid import hybrid_method
+from sqlalchemy.orm.exc import DetachedInstanceError
+
+from omop_alchemy.cdm.base import (
+    Base, 
+    cdm_table,
+    CDMTableBase, 
+    required_concept_fk,
+    optional_concept_fk,
+    PersonScoped,
+    optional_int,
+    ReferenceContextMixin,
+    DomainValidationMixin,
+    ExpectedDomain,
+)
+
+if TYPE_CHECKING:
+    from ..vocabulary import Concept
+    from ..clinical import Condition_Occurrence, Person
+
+@cdm_table
+class Episode(CDMTableBase, Base, PersonScoped):
+    __tablename__ = "episode"
+
+    episode_id: so.Mapped[int] = so.mapped_column(primary_key=True)
+    episode_parent_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey("episode.episode_id"),nullable=True,index=True)
+
+    episode_start_date: so.Mapped[date] = so.mapped_column(sa.Date, nullable=False)
+    episode_start_datetime: so.Mapped[Optional[date]] = so.mapped_column(sa.DateTime, nullable=True)
+    episode_end_date: so.Mapped[Optional[date]] = so.mapped_column(sa.Date, nullable=True)
+    episode_end_datetime: so.Mapped[Optional[date]] = so.mapped_column(sa.DateTime, nullable=True)
+
+    episode_number: so.Mapped[Optional[int]] = optional_int()
+    episode_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50), nullable=True)
+
+    episode_concept_id: so.Mapped[int] = required_concept_fk()
+    episode_object_concept_id: so.Mapped[int] = required_concept_fk()
+    episode_type_concept_id: so.Mapped[int] = required_concept_fk()
+    episode_source_concept_id: so.Mapped[Optional[int]] = optional_concept_fk()
+
+    def __repr__(self) -> str:
+        return f"<Episode {self.episode_id}>"
+    
+class EpisodeContext(ReferenceContextMixin):
+    person: so.Mapped["Person"] = ReferenceContextMixin._reference_relationship(target="Person",local_fk="person_id",remote_pk="person_id")  # type: ignore[assignment]
+    episode_concept: so.Mapped["Concept"] = ReferenceContextMixin._reference_relationship(target="Concept",local_fk="episode_concept_id",remote_pk="concept_id")  # type: ignore[assignment]
+    episode_object_concept: so.Mapped["Concept"] = ReferenceContextMixin._reference_relationship(target="Concept",local_fk="episode_object_concept_id",remote_pk="concept_id")  # type: ignore[assignment]
+    episode_type_concept: so.Mapped["Concept"] = ReferenceContextMixin._reference_relationship(target="Concept",local_fk="episode_type_concept_id",remote_pk="concept_id")  # type: ignore[assignment]
+    parent_episode: so.Mapped[Optional["Episode"]] = ReferenceContextMixin._reference_relationship(target="Episode",local_fk="episode_parent_id",remote_pk="episode_id")  # type: ignore[assignment]
+
+class EpisodeView(Episode, EpisodeContext, DomainValidationMixin):
+    """
+    Navigable Episode view.
+
+    Use for:
+    - disease phase modelling
+    - lines of therapy
+    - episode hierarchies
+    """
+
+    __tablename__ = "episode"
+    __mapper_args__ = {"concrete": False}
+
+    __expected_domains__ = {
+        "episode_concept_id": ExpectedDomain("Episode"),
+# todo: extend ExpectedDomain to support multiple domains
+#        "episode_object_concept_id": ExpectedDomain(["Condition", "Procedure", "Regimen"]),
+        "episode_type_concept_id": ExpectedDomain("Type Concept"),
+    }
+
+    def __repr__(self) -> str:
+        return (
+            f"<Episode {self.episode_id}: "
+            f"{self.episode_concept_id} "
+            f"({self.episode_start_date})>"
+        )

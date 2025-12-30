@@ -1,0 +1,7 @@
+ancestor_concept_id	descendant_concept_id	min_levels_of_separation	max_levels_of_separation
+100	101	1	1
+200	201	1	1
+300	301	1	1
+400	401	1	1
+500	501	1	1
+800	801	1	1

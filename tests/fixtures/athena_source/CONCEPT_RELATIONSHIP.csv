@@ -1,0 +1,4 @@
+concept_id_1	concept_id_2	relationship_id	valid_start_date	valid_end_date	invalid_reason
+501	201	Has context	2000-01-01	2099-12-31	
+201	301	Uses drug	2000-01-01	2099-12-31	
+401	201	Used in	2000-01-01	2099-12-31	

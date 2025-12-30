@@ -1,35 +1,31 @@
-from typing import Optional
 import sqlalchemy as sa
 import sqlalchemy.orm as so
+from typing import Optional
 
-from ...db import Base
+from omop_alchemy.cdm.base import (
+    Base,
+    cdm_table,
+    CDMTableBase,
+    optional_concept_fk,
+)
 
-class Provider(Base):
-    __tablename__ = 'provider'
-    # identifier
-    provider_id: so.Mapped[int] = so.mapped_column(primary_key=True, autoincrement=True) 
-    # temporal
-    # strings
-    provider_name: so.Mapped[Optional[str]] = so.mapped_column(sa.String(255))
-    npi: so.Mapped[Optional[str]] = so.mapped_column(sa.String(20))
-    dea: so.Mapped[Optional[str]] = so.mapped_column(sa.String(20))
-    provider_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50))
-    specialty_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50))
-    gender_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50))
-    # numeric
-    year_of_birth: so.Mapped[Optional[int]] = so.mapped_column(sa.Integer)
-    # fks
-    care_site_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('care_site.care_site_id', name='p_fk_1'))
-    # concept fks
-    gender_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='p_fk_2'))
-    specialty_source_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='p_fk_3'))
-    gender_source_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='p_fk_4'))
-    specialty_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('concept.concept_id', name='p_fk_5'))
-    # relationships
-    care_site: so.Mapped[Optional['Care_Site']] = so.relationship(foreign_keys=[care_site_id])
-    # concept relationships
-    gender_concept: so.Mapped[Optional['Concept']] = so.relationship(foreign_keys=[gender_concept_id])
-    specialty_source_concept: so.Mapped[Optional['Concept']] = so.relationship(foreign_keys=[specialty_source_concept_id])
-    gender_source_concept: so.Mapped[Optional['Concept']] = so.relationship(foreign_keys=[gender_source_concept_id])
-    specialty_concept: so.Mapped[Optional['Concept']] = so.relationship(foreign_keys=[specialty_concept_id])
+@cdm_table
+class Provider(CDMTableBase, Base):
+    __tablename__ = "provider"
 
+    provider_id: so.Mapped[int] = so.mapped_column(primary_key=True)
+    provider_name: so.Mapped[Optional[str]] = so.mapped_column(sa.String(255), nullable=True)
+    npi: so.Mapped[Optional[str]] = so.mapped_column(sa.String(20), nullable=True)
+    dea: so.Mapped[Optional[str]] = so.mapped_column(sa.String(20), nullable=True)
+    specialty_concept_id: so.Mapped[Optional[int]] = optional_concept_fk(index=True)
+    care_site_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey("care_site.care_site_id"),nullable=True,index=True,)
+    year_of_birth: so.Mapped[Optional[int]] = so.mapped_column(sa.Integer, nullable=True)
+    gender_concept_id: so.Mapped[Optional[int]] = optional_concept_fk(index=True)
+    provider_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50), nullable=True)
+    specialty_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50), nullable=True)
+    specialty_source_concept_id: so.Mapped[Optional[int]] = optional_concept_fk()
+    gender_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50), nullable=True)
+    gender_source_concept_id: so.Mapped[Optional[int]] = optional_concept_fk()
+
+    def __repr__(self) -> str:
+        return f"<Provider {self.provider_id}>"

@@ -1,0 +1,121 @@
+import sqlalchemy as sa
+import sqlalchemy.orm as so
+from typing import Optional, TYPE_CHECKING
+from datetime import date, datetime
+
+from omop_alchemy.cdm.base import (
+    Base,
+    PersonScoped, 
+    ReferenceContextMixin,
+    CDMTableBase,
+    cdm_table, 
+    required_concept_fk,
+    optional_concept_fk,
+    optional_int,
+    DomainValidationMixin,
+    ExpectedDomain,
+    HealthSystemContext
+)
+
+if TYPE_CHECKING:
+    from ..vocabulary import Concept
+    from ..clinical import Visit_Occurrence, Visit_Detail, Person
+    from ..health_system import Provider
+
+@cdm_table
+class Note(CDMTableBase, Base, PersonScoped, HealthSystemContext):
+    __tablename__ = "note"
+    note_id: so.Mapped[int] = so.mapped_column(primary_key=True)
+    note_date: so.Mapped[date] = so.mapped_column(sa.Date, nullable=False)
+    note_datetime: so.Mapped[Optional[datetime]] = so.mapped_column(sa.DateTime,nullable=True,)
+    note_type_concept_id: so.Mapped[int] = required_concept_fk()
+    note_class_concept_id: so.Mapped[int] = required_concept_fk()
+    note_title: so.Mapped[Optional[str]] = so.mapped_column(sa.String(250),nullable=True)
+    note_text: so.Mapped[str] = so.mapped_column(sa.Text,nullable=False,)
+    encoding_concept_id: so.Mapped[int] = required_concept_fk()
+    language_concept_id: so.Mapped[int] = required_concept_fk()
+    note_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50),nullable=True,)
+    note_event_id: so.Mapped[Optional[int]] = optional_int()
+    note_event_field_concept_id: so.Mapped[Optional[int]] = optional_concept_fk()
+
+    def __repr__(self) -> str:
+        return f"<Note {self.note_id}>"
+
+
+class NoteContext(ReferenceContextMixin):
+    person: so.Mapped["Person"] = ReferenceContextMixin._reference_relationship(
+        target="Person",
+        local_fk="person_id",
+        remote_pk="person_id",
+    )  # type: ignore[assignment]
+
+    note_type_concept: so.Mapped["Concept"] = ReferenceContextMixin._reference_relationship(
+        target="Concept",
+        local_fk="note_type_concept_id",
+        remote_pk="concept_id",
+    )  # type: ignore[assignment]
+
+    note_class_concept: so.Mapped["Concept"] = ReferenceContextMixin._reference_relationship(
+        target="Concept",
+        local_fk="note_class_concept_id",
+        remote_pk="concept_id",
+    )  # type: ignore[assignment]
+
+    encoding_concept: so.Mapped["Concept"] = ReferenceContextMixin._reference_relationship(
+        target="Concept",
+        local_fk="encoding_concept_id",
+        remote_pk="concept_id",
+    )  # type: ignore[assignment]
+
+    language_concept: so.Mapped["Concept"] = ReferenceContextMixin._reference_relationship(
+        target="Concept",
+        local_fk="language_concept_id",
+        remote_pk="concept_id",
+    )  # type: ignore[assignment]
+
+    provider: so.Mapped[Optional["Provider"]] = ReferenceContextMixin._reference_relationship(
+        target="Provider",
+        local_fk="provider_id",
+        remote_pk="provider_id",
+    )  # type: ignore[assignment]
+
+    visit_occurrence: so.Mapped[Optional["Visit_Occurrence"]] = (
+        ReferenceContextMixin._reference_relationship(
+            target="VisitOccurrence",
+            local_fk="visit_occurrence_id",
+            remote_pk="visit_occurrence_id",
+        )
+    )  # type: ignore[assignment]
+
+    visit_detail: so.Mapped[Optional["Visit_Detail"]] = (
+        ReferenceContextMixin._reference_relationship(
+            target="VisitDetail",
+            local_fk="visit_detail_id",
+            remote_pk="visit_detail_id",
+        )
+    )  # type: ignore[assignment]
+
+    note_event_field: so.Mapped[Optional["Concept"]] = (
+        ReferenceContextMixin._reference_relationship(
+            target="Concept",
+            local_fk="note_event_field_concept_id",
+            remote_pk="concept_id",
+        )
+    )  # type: ignore[assignment]
+
+class NoteView(Note, NoteContext, DomainValidationMixin):
+
+    __tablename__ = "note"
+    __mapper_args__ = {"concrete": False}
+
+    __expected_domains__ = {
+        "note_type_concept_id": ExpectedDomain("Type Concept"),
+        "note_class_concept_id": ExpectedDomain("Meas Value"),
+    }
+
+    @property
+    def recorded_at(self):
+        return self.note_datetime or self.note_date
+
+    def __repr__(self) -> str:
+        return f"<Note {self.note_id} ({self.note_date})>"

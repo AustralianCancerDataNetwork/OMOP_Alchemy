@@ -1,0 +1,7 @@
+relationship_id	relationship_name	is_hierarchical	defines_ancestry	reverse_relationship_id	relationship_concept_id
+Has context	Has context	0	0	Context of	4000000001
+Context of	Context of	0	0	Has context	4000000002
+Uses drug	Uses drug	0	0	Drug used by	4000000003
+Used in	Used in	0	0	Uses device	4000000004
+Drug used by	Drug used by	0	0	Uses drug	4000000005
+Uses device	Uses device	0	0	Used in	4000000006
