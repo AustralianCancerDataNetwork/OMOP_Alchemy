@@ -1,237 +1,4 @@
 concept_id	concept_name	domain_id	vocabulary_id	concept_class_id	standard_concept	concept_code	valid_start_date	valid_end_date	invalid_reason
-277	Group health plan	Sponsor	Sponsor	Sponsor	S	OMOP4822451	01-JAN-1970	31-DEC-2099	
-278	Small group (2-50 employees) health plan	Sponsor	Sponsor	Sponsor	S	OMOP4822450	01-JAN-1970	31-DEC-2099	
-275	Fully insured group health plan	Sponsor	Sponsor	Sponsor	S	OMOP4822453	01-JAN-1970	31-DEC-2099	
-279	Large group (more than 51 employees) health plan	Sponsor	Sponsor	Sponsor	S	OMOP4822449	01-JAN-1970	31-DEC-2099	
-276	Individual health plan	Sponsor	Sponsor	Sponsor	S	OMOP4822452	01-JAN-1970	31-DEC-2099	
-274	Self-insured group health plan	Sponsor	Sponsor	Sponsor	S	OMOP4822454	01-JAN-1970	31-DEC-2099	
-359	Termination by contract owner	Plan Stop Reason	Plan Stop Reason	Plan Stop Reason	S	OMOP4822336	01-JAN-1970	31-DEC-2099	
-358	Termination by person	Plan Stop Reason	Plan Stop Reason	Plan Stop Reason	S	OMOP4822337	01-JAN-1970	31-DEC-2099	
-357	Entitlement to Medicare	Plan Stop Reason	Plan Stop Reason	Plan Stop Reason	S	OMOP4822338	01-JAN-1970	31-DEC-2099	
-351	Divorce or legal separation of the spouse from covered employee	Plan Stop Reason	Plan Stop Reason	Plan Stop Reason	S	OMOP4822344	01-JAN-1970	31-DEC-2099	
-360	Termination by payer	Plan Stop Reason	Plan Stop Reason	Plan Stop Reason	S	OMOP4822335	01-JAN-1970	31-DEC-2099	
-355	Coverage under another plan	Plan Stop Reason	Plan Stop Reason	Plan Stop Reason	S	OMOP4822340	01-JAN-1970	31-DEC-2099	
-361	Termination by sponsor	Plan Stop Reason	Plan Stop Reason	Plan Stop Reason	S	OMOP4822334	01-JAN-1970	31-DEC-2099	
-354	Failure to pay premiums	Plan Stop Reason	Plan Stop Reason	Plan Stop Reason	S	OMOP4822341	01-JAN-1970	31-DEC-2099	
-349	Termination of employment	Plan Stop Reason	Plan Stop Reason	Plan Stop Reason	S	OMOP4822346	01-JAN-1970	31-DEC-2099	
-352	Death of covered employee	Plan Stop Reason	Plan Stop Reason	Plan Stop Reason	S	OMOP4822343	01-JAN-1970	31-DEC-2099	
-40549429	Ocular	Route	SNOMED	Qualifier Value	S	372472002	31-JUL-2002	31-DEC-2099	
-4171067	Intratesticular	Route	SNOMED	Qualifier Value	S	418947002	31-JAN-2006	31-DEC-2099	
-4302612	Intramuscular	Route	SNOMED	Qualifier Value	S	78421000	31-JAN-2002	31-DEC-2099	
-4157759	Intralymphatic	Route	SNOMED	Qualifier Value	S	372467006	31-JUL-2002	31-DEC-2099	
-37207461	Intracholangiopancreatic	Route	SNOMED	Qualifier Value	S	58761000052107	31-JUL-2019	31-DEC-2099	
-40487501	Digestive tract	Route	SNOMED	Qualifier Value	S	447964005	31-JUL-2011	31-DEC-2099	
-4167540	Enteral	Route	SNOMED	Qualifier Value	S	417985001	31-JAN-2006	31-DEC-2099	
-40488317	Intracerebral	Route	SNOMED	Qualifier Value	S	446540005	31-JAN-2011	31-DEC-2099	
-4169472	Tumor cavity	Route	SNOMED	Qualifier Value	S	419021003	31-JAN-2006	31-DEC-2099	
-4023156	Otic	Route	SNOMED	Qualifier Value	S	10547007	31-JAN-2002	31-DEC-2099	
-44818637	Paraguayan guaraní	Currency	Currency	Currency	S	PYG	01-JAN-1970	31-DEC-2099	
-44818633	Papua New Guinean kina	Currency	Currency	Currency	S	PGK	01-JAN-1970	31-DEC-2099	
-44818620	Mexican peso	Currency	Currency	Currency	S	MXN	01-JAN-1970	31-DEC-2099	
-44818682	European Monetary Unit (E.M.U.-6) (bond market unit)	Currency	Currency	Currency	S	XBB	01-JAN-1970	31-DEC-2099	
-44818556	Costa Rican colon	Currency	Currency	Currency	S	CRC	01-JAN-1970	31-DEC-2099	
-44818575	Gambian dalasi	Currency	Currency	Currency	S	GMD	01-JAN-1970	31-DEC-2099	
-44818590	Jamaican dollar	Currency	Currency	Currency	S	JMD	01-JAN-1970	31-DEC-2099	
-44818540	Brazilian real	Currency	Currency	Currency	S	BRL	01-JAN-1970	31-DEC-2099	
-44818631	Panamanian balboa	Currency	Currency	Currency	S	PAB	01-JAN-1970	31-DEC-2099	
-44818648	Singapore dollar	Currency	Currency	Currency	S	SGD	01-JAN-1970	31-DEC-2099	
-42571983	SET,INFUSION MINIMED #MMT-166	Device	VANDF	Device	S	4015363	01-JAN-1970	31-DEC-2099	
-21365006	Haddenham Veni class 2 (23-32mmHg) tights closed toe lymphoedema garment regular size VIII Black (Haddenham Healthcare Ltd) 1 device	Device	dm+d	AMPP	S	14877711000001100	01-JAN-1970	31-DEC-2099	
-36803644	Venoflex Micro class 2 (23-32mmHg) thigh length open toe with dotted silicone band lymphoedema garment normal size 2	Device	dm+d	AMP	S	36270111000001101	01-JAN-1970	31-DEC-2099	
-36950701	Emperor ileostomy bag with filter, standard	Device	dm+d	AMP	S	41529311000001100	01-JAN-1970	31-DEC-2099	
-40682891	Option hydrocolloid low profile soft convex colostomy bag with filter, plus LPSC47-0430K 47mm plateau, 30mm stoma Opaque (Oakmed Ltd) 20 device	Device	dm+d	AMPP	S	35236111000001103	01-JAN-1970	31-DEC-2099	
-21355700	Haddenham Star Cotton class 1 (18-21mmHg) below knee closed toe lymphoedema garment long size V Beige (Haddenham Healthcare Ltd) 2 device	Device	dm+d	AMPP	S	20625511000001106	01-JAN-1970	31-DEC-2099	
-21349277	VenoTrain Soft class 2 (23-32mmHg) below knee open toe lymphoedema garment normal long small	Device	dm+d	AMP	S	11900211000001100	01-JAN-1970	31-DEC-2099	
-45007781	octinoxate and titanium dioxide 31mg/mL / 50mg/mL TOPICAL EMULSION [perfection lumiere velvet smooth-effect makeup broad spectrum spf 15 sunscreen, 10 beige]	Device	NDC	Device	S	687452027	03-MAR-2014	31-DEC-2099	
-21404410	Urostomy bag with regular adhesive 7474 30.5cm bag, 51mm stoma Transparent (Hollister Ltd) 20 device	Device	dm+d	AMPP	S	6335611000001108	01-JAN-1970	31-DEC-2099	
-21470799	Moderma Flex urostomy bag	Device	dm+d	AMP	S	6377611000001104	01-JAN-1970	31-DEC-2099	
-38004515	Hospital	Visit	Medicare Specialty	Visit	S	A0	01-JAN-1970	31-DEC-2099	
-581476	Home Visit	Visit	Visit	Visit	S	OMOP4822459	01-JAN-1970	31-DEC-2099	
-38004284	Psychiatric Hospital	Visit	NUCC	Visit	S	283Q00000X	01-JAN-1970	31-DEC-2099	
-38004225	Ambulatory Genetics Clinic / Center	Visit	NUCC	Visit	S	261QG0250X	01-JAN-1970	31-DEC-2099	
-8966	Federally Qualified Health Center	Visit	CMS Place of Service	Visit	S	50	01-JAN-1970	31-DEC-2099	
-38004339	Clinic Pharmacy	Visit	NUCC	Visit	S	3336C0002X	01-JAN-1970	31-DEC-2099	
-38004333	Eye Bank	Visit	NUCC	Visit	S	332G00000X	01-JAN-1970	31-DEC-2099	
-38004258	Ambulatory Recovery Care Clinic / Center	Visit	NUCC	Visit	S	261QR0800X	01-JAN-1970	31-DEC-2099	
-44777714	Nursing episode	Visit	HES Specialty	Visit	S	950	01-JAN-1970	31-DEC-2099	
-38004249	Ambulatory Pain Clinic / Center	Visit	NUCC	Visit	S	261QP3300X	01-JAN-1970	31-DEC-2099	
-2817015	Medical and Surgical @ Lymphatic and Hemic Systems @ Drainage @ Lymphatic, Aortic @ Percutaneous Endoscopic @ Drainage Device	Procedure	ICD10PCS	ICD10PCS Hierarchy	S	079D40	01-JAN-1970	31-DEC-2099	
-2816418	Medical and Surgical @ Hepatobiliary System and Pancreas @ Revision @ Pancreatic Duct @ Via Natural or Artificial Opening Endoscopic @ Infusion Device	Procedure	ICD10PCS	ICD10PCS Hierarchy	S	0FWD83	01-JAN-1970	31-DEC-2099	
-2736088	Drainage of Left Axillary Vein with Drainage Device, Open Approach	Procedure	ICD10PCS	ICD10PCS	S	059800Z	22-APR-2014	31-DEC-2099	
-2743354	Drainage of Right Lower Lung Lobe, Percutaneous Endoscopic Approach	Procedure	ICD10PCS	ICD10PCS	S	0B9F4ZZ	22-APR-2014	31-DEC-2099	
-2896606	Medical and Surgical @ Respiratory System @ Inspection @ Lung, Left @ Percutaneous Endoscopic @ No Device	Procedure	ICD10PCS	ICD10PCS Hierarchy	S	0BJL4Z	01-JAN-1970	31-DEC-2099	
-43019047	Medical and Surgical @ Lower Arteries @ Dilation @ Inferior Mesenteric Artery @ Open @ Intraluminal Device, Drug-eluting, Two	Procedure	ICD10PCS	ICD10PCS Hierarchy	S	047B05	01-JAN-1970	31-DEC-2099	
-4322325	Excision of lesion of anus, extensive	Procedure	SNOMED	Procedure	S	70355002	31-JAN-2002	31-DEC-2099	
-2870175	Medical and Surgical @ Hepatobiliary System and Pancreas @ Insertion @ Liver, Left Lobe @ Percutaneous	Procedure	ICD10PCS	ICD10PCS Hierarchy	S	0FH23	01-JAN-1970	31-DEC-2099	
-2880343	Medical and Surgical @ Upper Veins @ Insertion @ Innominate Vein, Right @ Percutaneous @ Infusion Device	Procedure	ICD10PCS	ICD10PCS Hierarchy	S	05H333	01-JAN-1970	31-DEC-2099	
-2768236	Revision of Nonautologous Tissue Substitute in Right Toe Phalanx, Open Approach	Procedure	ICD10PCS	ICD10PCS	S	0QWQ0KZ	22-APR-2014	31-DEC-2099	
-1988690	Peak sensory nerve conduction latency [Time] Left ulnar nerve	Measurement	LOINC	Clinical Observation	S	98629-9	16-FEB-2022	31-DEC-2099	
-19485245	USP44 transcript: Deletion in position 2050 to 2051 measurement	Measurement	OMOP Genomic	Gene RNA Variant	S	OMOP5394698	26-FEB-2024	31-DEC-2099	
-19538269	DDR2 protein: Substitution in position 610 of L replaced by P measurement	Measurement	OMOP Genomic	Gene Protein Variant	S	OMOP5449426	26-FEB-2024	31-DEC-2099	
-19609214	PTCH1 protein: Substitution in position 947 of W replaced by an early stop codon measurement	Measurement	OMOP Genomic	Gene Protein Variant	S	OMOP5522333	26-FEB-2024	31-DEC-2099	
-19574137	CDKN2C transcript: Substitution in position 76 of C replaced by T measurement	Measurement	OMOP Genomic	Gene RNA Variant	S	OMOP5486226	26-FEB-2024	31-DEC-2099	
-19555149	TRIM33 protein: Frameshift substitution in position 964 of R replaced by G followed by a new reading frame extending for 15 amino acids measurement	Measurement	OMOP Genomic	Gene Protein Variant	S	OMOP5466814	26-FEB-2024	31-DEC-2099	
-36742490	MSH2 on GRCh38 chr2: Substitution in position 47429776 of G replaced by A measurement	Measurement	OMOP Genomic	Gene DNA Variant	S	OMOP5090228	26-FEB-2024	31-DEC-2099	
-19585182	PHF6 on GRCh38 chrX: Insertion in position 134378045 to 134378046 of GGCC measurement	Measurement	OMOP Genomic	Gene DNA Variant	S	OMOP5497600	26-FEB-2024	31-DEC-2099	
-19492575	VHL on GRCh38 chr3: Substitution in position 10142107 of T replaced by A measurement	Measurement	OMOP Genomic	Gene DNA Variant	S	OMOP5402276	26-FEB-2024	31-DEC-2099	
-35948185	C17orf58 (chromosome 17 open reading frame 58) gene variant measurement	Measurement	OMOP Genomic	Genetic Variation	S	27568	15-DEC-2005	31-DEC-2099	
-4177438	Chol language	Language	SNOMED	Qualifier Value	S	297773009	31-JAN-2002	31-DEC-2099	
-4175751	Arawak language	Language	SNOMED	Qualifier Value	S	297394005	31-JAN-2002	31-DEC-2099	
-4182515	Polish language	Language	SNOMED	Qualifier Value	S	297523008	31-JAN-2002	31-DEC-2099	
-4183935	Tung language	Language	SNOMED	Qualifier Value	S	297892000	31-JAN-2002	31-DEC-2099	
-45767267	Colombian sign language	Language	SNOMED	Qualifier Value	S	704625008	31-JAN-2015	31-DEC-2099	
-4181732	Mari language	Language	SNOMED	Qualifier Value	S	297919009	31-JAN-2002	31-DEC-2099	
-1075778	Anuak language	Language	SNOMED	Qualifier Value	S	1332074008	01-MAY-2024	31-DEC-2099	
-4182941	Koryak language	Language	SNOMED	Qualifier Value	S	297847007	31-JAN-2002	31-DEC-2099	
-4181725	Nung language	Language	SNOMED	Qualifier Value	S	297888007	31-JAN-2002	31-DEC-2099	
-4182347	World languages	Language	SNOMED	Qualifier Value	S	297289008	31-JAN-2002	31-DEC-2099	
-4135520	Foraminal	Observation	SNOMED	Qualifier Value	S	263759007	31-JAN-2002	31-DEC-2099	
-42576579	Gallirallus pacificus	Observation	SNOMED Veterinary	Organism	S	106801000009100	16-MAR-2009	31-DEC-2099	
-4038186	Anal penetration using tongue	Observation	SNOMED	Clinical Finding	S	229020000	31-JAN-2002	31-DEC-2099	
-4288289	Toxicodendron radicans ssp. radicans	Observation	SNOMED	Organism	S	69725001	31-JAN-2002	31-DEC-2099	
-42591076	Aimophila ruficeps suttoni	Observation	SNOMED Veterinary	Organism	S	257571000009102	27-APR-2009	31-DEC-2099	
-4257756	Thiothrix nivea	Observation	SNOMED	Organism	S	441349009	31-JAN-2009	31-DEC-2099	
-4225231	Problem identified with patient consent	Observation	SNOMED	Clinical Finding	S	405494009	31-JAN-2004	31-DEC-2099	
-40768601	Aspects of your life [HCL-32]	Observation	LOINC	Clinical Observation	S	65916-9	18-MAY-2011	31-DEC-2099	
-42690649	Able to clean own room	Observation	SNOMED	Clinical Finding	S	1076261000000104	01-APR-2017	31-DEC-2099	
-42869297	I worry that my treatment dose will be reduced, because of low blood counts, in the past 7 days [FACIT]	Observation	LOINC	Survey	S	70829-7	08-MAR-2012	31-DEC-2099	
-41961335	Saint-Urbain	Geography	OSM	8th level	S	446205	01-JAN-1970	31-DEC-2099	
-41922016	巴山镇	Geography	OSM	8th level	S	5684225	01-JAN-1970	31-DEC-2099	
-41955108	Polliat	Geography	OSM	8th level	S	139614	01-JAN-1970	31-DEC-2099	
-42031211	Ovanåkers kommun	Geography	OSM	7th level	S	368254	01-JAN-1970	31-DEC-2099	
-41966309	Villers-Saint-Martin	Geography	OSM	8th level	S	1375040	01-JAN-1970	31-DEC-2099	
-41931539	Alligny-Cosne	Geography	OSM	8th level	S	156801	01-JAN-1970	31-DEC-2099	
-42001457	Paglieta	Geography	OSM	8th level	S	41798	01-JAN-1970	31-DEC-2099	
-41931408	Alairac	Geography	OSM	8th level	S	1984380	01-JAN-1970	31-DEC-2099	
-41928267	段店北路街道	Geography	OSM	8th level	S	9049290	01-JAN-1970	31-DEC-2099	
-41967475	Bologne	Geography	OSM	9th level	S	6870350	01-JAN-1970	31-DEC-2099	
-32939	Cancer Surgery	Episode	Episode	Treatment	S	OMOP4997711	01-JAN-1970	31-DEC-2099	
-32943	Invasive Disease	Episode	Episode	Disease Extent	S	OMOP4997715	01-JAN-1970	31-DEC-2099	
-32942	Confined Disease	Episode	Episode	Disease Extent	S	OMOP4997714	01-JAN-1970	31-DEC-2099	
-32531	Treatment Regimen	Episode	Episode	Treatment	S	OMOP4822256	01-JAN-1970	31-DEC-2099	
-32946	Complete Remission	Episode	Episode	Disease Dynamic	S	OMOP4997718	01-JAN-1970	31-DEC-2099	
-32940	Cancer Radiotherapy	Episode	Episode	Treatment	S	OMOP4997712	01-JAN-1970	31-DEC-2099	
-32532	Treatment Cycle	Episode	Episode	Treatment	S	OMOP4822255	01-JAN-1970	31-DEC-2099	
-32948	Stable Disease	Episode	Episode	Disease Dynamic	S	OMOP4997720	01-JAN-1970	31-DEC-2099	
-32533	Disease Episode	Episode	Episode	Episode of Care	S	OMOP4822254	01-JAN-1970	31-DEC-2099	
-32949	Progression	Episode	Episode	Disease Dynamic	S	OMOP4997721	01-JAN-1970	31-DEC-2099	
-36559333	B lymphoblastic leukemia/lymphoma with hypodiploidy (Hypodiploid ALL) of cervical esophagus	Condition	ICDO3	ICDO Condition	S	9816/3-C15.0	18-SEP-2015	31-DEC-2099	
-4082830	Injection of exposed bulbar conjunctiva	Condition	SNOMED	Clinical Finding	S	278021008	31-JAN-2002	31-DEC-2099	
-45757644	Chronic coccidioidomycotic pneumonia	Condition	SNOMED	Disorder	S	28791000119105	31-JUL-2014	31-DEC-2099	
-4218900	Herpesvirus saimiri infection	Condition	SNOMED	Disorder	S	82128000	31-JAN-2002	31-DEC-2099	
-36556910	Myeloid sarcoma of overlapping lesion of accessory sinuses	Condition	ICDO3	ICDO Condition	S	9930/3-C31.8	18-SEP-2015	31-DEC-2099	
-604729	Agenesis of calcaneus	Condition	SNOMED	Disorder	S	1003571002	31-JAN-2021	31-DEC-2099	
-46272924	Normal morphology of thoracoabdominal organ	Condition	SNOMED	Clinical Finding	S	711376006	31-JUL-2015	31-DEC-2099	
-4301661	Follicular mucinosis type mycosis fungoides	Condition	SNOMED	Disorder	S	404109006	31-JUL-2003	31-DEC-2099	
-42512602	Myofibroblastic sarcoma of maxillary sinus	Condition	ICDO3	ICDO Condition	S	8825/3-C31.0	18-SEP-2015	31-DEC-2099	
-4242680	Carcinoma in situ of broad ligament	Condition	SNOMED	Disorder	S	92551005	31-JAN-2002	31-DEC-2099	
-21491259	Crisis intervention note	Note	LOINC	Clinical Observation	S	78709-3	24-JUN-2016	31-DEC-2099	
-3964643	Chiropody Outpatient Note	Note	LOINC	Clinical Observation	S	101054-5	15-AUG-2023	31-DEC-2099	
-40771299	Pediatric dermatology History and physical note	Note	LOINC	Clinical Observation	S	68731-9	29-SEP-2011	31-DEC-2099	
-42528157	Infectious disease Group counseling note	Note	LOINC	Clinical Observation	S	84167-6	21-FEB-2017	31-DEC-2099	
-42528469	Occupational therapy Outpatient Note	Note	LOINC	Clinical Observation	S	84400-1	21-FEB-2017	31-DEC-2099	
-1175486	Sleep medicine Outpatient Note	Note	LOINC	Clinical Observation	S	90711-3	14-DEC-2018	31-DEC-2099	
-40771211	Allergy and Immunology Hospital Letter	Note	LOINC	Clinical Observation	S	68634-5	29-SEP-2011	31-DEC-2099	
-1175962	Gynecology Telehealth Note	Note	LOINC	Clinical Observation	S	89897-3	14-DEC-2018	31-DEC-2099	
-40771322	Pediatric hematology-oncology Hospital Consult note	Note	LOINC	Clinical Observation	S	68757-4	29-SEP-2011	31-DEC-2099	
-42527536	Surgery Resident Admission evaluation note	Note	LOINC	Clinical Observation	S	83778-1	21-FEB-2017	31-DEC-2099	
-35920192	Regional lymph node(s), NOS|Lymph node(s), NOS	Meas Value	NAACCR	NAACCR Value	S	urethra_prostatic@774@800	01-JAN-1970	31-DEC-2099	
-4096183	Nyanza	Meas Value	SNOMED	Qualifier Value	S	262460008	31-JAN-2002	31-DEC-2099	
-45882255	Abdomen	Meas Value	LOINC	Answer	S	LA12706-0	01-JAN-1970	31-DEC-2099	
-35932761	Localized, NOS	Meas Value	NAACCR	NAACCR Value	S	lip_lower@2810@300	01-JAN-1970	31-DEC-2099	
-45882168	Medically unstable and inappropriate for screen	Meas Value	LOINC	Answer	S	LA19824-4	01-JAN-1970	31-DEC-2099	
-45883899	Breath sounds-normal-left	Meas Value	LOINC	Answer	S	LA17227-2	01-JAN-1970	31-DEC-2099	
-35935677	Stated as T4a with no other information on extension	Meas Value	NAACCR	NAACCR Value	S	melanoma_nasopharynx@2810@725	01-JAN-1970	31-DEC-2099	
-35935422	Grade cannot be assessed (GX); Unknown	Meas Value	NAACCR	NAACCR Value	S	kaposi_sarcoma@3843@9	01-JAN-1970	31-DEC-2099	
-45878109	Port access only	Meas Value	LOINC	Answer	S	LA18901-1	01-JAN-1970	31-DEC-2099	
-21499420	Resuscitation	Meas Value	LOINC	Answer	S	LA21538-6	01-JAN-1970	31-DEC-2099	
-41382137	20 ML Achillea millefolium extract 660 MG/ML / Benzocaine 5 MG/ML / Matricaria chamomilla flowering top oil 30 MG/ML / Salvia officinalis whole extract 30 MG/ML Oral Solution	Drug	RxNorm Extension	Quant Clinical Drug	S	OMOP2580099	24-AUG-2017	31-DEC-2099	
-21093738	ferrous sulfate 325 MG Extended Release Oral Tablet [Ferrograd]	Drug	RxNorm Extension	Branded Drug	S	OMOP399569	24-AUG-2017	31-DEC-2099	
-21091187	Amoxicillin 500 MG Oral Capsule [Respillin] Box of 21 by Kent	Drug	RxNorm Extension	Marketed Product	S	OMOP354843	24-AUG-2017	31-DEC-2099	
-19103024	chorionic gonadotropin 500 UNT/ML	Drug	RxNorm	Clinical Drug Comp	S	405755	01-JAN-1970	31-DEC-2099	
-40829793	salmon calcitonin 100 UNT/ML [Calcitonin Stada]	Drug	RxNorm Extension	Branded Drug Comp	S	OMOP2027755	24-AUG-2017	31-DEC-2099	
-21032087	vinorelbine 20 MG	Drug	RxNorm Extension	Clinical Drug Comp	S	OMOP350911	24-AUG-2017	31-DEC-2099	
-41137437	Causticum preparation 6 X Oral Tablet Box of 1 by Archea-Pharma	Drug	RxNorm Extension	Marketed Product	S	OMOP2335399	24-AUG-2017	31-DEC-2099	
-43622717	oxcarbazepine 600 MG [Oxcarbazepin Stada]	Drug	RxNorm Extension	Branded Drug Comp	S	OMOP669655	24-AUG-2017	31-DEC-2099	
-19100300	phosphorus 3.33 MG/ML	Drug	RxNorm	Clinical Drug Comp	S	360998	01-JAN-1970	31-DEC-2099	
-43291169	Influenza Virus Vaccine, Live Attenuated, A-California-7-2009 (H1N1) strain 0.03 MG/ML Injection [Panvax Hn] Box of 50	Drug	RxNorm Extension	Branded Drug Box	S	OMOP557959	24-AUG-2017	31-DEC-2099	
-271	Dental only plan	Plan	Plan	Benefit	S	OMOP4822325	01-JAN-1970	31-DEC-2099	
-270	Medical only plan	Plan	Plan	Benefit	S	OMOP4822326	01-JAN-1970	31-DEC-2099	
-269	Minimal Benefit (Medical and Drug) plan	Plan	Plan	Benefit	S	OMOP4822327	01-JAN-1970	31-DEC-2099	
-264	Silver Health Plan with 70% actuarial plan value	Plan	Plan	Metal level	S	OMOP4822332	01-JAN-1970	31-DEC-2099	
-272	Vision only plan	Plan	Plan	Benefit	S	OMOP4822324	01-JAN-1970	31-DEC-2099	
-267	Catastrophic Health Plan with <60% actuarial plan value	Plan	Plan	Metal level	S	OMOP4822329	01-JAN-1970	31-DEC-2099	
-273	Drug only plan	Plan	Plan	Benefit	S	OMOP4822323	01-JAN-1970	31-DEC-2099	
-266	Platinum Health Plan with 90% actuarial plan value	Plan	Plan	Metal level	S	OMOP4822330	01-JAN-1970	31-DEC-2099	
-263	Bronze Health Plan with 60% actuarial plan value	Plan	Plan	Metal level	S	OMOP4822333	01-JAN-1970	31-DEC-2099	
-265	Gold Health Plan with 80% actuarial plan value	Plan	Plan	Metal level	S	OMOP4822331	01-JAN-1970	31-DEC-2099	
-46270289	Urine specimen obtained from pediatric urine collection bag	Specimen	SNOMED	Specimen	S	16221371000119107	31-JUL-2015	31-DEC-2099	
-46270188	Endocervical polyp specimen	Specimen	SNOMED	Specimen	S	16210931000119105	31-JUL-2015	31-DEC-2099	
-4120214	Placental membrane tissue specimen	Specimen	SNOMED	Specimen	S	258426009	31-JAN-2002	31-DEC-2099	
-42606041	Tissue specimen from omasum	Specimen	SNOMED Veterinary	Specimen	S	711000009105	31-OCT-2011	31-DEC-2099	
-4202971	Lip biopsy specimen	Specimen	SNOMED	Specimen	S	309483002	31-JAN-2002	31-DEC-2099	
-4120342	Lymph node smear	Specimen	SNOMED	Specimen	S	258488008	31-JAN-2002	31-DEC-2099	
-42535895	Specimen from mass of mediastinal lymph node	Specimen	SNOMED	Specimen	S	734421006	31-JAN-2018	31-DEC-2099	
-4120335	Drainage fluid specimen	Specimen	SNOMED	Specimen	S	258455001	31-JAN-2002	31-DEC-2099	
-954579	Pooled oral fluid specimen from sampling rope	Specimen	SNOMED Veterinary	Specimen	S	364601000009102	06-MAY-2023	31-DEC-2099	
-4134447	Specimen from testis	Specimen	SNOMED	Specimen	S	128154006	31-JAN-2002	31-DEC-2099	
-1146969	concept_relationship.valid_start_date	Metadata	CDM	Field	S	CDM25	11-NOV-2014	31-DEC-2099	
-1147603	payer_plan_period.plan_source_value	Metadata	CDM	Field	S	CDM653	03-JAN-2018	31-DEC-2099	
-1147705	drug_exposure.drug_exposure_end_date	Metadata	CDM	Field	S	CDM752	11-OCT-2018	31-DEC-2099	
-1147728	measurement.measurement_datetime	Metadata	CDM	Field	S	CDM775	11-OCT-2018	31-DEC-2099	
-1147572	measurement.unit_concept_id	Metadata	CDM	Field	S	CDM622	03-JAN-2018	31-DEC-2099	
-1147335	location	Metadata	CDM	Table	S	CDM391	11-NOV-2014	31-DEC-2099	
-1146998	drug_strength.numerator_value	Metadata	CDM	Field	S	CDM54	11-NOV-2014	31-DEC-2099	
-1147714	fact_relationship.fact_id_2	Metadata	CDM	Field	S	CDM761	11-OCT-2018	31-DEC-2099	
-1147500	drug_exposure.dose_unit_source_value	Metadata	CDM	Field	S	CDM551	17-AUG-2017	31-DEC-2099	
-1147084	procedure_occurrence.procedure_concept_id	Metadata	CDM	Field	S	CDM140	11-NOV-2014	31-DEC-2099	
-378	Military Treatment Facility	Payer	SOPT	Payer	S	312	01-JAN-1970	31-DEC-2099	
-381	Military Treatment Facility - TRICARE For Life (TFL)	Payer	SOPT	Payer	S	3123	01-JAN-1970	31-DEC-2099	
-347	Worker's Compensation Health Management Organization (HMO)	Payer	SOPT	Payer	S	951	01-JAN-1970	31-DEC-2099	
-306	Indian Health Service (IHS) Program	Payer	SOPT	Payer	S	33	01-JAN-1970	31-DEC-2099	
-437	No Charge	Payer	SOPT	Payer	S	82	01-JAN-1970	31-DEC-2099	
-286	Medicare Fee for Service (FFS)	Payer	SOPT	Payer	S	121	01-JAN-1970	31-DEC-2099	
-312	State Government Program	Payer	SOPT	Payer	S	36	01-JAN-1970	31-DEC-2099	
-375	Department of Defense	Payer	SOPT	Payer	S	31	01-JAN-1970	31-DEC-2099	
-325	Department of Corrections	Payer	SOPT	Payer	S	4	01-JAN-1970	31-DEC-2099	
-287	Medicare Non-managed Care - Other	Payer	SOPT	Payer	S	129	01-JAN-1970	31-DEC-2099	
-38003677	Pediatric Dentistry	Provider	NUCC	Physician Specialty	S	1223P0221X	01-JAN-1970	31-DEC-2099	
-38003798	Research Data Abstracter / Coder	Provider	NUCC	Provider	S	1744R1103X	01-JAN-1970	31-DEC-2099	
-38004038	Art Therapist	Provider	NUCC	Provider	S	221700000X	01-JAN-1970	31-DEC-2099	
-43125860	Behavioral Neurology and Neuropsychiatry	Provider	NUCC	Physician Specialty	S	2084B0040X	01-JAN-2013	31-DEC-2099	
-38004436	Home Health Aide	Provider	NUCC	Provider	S	374U00000X	01-JAN-1970	31-DEC-2099	
-38003756	Registered First Assistant Nurse	Provider	NUCC	Provider	S	163WR0006X	01-JAN-1970	31-DEC-2099	
-38003818	Oncology Pharmacist	Provider	NUCC	Provider	S	1835X0200X	01-JAN-1970	31-DEC-2099	
-38004492	Occupational Therapy	Provider	Medicare Specialty	Provider	S	67	01-JAN-1970	31-DEC-2099	
-38004058	Physical Neurology Therapist	Provider	NUCC	Provider	S	2251N0400X	01-JAN-1970	31-DEC-2099	
-38004053	Physical Ergonomics Therapist	Provider	NUCC	Provider	S	2251E1200X	01-JAN-1970	31-DEC-2099	
-4329646	Inequality symbol -	Meas Value Operator	SNOMED	Qualifier Value	S	431878004	31-JUL-2008	31-DEC-2099	
-4171755	>=	Meas Value Operator	SNOMED	Qualifier Value	S	276138003	31-JAN-2002	31-DEC-2099	
-4171754	<=	Meas Value Operator	SNOMED	Qualifier Value	S	276137008	31-JAN-2002	31-DEC-2099	
-4172703	=	Meas Value Operator	SNOMED	Qualifier Value	S	276136004	31-JAN-2002	31-DEC-2099	
-4172704	>	Meas Value Operator	SNOMED	Qualifier Value	S	276140008	31-JAN-2002	31-DEC-2099	
-4171756	<	Meas Value Operator	SNOMED	Qualifier Value	S	276139006	31-JAN-2002	31-DEC-2099	
-4172702	Mathematical sign	Meas Value Operator	SNOMED	Qualifier Value	S	276135000	31-JAN-2002	31-DEC-2099	
-8842	nanogram per milliliter	Unit	UCUM	Unit	S	ng/mL	01-JAN-1970	31-DEC-2099	
-44777609	milligram per gram wet weight	Unit	UCUM	Unit	S	mg/g{wet'wt}	01-JAN-1970	31-DEC-2099	
-710232	milliwatt	Unit	UCUM	Unit	S	mW	06-MAY-2022	31-DEC-2099	
-9372	ounce (apothecary)	Unit	UCUM	Unit	S	[oz_ap]	01-JAN-1970	31-DEC-2099	
-9596	milliunit per milligram	Unit	UCUM	Unit	S	10*-3.[U]/mg	01-JAN-1970	31-DEC-2099	
-720844	gram per 72 hour	Unit	UCUM	Unit	S	g/(72.h)	07-APR-2022	31-DEC-2099	
-9272	velocity of light	Unit	UCUM	Unit	S	[c]	01-JAN-1970	31-DEC-2099	
-44777521	per second	Unit	UCUM	Canonical Unit	S	s-1	01-JAN-1970	31-DEC-2099	
-9418	US pharmacopeia unit	Unit	UCUM	Unit	S	[USP'U]	01-JAN-1970	31-DEC-2099	
-45891038	kilobecquerel per milliliter	Unit	UCUM	Unit	S	kBq/mL	01-JAN-1970	31-DEC-2099	
-38003597	Madagascar	Race	Race	Race	S	2.24	01-JAN-1970	31-DEC-2099	
-38003604	Dominica Islander	Race	Race	Race	S	3.07	01-JAN-1970	31-DEC-2099	
-38003609	West Indian	Race	Race	Race	S	3.12	01-JAN-1970	31-DEC-2099	
-38003607	Tobagoan	Race	Race	Race	S	3.10	01-JAN-1970	31-DEC-2099	
-8657	American Indian or Alaska Native	Race	Race	Race	S	1	01-JAN-1970	31-DEC-2099	
-38003572	American Indian	Race	Race	Race	S	1.01	01-JAN-1970	31-DEC-2099	
-38003615	Middle Eastern or North African	Race	Race	Race	S	5.02	01-JAN-1970	31-DEC-2099	
-38003598	Black	Race	Race	Race	S	3.01	01-JAN-1970	31-DEC-2099	
-8527	White	Race	Race	Race	S	5	01-JAN-1970	31-DEC-2099	
-38003600	African	Race	Race	Race	S	3.03	01-JAN-1970	31-DEC-2099	
 4006069	Structure of zygomatic nerve	Spec Anatomic Site	SNOMED	Body Structure	S	10141003	31-JAN-2002	31-DEC-2099	
 37152439	Bone structure of T13	Spec Anatomic Site	SNOMED	Body Structure	S	1186892002	30-NOV-2021	31-DEC-2099	
 37118706	Entire surface of uterine cervix	Spec Anatomic Site	SNOMED	Body Structure	S	728490004	31-JUL-2017	31-DEC-2099	
@@ -242,16 +9,16 @@ concept_id	concept_name	domain_id	vocabulary_id	concept_class_id	standard_concep
 37113361	Entire outlet of male urinary bladder	Spec Anatomic Site	SNOMED	Body Structure	S	729005004	31-JUL-2017	31-DEC-2099	
 4290244	Structure of right branch of hepatic artery	Spec Anatomic Site	SNOMED	Body Structure	S	69421009	31-JAN-2002	31-DEC-2099	
 4112227	Micropinocytosis vermiformis channel	Spec Anatomic Site	SNOMED	Body Structure	S	18208007	31-JAN-2002	31-DEC-2099	
-4165917	Has reason	Relationship	SNOMED	Linkage Assertion	S	416083004	31-JUL-2005	31-DEC-2099	
-4311970	Single father	Relationship	SNOMED	Social Context	S	85683001	31-JAN-2002	31-DEC-2099	
-4214926	Has support	Relationship	SNOMED	Linkage Assertion	S	417569004	31-JUL-2005	31-DEC-2099	
-46233680	Patient moved to	Relationship	Relationship	Relationship	S	OMOP5217062	01-JAN-1970	31-DEC-2099	
-4147842	Stepfather	Relationship	SNOMED	Social Context	S	30578000	31-JAN-2002	31-DEC-2099	
-4129070	Single mother	Relationship	SNOMED	Social Context	S	12629003	31-JAN-2002	31-DEC-2099	
-4101245	Sister	Relationship	SNOMED	Social Context	S	27733009	31-JAN-2002	31-DEC-2099	
-4278823	Daughter	Relationship	SNOMED	Social Context	S	66089001	31-JAN-2002	31-DEC-2099	
-4232326	Youngest son	Relationship	SNOMED	Social Context	S	89681006	31-JAN-2002	31-DEC-2099	
-4335805	Male child	Relationship	SNOMED	Social Context	S	433152004	31-JUL-2008	31-DEC-2099	
+46270289	Urine specimen obtained from pediatric urine collection bag	Specimen	SNOMED	Specimen	S	16221371000119107	31-JUL-2015	31-DEC-2099	
+46270188	Endocervical polyp specimen	Specimen	SNOMED	Specimen	S	16210931000119105	31-JUL-2015	31-DEC-2099	
+4120214	Placental membrane tissue specimen	Specimen	SNOMED	Specimen	S	258426009	31-JAN-2002	31-DEC-2099	
+42606041	Tissue specimen from omasum	Specimen	SNOMED Veterinary	Specimen	S	711000009105	31-OCT-2011	31-DEC-2099	
+4202971	Lip biopsy specimen	Specimen	SNOMED	Specimen	S	309483002	31-JAN-2002	31-DEC-2099	
+4120342	Lymph node smear	Specimen	SNOMED	Specimen	S	258488008	31-JAN-2002	31-DEC-2099	
+42535895	Specimen from mass of mediastinal lymph node	Specimen	SNOMED	Specimen	S	734421006	31-JAN-2018	31-DEC-2099	
+4120335	Drainage fluid specimen	Specimen	SNOMED	Specimen	S	258455001	31-JAN-2002	31-DEC-2099	
+954579	Pooled oral fluid specimen from sampling rope	Specimen	SNOMED Veterinary	Specimen	S	364601000009102	06-MAY-2023	31-DEC-2099	
+4134447	Specimen from testis	Specimen	SNOMED	Specimen	S	128154006	31-JAN-2002	31-DEC-2099	
 32909	Secondary discharge diagnosis	Condition Status	Condition Status	Condition Status	S	OMOP4976979	20-AUG-2020	31-DEC-2099	
 32906	Resolved condition	Condition Status	Condition Status	Condition Status	S	OMOP4976976	20-AUG-2020	31-DEC-2099	
 32893	Confirmed diagnosis	Condition Status	Condition Status	Condition Status	S	OMOP4976963	20-AUG-2020	31-DEC-2099	
@@ -264,18 +31,66 @@ concept_id	concept_name	domain_id	vocabulary_id	concept_class_id	standard_concep
 32907	Secondary admission diagnosis	Condition Status	Condition Status	Condition Status	S	OMOP4976977	20-AUG-2020	31-DEC-2099	
 8532	FEMALE	Gender	Gender	Gender	S	F	01-JAN-1970	31-DEC-2099	
 8507	MALE	Gender	Gender	Gender	S	M	01-JAN-1970	31-DEC-2099	
-38003080	Room & Board Ward (Medical or General) - Other	Revenue Code	Revenue Code	Revenue Code	S	0159	01-JAN-1970	31-DEC-2099	
-38003265	Pulmonary Function - Other	Revenue Code	Revenue Code	Revenue Code	S	0469	01-JAN-1970	31-DEC-2099	
-38003160	Medical/Surgical Supplies and Devices - Intraocular Lens	Revenue Code	Revenue Code	Revenue Code	S	0276	01-JAN-1970	31-DEC-2099	
-38003125	Special Charges - Other Special Charges	Revenue Code	Revenue Code	Revenue Code	S	0229	01-JAN-1970	31-DEC-2099	
-38003500	Other Therapeutic Services - Alcohol Rehabilitation	Revenue Code	Revenue Code	Revenue Code	S	0945	01-JAN-1970	31-DEC-2099	
-38003368	Hospice Service - Continuous Home Care	Revenue Code	Revenue Code	Revenue Code	S	0652	01-JAN-1970	31-DEC-2099	
-38003534	Patient Convenience Items - Cafeteria/Guest Tray	Revenue Code	Revenue Code	Revenue Code	S	0991	01-JAN-1970	31-DEC-2099	
-38003065	Private (Deluxe) - Psychiatric	Revenue Code	Revenue Code	Revenue Code	S	0144	01-JAN-1970	31-DEC-2099	
-38003498	Other Therapeutic Services - Cardiac Rehabilitation	Revenue Code	Revenue Code	Revenue Code	S	0943	01-JAN-1970	31-DEC-2099	
-38003108	Intensive Care - Pediatric	Revenue Code	Revenue Code	Revenue Code	S	0203	01-JAN-1970	31-DEC-2099	
-38003563	Hispanic or Latino	Ethnicity	Ethnicity	Ethnicity	S	Hispanic	01-JAN-1970	31-DEC-2099	
-38003564	Not Hispanic or Latino	Ethnicity	Ethnicity	Ethnicity	S	Not Hispanic	01-JAN-1970	31-DEC-2099	
+1988690	Peak sensory nerve conduction latency [Time] Left ulnar nerve	Measurement	LOINC	Clinical Observation	S	98629-9	16-FEB-2022	31-DEC-2099	
+19485245	USP44 transcript: Deletion in position 2050 to 2051 measurement	Measurement	OMOP Genomic	Gene RNA Variant	S	OMOP5394698	26-FEB-2024	31-DEC-2099	
+19538269	DDR2 protein: Substitution in position 610 of L replaced by P measurement	Measurement	OMOP Genomic	Gene Protein Variant	S	OMOP5449426	26-FEB-2024	31-DEC-2099	
+19609214	PTCH1 protein: Substitution in position 947 of W replaced by an early stop codon measurement	Measurement	OMOP Genomic	Gene Protein Variant	S	OMOP5522333	26-FEB-2024	31-DEC-2099	
+19574137	CDKN2C transcript: Substitution in position 76 of C replaced by T measurement	Measurement	OMOP Genomic	Gene RNA Variant	S	OMOP5486226	26-FEB-2024	31-DEC-2099	
+19555149	TRIM33 protein: Frameshift substitution in position 964 of R replaced by G followed by a new reading frame extending for 15 amino acids measurement	Measurement	OMOP Genomic	Gene Protein Variant	S	OMOP5466814	26-FEB-2024	31-DEC-2099	
+36742490	MSH2 on GRCh38 chr2: Substitution in position 47429776 of G replaced by A measurement	Measurement	OMOP Genomic	Gene DNA Variant	S	OMOP5090228	26-FEB-2024	31-DEC-2099	
+19585182	PHF6 on GRCh38 chrX: Insertion in position 134378045 to 134378046 of GGCC measurement	Measurement	OMOP Genomic	Gene DNA Variant	S	OMOP5497600	26-FEB-2024	31-DEC-2099	
+19492575	VHL on GRCh38 chr3: Substitution in position 10142107 of T replaced by A measurement	Measurement	OMOP Genomic	Gene DNA Variant	S	OMOP5402276	26-FEB-2024	31-DEC-2099	
+35948185	C17orf58 (chromosome 17 open reading frame 58) gene variant measurement	Measurement	OMOP Genomic	Genetic Variation	S	27568	15-DEC-2005	31-DEC-2099	
+41382137	20 ML Achillea millefolium extract 660 MG/ML / Benzocaine 5 MG/ML / Matricaria chamomilla flowering top oil 30 MG/ML / Salvia officinalis whole extract 30 MG/ML Oral Solution	Drug	RxNorm Extension	Quant Clinical Drug	S	OMOP2580099	24-AUG-2017	31-DEC-2099	
+21093738	ferrous sulfate 325 MG Extended Release Oral Tablet [Ferrograd]	Drug	RxNorm Extension	Branded Drug	S	OMOP399569	24-AUG-2017	31-DEC-2099	
+21091187	Amoxicillin 500 MG Oral Capsule [Respillin] Box of 21 by Kent	Drug	RxNorm Extension	Marketed Product	S	OMOP354843	24-AUG-2017	31-DEC-2099	
+19103024	chorionic gonadotropin 500 UNT/ML	Drug	RxNorm	Clinical Drug Comp	S	405755	01-JAN-1970	31-DEC-2099	
+40829793	salmon calcitonin 100 UNT/ML [Calcitonin Stada]	Drug	RxNorm Extension	Branded Drug Comp	S	OMOP2027755	24-AUG-2017	31-DEC-2099	
+21032087	vinorelbine 20 MG	Drug	RxNorm Extension	Clinical Drug Comp	S	OMOP350911	24-AUG-2017	31-DEC-2099	
+41137437	Causticum preparation 6 X Oral Tablet Box of 1 by Archea-Pharma	Drug	RxNorm Extension	Marketed Product	S	OMOP2335399	24-AUG-2017	31-DEC-2099	
+43622717	oxcarbazepine 600 MG [Oxcarbazepin Stada]	Drug	RxNorm Extension	Branded Drug Comp	S	OMOP669655	24-AUG-2017	31-DEC-2099	
+19100300	phosphorus 3.33 MG/ML	Drug	RxNorm	Clinical Drug Comp	S	360998	01-JAN-1970	31-DEC-2099	
+43291169	Influenza Virus Vaccine, Live Attenuated, A-California-7-2009 (H1N1) strain 0.03 MG/ML Injection [Panvax Hn] Box of 50	Drug	RxNorm Extension	Branded Drug Box	S	OMOP557959	24-AUG-2017	31-DEC-2099	
+41961335	Saint-Urbain	Geography	OSM	8th level	S	446205	01-JAN-1970	31-DEC-2099	
+41922016	巴山镇	Geography	OSM	8th level	S	5684225	01-JAN-1970	31-DEC-2099	
+41955108	Polliat	Geography	OSM	8th level	S	139614	01-JAN-1970	31-DEC-2099	
+42031211	Ovanåkers kommun	Geography	OSM	7th level	S	368254	01-JAN-1970	31-DEC-2099	
+41966309	Villers-Saint-Martin	Geography	OSM	8th level	S	1375040	01-JAN-1970	31-DEC-2099	
+41931539	Alligny-Cosne	Geography	OSM	8th level	S	156801	01-JAN-1970	31-DEC-2099	
+42001457	Paglieta	Geography	OSM	8th level	S	41798	01-JAN-1970	31-DEC-2099	
+41931408	Alairac	Geography	OSM	8th level	S	1984380	01-JAN-1970	31-DEC-2099	
+41928267	段店北路街道	Geography	OSM	8th level	S	9049290	01-JAN-1970	31-DEC-2099	
+41967475	Bologne	Geography	OSM	9th level	S	6870350	01-JAN-1970	31-DEC-2099	
+4177438	Chol language	Language	SNOMED	Qualifier Value	S	297773009	31-JAN-2002	31-DEC-2099	
+4175751	Arawak language	Language	SNOMED	Qualifier Value	S	297394005	31-JAN-2002	31-DEC-2099	
+4182515	Polish language	Language	SNOMED	Qualifier Value	S	297523008	31-JAN-2002	31-DEC-2099	
+4183935	Tung language	Language	SNOMED	Qualifier Value	S	297892000	31-JAN-2002	31-DEC-2099	
+45767267	Colombian sign language	Language	SNOMED	Qualifier Value	S	704625008	31-JAN-2015	31-DEC-2099	
+4181732	Mari language	Language	SNOMED	Qualifier Value	S	297919009	31-JAN-2002	31-DEC-2099	
+1075778	Anuak language	Language	SNOMED	Qualifier Value	S	1332074008	01-MAY-2024	31-DEC-2099	
+4182941	Koryak language	Language	SNOMED	Qualifier Value	S	297847007	31-JAN-2002	31-DEC-2099	
+4181725	Nung language	Language	SNOMED	Qualifier Value	S	297888007	31-JAN-2002	31-DEC-2099	
+4182347	World languages	Language	SNOMED	Qualifier Value	S	297289008	31-JAN-2002	31-DEC-2099	
+359	Termination by contract owner	Plan Stop Reason	Plan Stop Reason	Plan Stop Reason	S	OMOP4822336	01-JAN-1970	31-DEC-2099	
+358	Termination by person	Plan Stop Reason	Plan Stop Reason	Plan Stop Reason	S	OMOP4822337	01-JAN-1970	31-DEC-2099	
+357	Entitlement to Medicare	Plan Stop Reason	Plan Stop Reason	Plan Stop Reason	S	OMOP4822338	01-JAN-1970	31-DEC-2099	
+351	Divorce or legal separation of the spouse from covered employee	Plan Stop Reason	Plan Stop Reason	Plan Stop Reason	S	OMOP4822344	01-JAN-1970	31-DEC-2099	
+360	Termination by payer	Plan Stop Reason	Plan Stop Reason	Plan Stop Reason	S	OMOP4822335	01-JAN-1970	31-DEC-2099	
+355	Coverage under another plan	Plan Stop Reason	Plan Stop Reason	Plan Stop Reason	S	OMOP4822340	01-JAN-1970	31-DEC-2099	
+361	Termination by sponsor	Plan Stop Reason	Plan Stop Reason	Plan Stop Reason	S	OMOP4822334	01-JAN-1970	31-DEC-2099	
+354	Failure to pay premiums	Plan Stop Reason	Plan Stop Reason	Plan Stop Reason	S	OMOP4822341	01-JAN-1970	31-DEC-2099	
+349	Termination of employment	Plan Stop Reason	Plan Stop Reason	Plan Stop Reason	S	OMOP4822346	01-JAN-1970	31-DEC-2099	
+352	Death of covered employee	Plan Stop Reason	Plan Stop Reason	Plan Stop Reason	S	OMOP4822343	01-JAN-1970	31-DEC-2099	
+2817015	Medical and Surgical @ Lymphatic and Hemic Systems @ Drainage @ Lymphatic, Aortic @ Percutaneous Endoscopic @ Drainage Device	Procedure	ICD10PCS	ICD10PCS Hierarchy	S	079D40	01-JAN-1970	31-DEC-2099	
+2816418	Medical and Surgical @ Hepatobiliary System and Pancreas @ Revision @ Pancreatic Duct @ Via Natural or Artificial Opening Endoscopic @ Infusion Device	Procedure	ICD10PCS	ICD10PCS Hierarchy	S	0FWD83	01-JAN-1970	31-DEC-2099	
+2736088	Drainage of Left Axillary Vein with Drainage Device, Open Approach	Procedure	ICD10PCS	ICD10PCS	S	059800Z	22-APR-2014	31-DEC-2099	
+2743354	Drainage of Right Lower Lung Lobe, Percutaneous Endoscopic Approach	Procedure	ICD10PCS	ICD10PCS	S	0B9F4ZZ	22-APR-2014	31-DEC-2099	
+2896606	Medical and Surgical @ Respiratory System @ Inspection @ Lung, Left @ Percutaneous Endoscopic @ No Device	Procedure	ICD10PCS	ICD10PCS Hierarchy	S	0BJL4Z	01-JAN-1970	31-DEC-2099	
+43019047	Medical and Surgical @ Lower Arteries @ Dilation @ Inferior Mesenteric Artery @ Open @ Intraluminal Device, Drug-eluting, Two	Procedure	ICD10PCS	ICD10PCS Hierarchy	S	047B05	01-JAN-1970	31-DEC-2099	
+4322325	Excision of lesion of anus, extensive	Procedure	SNOMED	Procedure	S	70355002	31-JAN-2002	31-DEC-2099	
+2870175	Medical and Surgical @ Hepatobiliary System and Pancreas @ Insertion @ Liver, Left Lobe @ Percutaneous	Procedure	ICD10PCS	ICD10PCS Hierarchy	S	0FH23	01-JAN-1970	31-DEC-2099	
+2880343	Medical and Surgical @ Upper Veins @ Insertion @ Innominate Vein, Right @ Percutaneous @ Infusion Device	Procedure	ICD10PCS	ICD10PCS Hierarchy	S	05H333	01-JAN-1970	31-DEC-2099	
+2768236	Revision of Nonautologous Tissue Substitute in Right Toe Phalanx, Open Approach	Procedure	ICD10PCS	ICD10PCS	S	0QWQ0KZ	22-APR-2014	31-DEC-2099	
 32872	Professional claim detail	Type Concept	Type Concept	Type Concept	S	OMOP4976945	20-AUG-2020	31-DEC-2099	
 32836	EHR physical examination	Type Concept	Type Concept	Type Concept	S	OMOP4976909	20-AUG-2020	31-DEC-2099	
 32840	EHR problem list	Type Concept	Type Concept	Type Concept	S	OMOP4976913	20-AUG-2020	31-DEC-2099	
@@ -286,16 +101,36 @@ concept_id	concept_name	domain_id	vocabulary_id	concept_class_id	standard_concep
 32883	Survey	Type Concept	Type Concept	Type Concept	S	OMOP4976956	20-AUG-2020	31-DEC-2099	
 32848	Government report	Type Concept	Type Concept	Type Concept	S	OMOP4976921	20-AUG-2020	31-DEC-2099	
 32882	Standard algorithm from EHR	Type Concept	Type Concept	Type Concept	S	OMOP4976955	20-AUG-2020	31-DEC-2099	
-37559757	R-MegaCHOEP (rituximab-rixa)	Regimen	HemOnc	Regimen	S	128635	17-NOV-2023	31-DEC-2099	
-35804375	CODOX-M/IVAC	Regimen	HemOnc	Regimen	S	10608	27-MAY-2019	31-DEC-2099	
-35803700	DA-EPOCH	Regimen	HemOnc	Regimen	S	3470	27-MAY-2019	31-DEC-2099	
-37560982	Carboplatin and Paclitaxel (CP) and Trastuzumab-strf	Regimen	HemOnc	Regimen	S	139844	14-JUN-2024	31-DEC-2099	
-37561386	Paclitaxel and Fruquitinib	Regimen	HemOnc	Regimen	S	144168	18-SEP-2024	31-DEC-2099	
-37559025	Bevacizumab-onbe and Rituximab-abbs	Regimen	HemOnc	Regimen	S	127865	17-NOV-2023	31-DEC-2099	
-35806396	Cisplatin and Vinblastine	Regimen	HemOnc	Regimen	S	28947	27-MAY-2019	31-DEC-2099	
-37560946	BTH (Docetaxel) (bevacizumab-aybi) (trastuzumab-strf)	Regimen	HemOnc	Regimen	S	139797	14-JUN-2024	31-DEC-2099	
-37559766	Bevacizumab-adcd and Rituximab-rixa	Regimen	HemOnc	Regimen	S	128644	17-NOV-2023	31-DEC-2099	
-35101516	Cyclosporine, Mycophenolate mofetil, Sirolimus	Regimen	HemOnc	Regimen	S	46344	04-AUG-2019	31-DEC-2099	
+32939	Cancer Surgery	Episode	Episode	Treatment	S	OMOP4997711	01-JAN-1970	31-DEC-2099	
+32943	Invasive Disease	Episode	Episode	Disease Extent	S	OMOP4997715	01-JAN-1970	31-DEC-2099	
+32942	Confined Disease	Episode	Episode	Disease Extent	S	OMOP4997714	01-JAN-1970	31-DEC-2099	
+32531	Treatment Regimen	Episode	Episode	Treatment	S	OMOP4822256	01-JAN-1970	31-DEC-2099	
+32946	Complete Remission	Episode	Episode	Disease Dynamic	S	OMOP4997718	01-JAN-1970	31-DEC-2099	
+32940	Cancer Radiotherapy	Episode	Episode	Treatment	S	OMOP4997712	01-JAN-1970	31-DEC-2099	
+32532	Treatment Cycle	Episode	Episode	Treatment	S	OMOP4822255	01-JAN-1970	31-DEC-2099	
+32948	Stable Disease	Episode	Episode	Disease Dynamic	S	OMOP4997720	01-JAN-1970	31-DEC-2099	
+32533	Disease Episode	Episode	Episode	Episode of Care	S	OMOP4822254	01-JAN-1970	31-DEC-2099	
+32949	Progression	Episode	Episode	Disease Dynamic	S	OMOP4997721	01-JAN-1970	31-DEC-2099	
+44818637	Paraguayan guaraní	Currency	Currency	Currency	S	PYG	01-JAN-1970	31-DEC-2099	
+44818633	Papua New Guinean kina	Currency	Currency	Currency	S	PGK	01-JAN-1970	31-DEC-2099	
+44818620	Mexican peso	Currency	Currency	Currency	S	MXN	01-JAN-1970	31-DEC-2099	
+44818682	European Monetary Unit (E.M.U.-6) (bond market unit)	Currency	Currency	Currency	S	XBB	01-JAN-1970	31-DEC-2099	
+44818556	Costa Rican colon	Currency	Currency	Currency	S	CRC	01-JAN-1970	31-DEC-2099	
+44818575	Gambian dalasi	Currency	Currency	Currency	S	GMD	01-JAN-1970	31-DEC-2099	
+44818590	Jamaican dollar	Currency	Currency	Currency	S	JMD	01-JAN-1970	31-DEC-2099	
+44818540	Brazilian real	Currency	Currency	Currency	S	BRL	01-JAN-1970	31-DEC-2099	
+44818631	Panamanian balboa	Currency	Currency	Currency	S	PAB	01-JAN-1970	31-DEC-2099	
+44818648	Singapore dollar	Currency	Currency	Currency	S	SGD	01-JAN-1970	31-DEC-2099	
+38004515	Hospital	Visit	Medicare Specialty	Visit	S	A0	01-JAN-1970	31-DEC-2099	
+581476	Home Visit	Visit	Visit	Visit	S	OMOP4822459	01-JAN-1970	31-DEC-2099	
+38004284	Psychiatric Hospital	Visit	NUCC	Visit	S	283Q00000X	01-JAN-1970	31-DEC-2099	
+38004225	Ambulatory Genetics Clinic / Center	Visit	NUCC	Visit	S	261QG0250X	01-JAN-1970	31-DEC-2099	
+8966	Federally Qualified Health Center	Visit	CMS Place of Service	Visit	S	50	01-JAN-1970	31-DEC-2099	
+38004339	Clinic Pharmacy	Visit	NUCC	Visit	S	3336C0002X	01-JAN-1970	31-DEC-2099	
+38004333	Eye Bank	Visit	NUCC	Visit	S	332G00000X	01-JAN-1970	31-DEC-2099	
+38004258	Ambulatory Recovery Care Clinic / Center	Visit	NUCC	Visit	S	261QR0800X	01-JAN-1970	31-DEC-2099	
+44777714	Nursing episode	Visit	HES Specialty	Visit	S	950	01-JAN-1970	31-DEC-2099	
+38004249	Ambulatory Pain Clinic / Center	Visit	NUCC	Visit	S	261QP3300X	01-JAN-1970	31-DEC-2099	
 31989	Capitation	Cost	Cost	Summary	S	OMOP4822183	01-JAN-1970	31-DEC-2099	
 32421	Patient liability	Cost	Cost	Detail	S	OMOP4822163	01-JAN-1970	31-DEC-2099	
 32016	Rebate payment	Cost	Cost	Detail	S	OMOP4822210	01-JAN-1970	31-DEC-2099	
@@ -306,6 +141,171 @@ concept_id	concept_name	domain_id	vocabulary_id	concept_class_id	standard_concep
 32017	Accumulated Deductible	Cost	Cost	Summary	S	OMOP4822211	01-JAN-1970	31-DEC-2099	
 31999	Recovered	Cost	Cost	Detail	S	OMOP4822193	01-JAN-1970	31-DEC-2099	
 31994	Rebate payment	Cost	Cost	Summary	S	OMOP4822188	01-JAN-1970	31-DEC-2099	
+277	Group health plan	Sponsor	Sponsor	Sponsor	S	OMOP4822451	01-JAN-1970	31-DEC-2099	
+278	Small group (2-50 employees) health plan	Sponsor	Sponsor	Sponsor	S	OMOP4822450	01-JAN-1970	31-DEC-2099	
+275	Fully insured group health plan	Sponsor	Sponsor	Sponsor	S	OMOP4822453	01-JAN-1970	31-DEC-2099	
+279	Large group (more than 51 employees) health plan	Sponsor	Sponsor	Sponsor	S	OMOP4822449	01-JAN-1970	31-DEC-2099	
+276	Individual health plan	Sponsor	Sponsor	Sponsor	S	OMOP4822452	01-JAN-1970	31-DEC-2099	
+274	Self-insured group health plan	Sponsor	Sponsor	Sponsor	S	OMOP4822454	01-JAN-1970	31-DEC-2099	
+37559757	R-MegaCHOEP (rituximab-rixa)	Regimen	HemOnc	Regimen	S	128635	17-NOV-2023	31-DEC-2099	
+35804375	CODOX-M/IVAC	Regimen	HemOnc	Regimen	S	10608	27-MAY-2019	31-DEC-2099	
+35803700	DA-EPOCH	Regimen	HemOnc	Regimen	S	3470	27-MAY-2019	31-DEC-2099	
+37560982	Carboplatin and Paclitaxel (CP) and Trastuzumab-strf	Regimen	HemOnc	Regimen	S	139844	14-JUN-2024	31-DEC-2099	
+37561386	Paclitaxel and Fruquitinib	Regimen	HemOnc	Regimen	S	144168	18-SEP-2024	31-DEC-2099	
+37559025	Bevacizumab-onbe and Rituximab-abbs	Regimen	HemOnc	Regimen	S	127865	17-NOV-2023	31-DEC-2099	
+35806396	Cisplatin and Vinblastine	Regimen	HemOnc	Regimen	S	28947	27-MAY-2019	31-DEC-2099	
+37560946	BTH (Docetaxel) (bevacizumab-aybi) (trastuzumab-strf)	Regimen	HemOnc	Regimen	S	139797	14-JUN-2024	31-DEC-2099	
+37559766	Bevacizumab-adcd and Rituximab-rixa	Regimen	HemOnc	Regimen	S	128644	17-NOV-2023	31-DEC-2099	
+35101516	Cyclosporine, Mycophenolate mofetil, Sirolimus	Regimen	HemOnc	Regimen	S	46344	04-AUG-2019	31-DEC-2099	
+42571983	SET,INFUSION MINIMED #MMT-166	Device	VANDF	Device	S	4015363	01-JAN-1970	31-DEC-2099	
+21365006	Haddenham Veni class 2 (23-32mmHg) tights closed toe lymphoedema garment regular size VIII Black (Haddenham Healthcare Ltd) 1 device	Device	dm+d	AMPP	S	14877711000001100	01-JAN-1970	31-DEC-2099	
+36803644	Venoflex Micro class 2 (23-32mmHg) thigh length open toe with dotted silicone band lymphoedema garment normal size 2	Device	dm+d	AMP	S	36270111000001101	01-JAN-1970	31-DEC-2099	
+36950701	Emperor ileostomy bag with filter, standard	Device	dm+d	AMP	S	41529311000001100	01-JAN-1970	31-DEC-2099	
+40682891	Option hydrocolloid low profile soft convex colostomy bag with filter, plus LPSC47-0430K 47mm plateau, 30mm stoma Opaque (Oakmed Ltd) 20 device	Device	dm+d	AMPP	S	35236111000001103	01-JAN-1970	31-DEC-2099	
+21355700	Haddenham Star Cotton class 1 (18-21mmHg) below knee closed toe lymphoedema garment long size V Beige (Haddenham Healthcare Ltd) 2 device	Device	dm+d	AMPP	S	20625511000001106	01-JAN-1970	31-DEC-2099	
+21349277	VenoTrain Soft class 2 (23-32mmHg) below knee open toe lymphoedema garment normal long small	Device	dm+d	AMP	S	11900211000001100	01-JAN-1970	31-DEC-2099	
+45007781	octinoxate and titanium dioxide 31mg/mL / 50mg/mL TOPICAL EMULSION [perfection lumiere velvet smooth-effect makeup broad spectrum spf 15 sunscreen, 10 beige]	Device	NDC	Device	S	687452027	03-MAR-2014	31-DEC-2099	
+21404410	Urostomy bag with regular adhesive 7474 30.5cm bag, 51mm stoma Transparent (Hollister Ltd) 20 device	Device	dm+d	AMPP	S	6335611000001108	01-JAN-1970	31-DEC-2099	
+21470799	Moderma Flex urostomy bag	Device	dm+d	AMP	S	6377611000001104	01-JAN-1970	31-DEC-2099	
+38003563	Hispanic or Latino	Ethnicity	Ethnicity	Ethnicity	S	Hispanic	01-JAN-1970	31-DEC-2099	
+38003564	Not Hispanic or Latino	Ethnicity	Ethnicity	Ethnicity	S	Not Hispanic	01-JAN-1970	31-DEC-2099	
+271	Dental only plan	Plan	Plan	Benefit	S	OMOP4822325	01-JAN-1970	31-DEC-2099	
+270	Medical only plan	Plan	Plan	Benefit	S	OMOP4822326	01-JAN-1970	31-DEC-2099	
+269	Minimal Benefit (Medical and Drug) plan	Plan	Plan	Benefit	S	OMOP4822327	01-JAN-1970	31-DEC-2099	
+264	Silver Health Plan with 70% actuarial plan value	Plan	Plan	Metal level	S	OMOP4822332	01-JAN-1970	31-DEC-2099	
+272	Vision only plan	Plan	Plan	Benefit	S	OMOP4822324	01-JAN-1970	31-DEC-2099	
+267	Catastrophic Health Plan with <60% actuarial plan value	Plan	Plan	Metal level	S	OMOP4822329	01-JAN-1970	31-DEC-2099	
+273	Drug only plan	Plan	Plan	Benefit	S	OMOP4822323	01-JAN-1970	31-DEC-2099	
+266	Platinum Health Plan with 90% actuarial plan value	Plan	Plan	Metal level	S	OMOP4822330	01-JAN-1970	31-DEC-2099	
+263	Bronze Health Plan with 60% actuarial plan value	Plan	Plan	Metal level	S	OMOP4822333	01-JAN-1970	31-DEC-2099	
+265	Gold Health Plan with 80% actuarial plan value	Plan	Plan	Metal level	S	OMOP4822331	01-JAN-1970	31-DEC-2099	
+38003597	Madagascar	Race	Race	Race	S	2.24	01-JAN-1970	31-DEC-2099	
+38003604	Dominica Islander	Race	Race	Race	S	3.07	01-JAN-1970	31-DEC-2099	
+38003609	West Indian	Race	Race	Race	S	3.12	01-JAN-1970	31-DEC-2099	
+38003607	Tobagoan	Race	Race	Race	S	3.10	01-JAN-1970	31-DEC-2099	
+8657	American Indian or Alaska Native	Race	Race	Race	S	1	01-JAN-1970	31-DEC-2099	
+38003572	American Indian	Race	Race	Race	S	1.01	01-JAN-1970	31-DEC-2099	
+38003615	Middle Eastern or North African	Race	Race	Race	S	5.02	01-JAN-1970	31-DEC-2099	
+38003598	Black	Race	Race	Race	S	3.01	01-JAN-1970	31-DEC-2099	
+8527	White	Race	Race	Race	S	5	01-JAN-1970	31-DEC-2099	
+38003600	African	Race	Race	Race	S	3.03	01-JAN-1970	31-DEC-2099	
+35920192	Regional lymph node(s), NOS|Lymph node(s), NOS	Meas Value	NAACCR	NAACCR Value	S	urethra_prostatic@774@800	01-JAN-1970	31-DEC-2099	
+4096183	Nyanza	Meas Value	SNOMED	Qualifier Value	S	262460008	31-JAN-2002	31-DEC-2099	
+45882255	Abdomen	Meas Value	LOINC	Answer	S	LA12706-0	01-JAN-1970	31-DEC-2099	
+35932761	Localized, NOS	Meas Value	NAACCR	NAACCR Value	S	lip_lower@2810@300	01-JAN-1970	31-DEC-2099	
+45882168	Medically unstable and inappropriate for screen	Meas Value	LOINC	Answer	S	LA19824-4	01-JAN-1970	31-DEC-2099	
+45883899	Breath sounds-normal-left	Meas Value	LOINC	Answer	S	LA17227-2	01-JAN-1970	31-DEC-2099	
+35935677	Stated as T4a with no other information on extension	Meas Value	NAACCR	NAACCR Value	S	melanoma_nasopharynx@2810@725	01-JAN-1970	31-DEC-2099	
+35935422	Grade cannot be assessed (GX); Unknown	Meas Value	NAACCR	NAACCR Value	S	kaposi_sarcoma@3843@9	01-JAN-1970	31-DEC-2099	
+45878109	Port access only	Meas Value	LOINC	Answer	S	LA18901-1	01-JAN-1970	31-DEC-2099	
+21499420	Resuscitation	Meas Value	LOINC	Answer	S	LA21538-6	01-JAN-1970	31-DEC-2099	
+4165917	Has reason	Relationship	SNOMED	Linkage Assertion	S	416083004	31-JUL-2005	31-DEC-2099	
+4311970	Single father	Relationship	SNOMED	Social Context	S	85683001	31-JAN-2002	31-DEC-2099	
+4214926	Has support	Relationship	SNOMED	Linkage Assertion	S	417569004	31-JUL-2005	31-DEC-2099	
+46233680	Patient moved to	Relationship	Relationship	Relationship	S	OMOP5217062	01-JAN-1970	31-DEC-2099	
+4147842	Stepfather	Relationship	SNOMED	Social Context	S	30578000	31-JAN-2002	31-DEC-2099	
+4129070	Single mother	Relationship	SNOMED	Social Context	S	12629003	31-JAN-2002	31-DEC-2099	
+4101245	Sister	Relationship	SNOMED	Social Context	S	27733009	31-JAN-2002	31-DEC-2099	
+4278823	Daughter	Relationship	SNOMED	Social Context	S	66089001	31-JAN-2002	31-DEC-2099	
+4232326	Youngest son	Relationship	SNOMED	Social Context	S	89681006	31-JAN-2002	31-DEC-2099	
+4335805	Male child	Relationship	SNOMED	Social Context	S	433152004	31-JUL-2008	31-DEC-2099	
+4329646	Inequality symbol -	Meas Value Operator	SNOMED	Qualifier Value	S	431878004	31-JUL-2008	31-DEC-2099	
+4171755	>=	Meas Value Operator	SNOMED	Qualifier Value	S	276138003	31-JAN-2002	31-DEC-2099	
+4171754	<=	Meas Value Operator	SNOMED	Qualifier Value	S	276137008	31-JAN-2002	31-DEC-2099	
+4172703	=	Meas Value Operator	SNOMED	Qualifier Value	S	276136004	31-JAN-2002	31-DEC-2099	
+4172704	>	Meas Value Operator	SNOMED	Qualifier Value	S	276140008	31-JAN-2002	31-DEC-2099	
+4171756	<	Meas Value Operator	SNOMED	Qualifier Value	S	276139006	31-JAN-2002	31-DEC-2099	
+4172702	Mathematical sign	Meas Value Operator	SNOMED	Qualifier Value	S	276135000	31-JAN-2002	31-DEC-2099	
+38003080	Room & Board Ward (Medical or General) - Other	Revenue Code	Revenue Code	Revenue Code	S	0159	01-JAN-1970	31-DEC-2099	
+38003265	Pulmonary Function - Other	Revenue Code	Revenue Code	Revenue Code	S	0469	01-JAN-1970	31-DEC-2099	
+38003160	Medical/Surgical Supplies and Devices - Intraocular Lens	Revenue Code	Revenue Code	Revenue Code	S	0276	01-JAN-1970	31-DEC-2099	
+38003125	Special Charges - Other Special Charges	Revenue Code	Revenue Code	Revenue Code	S	0229	01-JAN-1970	31-DEC-2099	
+38003500	Other Therapeutic Services - Alcohol Rehabilitation	Revenue Code	Revenue Code	Revenue Code	S	0945	01-JAN-1970	31-DEC-2099	
+38003368	Hospice Service - Continuous Home Care	Revenue Code	Revenue Code	Revenue Code	S	0652	01-JAN-1970	31-DEC-2099	
+38003534	Patient Convenience Items - Cafeteria/Guest Tray	Revenue Code	Revenue Code	Revenue Code	S	0991	01-JAN-1970	31-DEC-2099	
+38003065	Private (Deluxe) - Psychiatric	Revenue Code	Revenue Code	Revenue Code	S	0144	01-JAN-1970	31-DEC-2099	
+38003498	Other Therapeutic Services - Cardiac Rehabilitation	Revenue Code	Revenue Code	Revenue Code	S	0943	01-JAN-1970	31-DEC-2099	
+38003108	Intensive Care - Pediatric	Revenue Code	Revenue Code	Revenue Code	S	0203	01-JAN-1970	31-DEC-2099	
+4135520	Foraminal	Observation	SNOMED	Qualifier Value	S	263759007	31-JAN-2002	31-DEC-2099	
+42576579	Gallirallus pacificus	Observation	SNOMED Veterinary	Organism	S	106801000009100	16-MAR-2009	31-DEC-2099	
+4038186	Anal penetration using tongue	Observation	SNOMED	Clinical Finding	S	229020000	31-JAN-2002	31-DEC-2099	
+4288289	Toxicodendron radicans ssp. radicans	Observation	SNOMED	Organism	S	69725001	31-JAN-2002	31-DEC-2099	
+42591076	Aimophila ruficeps suttoni	Observation	SNOMED Veterinary	Organism	S	257571000009102	27-APR-2009	31-DEC-2099	
+4257756	Thiothrix nivea	Observation	SNOMED	Organism	S	441349009	31-JAN-2009	31-DEC-2099	
+4225231	Problem identified with patient consent	Observation	SNOMED	Clinical Finding	S	405494009	31-JAN-2004	31-DEC-2099	
+40768601	Aspects of your life [HCL-32]	Observation	LOINC	Clinical Observation	S	65916-9	18-MAY-2011	31-DEC-2099	
+42690649	Able to clean own room	Observation	SNOMED	Clinical Finding	S	1076261000000104	01-APR-2017	31-DEC-2099	
+42869297	I worry that my treatment dose will be reduced, because of low blood counts, in the past 7 days [FACIT]	Observation	LOINC	Survey	S	70829-7	08-MAR-2012	31-DEC-2099	
+36559333	B lymphoblastic leukemia/lymphoma with hypodiploidy (Hypodiploid ALL) of cervical esophagus	Condition	ICDO3	ICDO Condition	S	9816/3-C15.0	18-SEP-2015	31-DEC-2099	
+4082830	Injection of exposed bulbar conjunctiva	Condition	SNOMED	Clinical Finding	S	278021008	31-JAN-2002	31-DEC-2099	
+45757644	Chronic coccidioidomycotic pneumonia	Condition	SNOMED	Disorder	S	28791000119105	31-JUL-2014	31-DEC-2099	
+4218900	Herpesvirus saimiri infection	Condition	SNOMED	Disorder	S	82128000	31-JAN-2002	31-DEC-2099	
+36556910	Myeloid sarcoma of overlapping lesion of accessory sinuses	Condition	ICDO3	ICDO Condition	S	9930/3-C31.8	18-SEP-2015	31-DEC-2099	
+604729	Agenesis of calcaneus	Condition	SNOMED	Disorder	S	1003571002	31-JAN-2021	31-DEC-2099	
+46272924	Normal morphology of thoracoabdominal organ	Condition	SNOMED	Clinical Finding	S	711376006	31-JUL-2015	31-DEC-2099	
+4301661	Follicular mucinosis type mycosis fungoides	Condition	SNOMED	Disorder	S	404109006	31-JUL-2003	31-DEC-2099	
+42512602	Myofibroblastic sarcoma of maxillary sinus	Condition	ICDO3	ICDO Condition	S	8825/3-C31.0	18-SEP-2015	31-DEC-2099	
+4242680	Carcinoma in situ of broad ligament	Condition	SNOMED	Disorder	S	92551005	31-JAN-2002	31-DEC-2099	
+378	Military Treatment Facility	Payer	SOPT	Payer	S	312	01-JAN-1970	31-DEC-2099	
+381	Military Treatment Facility - TRICARE For Life (TFL)	Payer	SOPT	Payer	S	3123	01-JAN-1970	31-DEC-2099	
+347	Worker's Compensation Health Management Organization (HMO)	Payer	SOPT	Payer	S	951	01-JAN-1970	31-DEC-2099	
+306	Indian Health Service (IHS) Program	Payer	SOPT	Payer	S	33	01-JAN-1970	31-DEC-2099	
+437	No Charge	Payer	SOPT	Payer	S	82	01-JAN-1970	31-DEC-2099	
+286	Medicare Fee for Service (FFS)	Payer	SOPT	Payer	S	121	01-JAN-1970	31-DEC-2099	
+312	State Government Program	Payer	SOPT	Payer	S	36	01-JAN-1970	31-DEC-2099	
+375	Department of Defense	Payer	SOPT	Payer	S	31	01-JAN-1970	31-DEC-2099	
+325	Department of Corrections	Payer	SOPT	Payer	S	4	01-JAN-1970	31-DEC-2099	
+287	Medicare Non-managed Care - Other	Payer	SOPT	Payer	S	129	01-JAN-1970	31-DEC-2099	
+1146969	concept_relationship.valid_start_date	Metadata	CDM	Field	S	CDM25	11-NOV-2014	31-DEC-2099	
+1147603	payer_plan_period.plan_source_value	Metadata	CDM	Field	S	CDM653	03-JAN-2018	31-DEC-2099	
+1147705	drug_exposure.drug_exposure_end_date	Metadata	CDM	Field	S	CDM752	11-OCT-2018	31-DEC-2099	
+1147728	measurement.measurement_datetime	Metadata	CDM	Field	S	CDM775	11-OCT-2018	31-DEC-2099	
+1147572	measurement.unit_concept_id	Metadata	CDM	Field	S	CDM622	03-JAN-2018	31-DEC-2099	
+1147335	location	Metadata	CDM	Table	S	CDM391	11-NOV-2014	31-DEC-2099	
+1146998	drug_strength.numerator_value	Metadata	CDM	Field	S	CDM54	11-NOV-2014	31-DEC-2099	
+1147714	fact_relationship.fact_id_2	Metadata	CDM	Field	S	CDM761	11-OCT-2018	31-DEC-2099	
+1147500	drug_exposure.dose_unit_source_value	Metadata	CDM	Field	S	CDM551	17-AUG-2017	31-DEC-2099	
+1147084	procedure_occurrence.procedure_concept_id	Metadata	CDM	Field	S	CDM140	11-NOV-2014	31-DEC-2099	
+8842	nanogram per milliliter	Unit	UCUM	Unit	S	ng/mL	01-JAN-1970	31-DEC-2099	
+44777609	milligram per gram wet weight	Unit	UCUM	Unit	S	mg/g{wet'wt}	01-JAN-1970	31-DEC-2099	
+710232	milliwatt	Unit	UCUM	Unit	S	mW	06-MAY-2022	31-DEC-2099	
+9372	ounce (apothecary)	Unit	UCUM	Unit	S	[oz_ap]	01-JAN-1970	31-DEC-2099	
+9596	milliunit per milligram	Unit	UCUM	Unit	S	10*-3.[U]/mg	01-JAN-1970	31-DEC-2099	
+720844	gram per 72 hour	Unit	UCUM	Unit	S	g/(72.h)	07-APR-2022	31-DEC-2099	
+9272	velocity of light	Unit	UCUM	Unit	S	[c]	01-JAN-1970	31-DEC-2099	
+44777521	per second	Unit	UCUM	Canonical Unit	S	s-1	01-JAN-1970	31-DEC-2099	
+9418	US pharmacopeia unit	Unit	UCUM	Unit	S	[USP'U]	01-JAN-1970	31-DEC-2099	
+45891038	kilobecquerel per milliliter	Unit	UCUM	Unit	S	kBq/mL	01-JAN-1970	31-DEC-2099	
+40549429	Ocular	Route	SNOMED	Qualifier Value	S	372472002	31-JUL-2002	31-DEC-2099	
+4171067	Intratesticular	Route	SNOMED	Qualifier Value	S	418947002	31-JAN-2006	31-DEC-2099	
+4302612	Intramuscular	Route	SNOMED	Qualifier Value	S	78421000	31-JAN-2002	31-DEC-2099	
+4157759	Intralymphatic	Route	SNOMED	Qualifier Value	S	372467006	31-JUL-2002	31-DEC-2099	
+37207461	Intracholangiopancreatic	Route	SNOMED	Qualifier Value	S	58761000052107	31-JUL-2019	31-DEC-2099	
+40487501	Digestive tract	Route	SNOMED	Qualifier Value	S	447964005	31-JUL-2011	31-DEC-2099	
+4167540	Enteral	Route	SNOMED	Qualifier Value	S	417985001	31-JAN-2006	31-DEC-2099	
+40488317	Intracerebral	Route	SNOMED	Qualifier Value	S	446540005	31-JAN-2011	31-DEC-2099	
+4169472	Tumor cavity	Route	SNOMED	Qualifier Value	S	419021003	31-JAN-2006	31-DEC-2099	
+4023156	Otic	Route	SNOMED	Qualifier Value	S	10547007	31-JAN-2002	31-DEC-2099	
+38003677	Pediatric Dentistry	Provider	NUCC	Physician Specialty	S	1223P0221X	01-JAN-1970	31-DEC-2099	
+38003798	Research Data Abstracter / Coder	Provider	NUCC	Provider	S	1744R1103X	01-JAN-1970	31-DEC-2099	
+38004038	Art Therapist	Provider	NUCC	Provider	S	221700000X	01-JAN-1970	31-DEC-2099	
+43125860	Behavioral Neurology and Neuropsychiatry	Provider	NUCC	Physician Specialty	S	2084B0040X	01-JAN-2013	31-DEC-2099	
+38004436	Home Health Aide	Provider	NUCC	Provider	S	374U00000X	01-JAN-1970	31-DEC-2099	
+38003756	Registered First Assistant Nurse	Provider	NUCC	Provider	S	163WR0006X	01-JAN-1970	31-DEC-2099	
+38003818	Oncology Pharmacist	Provider	NUCC	Provider	S	1835X0200X	01-JAN-1970	31-DEC-2099	
+38004492	Occupational Therapy	Provider	Medicare Specialty	Provider	S	67	01-JAN-1970	31-DEC-2099	
+38004058	Physical Neurology Therapist	Provider	NUCC	Provider	S	2251N0400X	01-JAN-1970	31-DEC-2099	
+38004053	Physical Ergonomics Therapist	Provider	NUCC	Provider	S	2251E1200X	01-JAN-1970	31-DEC-2099	
+21491259	Crisis intervention note	Note	LOINC	Clinical Observation	S	78709-3	24-JUN-2016	31-DEC-2099	
+3964643	Chiropody Outpatient Note	Note	LOINC	Clinical Observation	S	101054-5	15-AUG-2023	31-DEC-2099	
+40771299	Pediatric dermatology History and physical note	Note	LOINC	Clinical Observation	S	68731-9	29-SEP-2011	31-DEC-2099	
+42528157	Infectious disease Group counseling note	Note	LOINC	Clinical Observation	S	84167-6	21-FEB-2017	31-DEC-2099	
+42528469	Occupational therapy Outpatient Note	Note	LOINC	Clinical Observation	S	84400-1	21-FEB-2017	31-DEC-2099	
+1175486	Sleep medicine Outpatient Note	Note	LOINC	Clinical Observation	S	90711-3	14-DEC-2018	31-DEC-2099	
+40771211	Allergy and Immunology Hospital Letter	Note	LOINC	Clinical Observation	S	68634-5	29-SEP-2011	31-DEC-2099	
+1175962	Gynecology Telehealth Note	Note	LOINC	Clinical Observation	S	89897-3	14-DEC-2018	31-DEC-2099	
+40771322	Pediatric hematology-oncology Hospital Consult note	Note	LOINC	Clinical Observation	S	68757-4	29-SEP-2011	31-DEC-2099	
+42527536	Surgery Resident Admission evaluation note	Note	LOINC	Clinical Observation	S	83778-1	21-FEB-2017	31-DEC-2099	
 4088217	Administration of medication	Procedure	SNOMED	Procedure	S	18629005	31-JAN-2002	31-DEC-2099	
 33139	Has growth factor (HemOnc)	Metadata	Relationship	Relationship		OMOP generated	01-JAN-1970	31-DEC-2099	
 33140	Growth factor of (HemOnc)	Metadata	Relationship	Relationship		OMOP generated	01-JAN-1970	31-DEC-2099	
