@@ -34,6 +34,5 @@ class DeathView(Death, DeathContext, DomainValidationMixin):
     __tablename__ = "death"
     __mapper_args__ = {"concrete": False}
     __expected_domains__ = {
-        "death_type_concept_id": ExpectedDomain("Gender"),
-        "cause_concept_id": ExpectedDomain("Race"),
+
     }

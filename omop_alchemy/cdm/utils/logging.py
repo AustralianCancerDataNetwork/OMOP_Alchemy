@@ -1,8 +1,18 @@
 from __future__ import annotations
-
 import logging
 from typing import Literal, Optional
+import re
 
+SENSITIVE_KEYS = {
+    "password",
+    "passwd",
+    "secret",
+    "token",
+    "key",
+    "dsn",
+    "uri",
+    "url",
+}
 LOGGING_NAMESPACE = "omop_alchemy"
 
 def _coerce_log_level(level: int | str) -> int:
@@ -35,12 +45,24 @@ def get_logger(name: Optional[str] = None) -> logging.Logger:
     return logging.getLogger(full_name)
 
 
-def enable_logging(
+class RedactingFormatter(logging.Formatter):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._pattern = re.compile(
+            r"(?i)\\b(" + "|".join(SENSITIVE_KEYS) + r")\\b\\s*[:=]\\s*[^\\s,;]+"
+        )
+
+    def format(self, record):
+        msg = super().format(record)
+        return self._pattern.sub(r"\\1=<REDACTED>", msg)
+    
+def configure_logging(
     *,
     level: int | str = logging.INFO,
     handler: Optional[logging.Handler] = None,
     format: Optional[str] = None,
-    propagate: bool = False,
+    propagate: bool = True,
+    redact: bool = True,
 ) -> None:
     """
     Enable logging output for omop_alchemy.
@@ -56,11 +78,13 @@ def enable_logging(
     if format is None:
         format = "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
 
-    handler.setFormatter(logging.Formatter(format))
+    formatter_cls = RedactingFormatter if redact else logging.Formatter
+    handler.setFormatter(formatter_cls(format))
 
-    if handler not in logger.handlers:
+    if not any(isinstance(h, type(handler)) for h in logger.handlers):
         logger.addHandler(handler)
 
     logger.propagate = propagate
+
 
 logging.getLogger(LOGGING_NAMESPACE).addHandler(logging.NullHandler())

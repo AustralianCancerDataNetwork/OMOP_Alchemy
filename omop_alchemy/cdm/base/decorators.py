@@ -23,7 +23,6 @@ def cdm_table(cls: T) -> T:
     if not issubclass(cls, CDMTableBase):
         raise TypeError(
             f"{cls.__name__} must inherit from CDMTableBase "
-            "(CSVSourceMixin + CDMValidatedTableMixin)"
         )
 
     # Explicitly mark as concrete

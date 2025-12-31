@@ -1,1 +1,1 @@
-OA_CONFIG=/path/to/your/oa_system_config.yaml
+ENGINE=sqlite://///your/database/url/goes/here/test.db

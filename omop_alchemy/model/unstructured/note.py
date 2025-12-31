@@ -19,8 +19,8 @@ from omop_alchemy.cdm.base import (
 
 if TYPE_CHECKING:
     from ..vocabulary import Concept
-    from ..clinical import Visit_Occurrence, Visit_Detail, Person
-    from ..health_system import Provider
+    from ..clinical import Person
+    from ..health_system import Provider, Visit_Occurrence, Visit_Detail
 
 @cdm_table
 class Note(CDMTableBase, Base, PersonScoped, HealthSystemContext):
@@ -81,7 +81,7 @@ class NoteContext(ReferenceContextMixin):
 
     visit_occurrence: so.Mapped[Optional["Visit_Occurrence"]] = (
         ReferenceContextMixin._reference_relationship(
-            target="VisitOccurrence",
+            target="Visit_Occurrence",
             local_fk="visit_occurrence_id",
             remote_pk="visit_occurrence_id",
         )
@@ -89,7 +89,7 @@ class NoteContext(ReferenceContextMixin):
 
     visit_detail: so.Mapped[Optional["Visit_Detail"]] = (
         ReferenceContextMixin._reference_relationship(
-            target="VisitDetail",
+            target="Visit_Detail",
             local_fk="visit_detail_id",
             remote_pk="visit_detail_id",
         )

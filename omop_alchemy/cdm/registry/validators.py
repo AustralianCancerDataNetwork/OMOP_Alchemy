@@ -4,8 +4,6 @@ from typing import TYPE_CHECKING, Type, Optional
 
 from omop_alchemy.cdm.base.declarative import Base
 from omop_alchemy.cdm.base.typing import HasTableName
-from omop_alchemy.cdm.utils import CDMValidationError
-from omop_alchemy.cdm.specification import TableSpec, FieldSpec
 
 if TYPE_CHECKING:
     from .registry import ValidationIssue
@@ -63,42 +61,3 @@ def fk_targets(sa_col: sa.Column) -> set[tuple[str, str]]:
         if len(t) == 2:
             targets.add((t[0], t[1]))
     return targets
-
-class CDMValidatedTableMixin:
-    """
-    Adds structural validation of ORM models against
-    the official OMOP CDM CSV specifications.
-    """
-    __cdm_extra_checks__: list[str] = []
-
-
-    @classmethod
-    def extra_validate(cls) -> list["ValidationIssue"]:
-        return []
-
-    @classmethod
-    def validate_against_spec(
-        cls: Type[HasTableName],
-        *,
-        table_spec: TableSpec,
-        field_specs: dict[str, FieldSpec],
-    ) -> None:
-        if cls.__tablename__ != table_spec.table_name:
-            raise CDMValidationError(
-                f"{cls.__name__}: table name mismatch "
-                f"({cls.__tablename__} != {table_spec.table_name})"
-            )
-
-        mapper = sa.inspect(cls)
-
-        if not mapper:
-            raise CDMValidationError(f"{cls.__name__} is not a mapped ORM class")
-    
-        orm_columns = {c.key.lower() for c in mapper.columns}
-
-        # Required fields must exist
-        for fname, spec in field_specs.items():
-            if spec.is_required and fname not in orm_columns:
-                raise CDMValidationError(
-                    f"{cls.__tablename__}: missing required column '{fname}'"
-                )

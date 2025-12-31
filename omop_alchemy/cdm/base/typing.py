@@ -34,8 +34,6 @@ class DomainSemanticTable(Protocol):
     @classmethod
     def collect_domain_rules(cls) -> list["DomainRule"]: ...
 
-
-
 class ClinicalEvent(Protocol):
     __tablename__: str
 

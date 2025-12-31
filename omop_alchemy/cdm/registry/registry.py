@@ -1,28 +1,25 @@
 import pkgutil
 import importlib
+import sqlalchemy as sa
 from collections import defaultdict
 from dataclasses import dataclass
 from enum import Enum
 from typing import Optional, Type, TypeGuard, Any, TYPE_CHECKING
+from sqlalchemy.orm import Session
 
 from .validators import is_type_compatible, normalize_omop_type, CDM_TO_SA
 from ..specification import CDM_VERSION, TableSpec, FieldSpec, ModelDescriptor, load_table_specs, load_field_specs
+from ..utils import get_logger
 
-if TYPE_CHECKING:
-    from omop_alchemy.cdm.base import ORMTable, DomainValidationMixin, DomainSemanticTable
+logger = get_logger(__name__)
+
+from ..base.typing import ORMTable, DomainSemanticTable
+from ..base.mixins import DomainValidationMixin, DomainRule
 
 class SeverityLevel(Enum):
     ERROR = "ERROR"
     WARN = "WARN"
     INFO = "INFO"
-
-@dataclass(frozen=True)
-class DomainRule:
-    table: str
-    field: str
-    allowed_domains: set[str]
-    # Optional: concept_class_id constraints
-    allowed_classes: Optional[set[str]] = None
 
 DOMAIN_RULES = [
     DomainRule("drug_strength", "drug_concept_id", {"Drug"}),
@@ -39,8 +36,8 @@ def is_domain_semantic_table(
 ) -> TypeGuard[Type["DomainSemanticTable"]]:
     return (
         isinstance(cls, type)
-        and isinstance(cls, "ORMTable")
-        and issubclass(cls, "DomainValidationMixin")
+        and isinstance(cls, ORMTable)
+        and issubclass(cls, DomainValidationMixin)
     )
 
 @dataclass
@@ -124,6 +121,7 @@ class CDMModelRegistry:
         }
     
     def _validate_tables(self, report):
+        logger.debug("Validating table registration against CDM specs")
         for t in sorted(self.known_tables() - self.registered_tables()):
             report.add(ValidationIssue(
                 t, SeverityLevel.WARN, "TABLE_NOT_REGISTERED",
@@ -149,6 +147,7 @@ class CDMModelRegistry:
                 ))
 
     def _validate_fields(self, report):
+        logger.debug("Validating column presence and nullability")
         for table, field_spec in self._field_specs.items():
             model = self._models.get(table)
             if not model:
@@ -175,6 +174,7 @@ class CDMModelRegistry:
                 ))
 
     def _validate_foreign_keys(self, report):
+        logger.debug("Validating foreign key targets against registered tables")
         for model in self._models.values():
             for col, (fk_table, fk_field) in model.foreign_keys.items():
                 if fk_table not in self._table_specs:
@@ -202,73 +202,145 @@ class CDMModelRegistry:
                     and hasattr(obj, "__tablename__")
                     and hasattr(obj, "__mapper__")
                 ):
+                    logger.debug(f"Registering model: {obj.__tablename__}")
                     self.register_model(obj)
 
+    def _validate_domain_rule(
+        self,
+        rule: DomainRule,
+        report: ValidationReport,
+        engine: Optional[sa.engine.Engine] = None,
+    ) -> None:
+        """
+        Validate a DomainRule against registered ORM models and CDM specs.
+        This validates the *rule definition*, not database contents.
+        """
+
+        table = rule.table
+        field = rule.field
+
+        model_desc = self._models.get(table)
+        if not model_desc:
+            report.add(
+                ValidationIssue(
+                    table=table,
+                    level=SeverityLevel.ERROR,
+                    message="DOMAIN_RULE_TABLE_NOT_REGISTERED",
+                    hint=f"DomainRule refers to unknown table '{table}'",
+                )
+            )
+            return
+
+        if field not in model_desc.columns:
+            report.add(
+                ValidationIssue(
+                    table=table,
+                    field=field,
+                    level=SeverityLevel.ERROR,
+                    message="DOMAIN_RULE_FIELD_NOT_FOUND",
+                    hint=f"DomainRule refers to unknown field '{field}' on table '{table}'",
+                )
+            )
+            return
+
+        if engine is not None:
+            from ...model.vocabulary.domain import Domain
+
+            with Session(engine) as session:
+                known_domains = set([d[0] for d in session.query(Domain.domain_id).all()])
+            unknown = rule.allowed_domains - known_domains
+            if unknown:
+                report.add(
+                    ValidationIssue(
+                        table=table,
+                        field=field,
+                        level=SeverityLevel.WARN,
+                        message="DOMAIN_RULE_UNKNOWN_DOMAIN",
+                        expected=", ".join(sorted(rule.allowed_domains)),
+                        actual=", ".join(sorted(unknown)),
+                        hint="DomainRule references domains not recognised in CDM",
+                    )
+                )
+        else:
+            logger.warning("No engine provided; skipping domain existence check for DomainRule on %s.%s", table, field)
+
+        if rule.allowed_classes:
+            report.add(
+                ValidationIssue(
+                    table=table,
+                    field=field,
+                    level=SeverityLevel.INFO,
+                    message="DOMAIN_RULE_CLASS_CONSTRAINT",
+                    expected=", ".join(sorted(rule.allowed_classes)),
+                    hint="Concept class constraint declared (not yet enforced)",
+                )
+            )
+
     def _validate_domain_semantics(self, report):
+        logger.debug("Collecting domain semantic rules from ORM models")
         for model in self._models.values():
             cls = model.model
             if is_domain_semantic_table(cls):
                 rules = cls.collect_domain_rules()
                 for rule in rules:
-                    report.add_domain_rule(rule)
+                    self._validate_domain_rule(rule, report)
 
     def _validate_domain_semantics_data(
         self,
         engine,
         report: ValidationReport,
     ) -> None:
-        from sqlalchemy.orm import Session
         from omop_alchemy.model.vocabulary import Concept
-
+        logger.info("Running domain semantic validation against database")
         with Session(engine) as session:
             for model in self._models.values():
                 cls = model.model
                 if is_domain_semantic_table(cls):
-                    for field, expected in cls.__expected_domains__.items():
+                    logger.info("Checking domain semantics in table '%s'", model.table_name)    
+                    for field, expected in cls.__expected_domains__.items(): 
                         concept_fk = getattr(cls, field)
-
-                    rows = (
-                        session.query(cls)
-                        .join(
-                            Concept,
-                            concept_fk == Concept.concept_id,
-                        )
-                        .filter(~Concept.domain_id.in_(expected.domains))
-                        .limit(10)
-                        .all()
-                    )
-                    c = len(rows)
-                    report.add(
-                        ValidationIssue(
-                                table=cls.__tablename__,
-                                field=field,
-                                message=f"Concept domain not in {expected.domains} ({c} violation(s))",
-                                level=SeverityLevel.WARN
+                        try:
+                            rows = (
+                                session.query(cls)
+                                .join(
+                                    Concept,
+                                    concept_fk == Concept.concept_id,
+                                )
+                                .filter(~Concept.domain_id.in_(expected.domains))
+                                .limit(10)
+                                .all()
                             )
-                    )
+                        except Exception as e:
+                            logger.error(
+                                "Error querying domain semantics for %s.%s: %s",
+                                model.table_name,
+                                field,
+                                str(e),
+                            )
+                            continue
+                        c = len(rows)
+                        if c > 0:
+                            logger.warning(
+                                "Domain semantic violations detected in table '%s' (showing up to 10)",
+                                cls.__tablename__,
+                            )
+                            report.add(
+                                ValidationIssue(
+                                        table=cls.__tablename__,
+                                        field=field,
+                                        message=f"Concept domain not in {expected.domains} ({c} violation(s))",
+                                        level=SeverityLevel.WARN
+                                    )
+                            )
+                        else:
+                            logger.info(
+                                "No domain semantic violations found in table '%s' for field '%s'",
+                                cls.__tablename__,
+                                field,
+                            )
                         
-
-    def validate(
-            self,
-            *,
-            engine=None,
-            check_types: bool = True,
-            check_fks: bool = True,
-            check_domain_semantics: bool = False,
-    ) -> "ValidationReport":
-        report = ValidationReport(cdm_version=CDM_VERSION)
-
-        self._validate_tables(report)
-        self._validate_fields(report)
-        if check_fks:
-            self._validate_foreign_keys(report)
-        if check_types:
-            self._validate_types(report)
-        if check_domain_semantics:
-            self._validate_domain_semantics(report)
-        return report
-
     def _validate_types(self, report):
+        logger.debug("Validating column data types against CDM spec")
         for table, field_spec in self._field_specs.items():
             model = self._models.get(table)
             if not model:
@@ -304,3 +376,78 @@ class CDMModelRegistry:
                                 f"expected {expected}, got {type(col.type)}"
                             )
                     ))
+
+    def _validate_database_schema(self, engine, report):
+        logger.info("Validating database schema against ORM definitions")
+
+        insp = sa.inspect(engine)
+
+        for table_name, model in self._models.items():
+            if not insp.has_table(table_name):
+                report.add(ValidationIssue(
+                    table=table_name,
+                    level=SeverityLevel.ERROR,
+                    message="TABLE_MISSING_IN_DATABASE",
+                    hint="ORM model defined but table not found in database",
+                ))
+                continue
+
+            db_cols = {c["name"]: c for c in insp.get_columns(table_name)}
+
+            for col_name, orm_col in model.columns.items():
+                db_col = db_cols.get(col_name)
+                if not db_col:
+                    report.add(ValidationIssue(
+                        table=table_name,
+                        level=SeverityLevel.ERROR,
+                        field=col_name,
+                        message="COLUMN_MISSING_IN_DATABASE",
+                    ))
+                    continue
+
+                if orm_col.nullable is False and db_col["nullable"] is True:
+                    report.add(ValidationIssue(
+                        table=table_name,
+                        level=SeverityLevel.ERROR,
+                        field=col_name,
+                        message="COLUMN_NULLABILITY_MISMATCH",
+                        expected="NOT NULL",
+                        actual="NULL",
+                    ))
+
+
+    def validate(
+            self,
+            *,
+            engine=None,
+            check_types: bool = True,
+            check_fks: bool = True,
+            check_domain_semantics: bool = False,
+    ) -> "ValidationReport":
+        
+        logger.info(
+            "Starting CDM model validation (types=%s, fks=%s, domain_semantics=%s, engine=%s)",
+            check_types,
+            check_fks,
+            check_domain_semantics,
+            engine is not None,
+        )
+
+        report = ValidationReport(cdm_version=CDM_VERSION)
+
+        self._validate_tables(report)
+        self._validate_fields(report)
+        if check_fks:
+            self._validate_foreign_keys(report)
+        if check_types:
+            self._validate_types(report)
+        if engine is not None:
+            self._validate_database_schema(engine, report)
+        if check_domain_semantics:
+            self._validate_domain_semantics(report)
+            if engine is not None:
+                self._validate_domain_semantics_data(engine, report)
+            else:
+                logger.warning("Domain semantic validation requested but no engine provided; skipping data checks")
+        return report
+

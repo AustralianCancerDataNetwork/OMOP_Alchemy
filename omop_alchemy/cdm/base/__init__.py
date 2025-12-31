@@ -2,7 +2,6 @@ from .declarative import Base, create_db, bootstrap
 from .typing import HasTableName, ORMTable, DomainSemanticTable
 from .cdm_constants import ModifierFieldConcepts
 from .decorators import cdm_table
-from .ingestion import CSVSourceMixin
 from .mixins import (
     PersonScoped,
     ConceptTyped,
@@ -26,7 +25,6 @@ __all__ = [
     "HasTableName",
     "ModifierFieldConcepts",
     "cdm_table",
-    "CSVSourceMixin",
     "PersonScoped",
     "ConceptTyped",
     "DatedEvent",

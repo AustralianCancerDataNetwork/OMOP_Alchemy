@@ -2,15 +2,22 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from typing import Optional, List, TYPE_CHECKING, Type, Any
-
+from dataclasses import dataclass
 import sqlalchemy as sa
 import sqlalchemy.orm as so
-
-from ..registry.registry import DomainRule
 
 if TYPE_CHECKING:
     from omop_alchemy.model.clinical import Measurement, Observation
     from omop_alchemy.model.structural import Episode_Event
+
+@dataclass(frozen=True)
+class DomainRule:
+    table: str
+    field: str
+    allowed_domains: set[str]
+    # Optional: concept_class_id constraints
+    allowed_classes: Optional[set[str]] = None
+
 
 """
 OMOP CDM structural mixins.
@@ -31,6 +38,8 @@ class ConceptTyped:
     """
     Mixin for tables whose primary meaning is encoded by a concept_id.
     Subclasses MUST define <something>_concept_id.
+
+    Not currently used TBC if there is a use-case to retain that supports EAV queries?
     """
 
     @so.declared_attr
@@ -112,7 +121,6 @@ class ExpectedDomain:
     def __init__(self, *domains: str):
         self.domains = set(domains)
 
-
 class DomainValidationMixin:
     """
     Adds lightweight OMOP domain validation helpers.
@@ -139,7 +147,6 @@ class DomainValidationMixin:
                 )
             )
         return rules
-
 
     def _check_domain(self, field: str) -> bool:
         expected = self.__expected_domains__.get(field)

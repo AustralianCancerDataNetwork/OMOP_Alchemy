@@ -8,14 +8,12 @@ from omop_alchemy.cdm.base import (
     PersonScoped, 
     HealthSystemContext, 
     FactTable, 
-    ReferenceContextMixin,
     CDMTableBase,
     cdm_table, 
     required_concept_fk,
     optional_concept_fk,
     optional_int,
-    ModifierTargetMixin,
-    ModifierFieldConcepts
+    ModifierTargetMixin
 )
 
 if TYPE_CHECKING:

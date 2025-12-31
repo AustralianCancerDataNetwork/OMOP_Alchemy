@@ -77,7 +77,7 @@ class ProcedureOccurrenceContext(ReferenceContextMixin):
 
     visit_occurrence: so.Mapped[Optional["Visit_Occurrence"]] = (
         ReferenceContextMixin._reference_relationship(
-            target="VisitOccurrence",
+            target="Visit_Occurrence",
             local_fk="visit_occurrence_id",
             remote_pk="visit_occurrence_id",
         )
@@ -85,7 +85,7 @@ class ProcedureOccurrenceContext(ReferenceContextMixin):
 
     visit_detail: so.Mapped[Optional["Visit_Detail"]] = (
         ReferenceContextMixin._reference_relationship(
-            target="VisitDetail",
+            target="Visit_Detail",
             local_fk="visit_detail_id",
             remote_pk="visit_detail_id",
         )

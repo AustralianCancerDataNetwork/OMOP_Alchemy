@@ -9,11 +9,11 @@ from omop_alchemy.cdm.base import (
     Base,
     CDMTableBase,
     cdm_table,
-    ModifierFieldConcepts
+    ValueMixin
 )
 
 @cdm_table
-class Measurement(Base, CDMTableBase):
+class Measurement(Base, CDMTableBase, ValueMixin):
     __tablename__ = "measurement"
 
     measurement_id: so.Mapped[int] = so.mapped_column(primary_key=True)
@@ -24,8 +24,8 @@ class Measurement(Base, CDMTableBase):
     measurement_time: so.Mapped[Optional[str]]
     measurement_type_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey("concept.concept_id"), nullable=False)
     operator_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey("concept.concept_id"))
-    value_as_number: so.Mapped[Optional[float]]
-    value_as_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey("concept.concept_id"))
+    # value_as_number: so.Mapped[Optional[float]]
+    # value_as_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey("concept.concept_id"))
     unit_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey("concept.concept_id"))
 
     range_low: so.Mapped[Optional[float]]

@@ -10,11 +10,11 @@ from omop_alchemy.cdm.base import (
     Base,
     CDMTableBase,
     cdm_table,
-    ModifierFieldConcepts
+    ValueMixin
 )
 
 @cdm_table
-class Observation(Base, CDMTableBase):
+class Observation(Base, CDMTableBase, ValueMixin):
     __tablename__ = "observation"
 
     observation_id: so.Mapped[int] = so.mapped_column(primary_key=True)
@@ -23,9 +23,9 @@ class Observation(Base, CDMTableBase):
     observation_date: so.Mapped[date] = so.mapped_column(nullable=False)
     observation_datetime: so.Mapped[Optional[datetime]]
     observation_type_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey("concept.concept_id"), nullable=False)
-    value_as_number: so.Mapped[Optional[float]]
+    #value_as_number: so.Mapped[Optional[float]]
     value_as_string: so.Mapped[Optional[str]]
-    value_as_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey("concept.concept_id"))
+    #value_as_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey("concept.concept_id"))
     qualifier_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey("concept.concept_id"))
     unit_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey("concept.concept_id"))
     provider_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey("provider.provider_id"))

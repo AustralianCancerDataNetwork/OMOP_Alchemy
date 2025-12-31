@@ -8,11 +8,11 @@ from omop_alchemy.cdm.base import (
     cdm_table,
     CDMTableBase,
     required_concept_fk,
-    optional_concept_fk,
+    ValueMixin,
 )
 
 @cdm_table
-class Metadata(CDMTableBase, Base):
+class Metadata(CDMTableBase, Base, ValueMixin):
     __tablename__ = "metadata"
 
     metadata_id: so.Mapped[int] = so.mapped_column(primary_key=True)
@@ -20,8 +20,8 @@ class Metadata(CDMTableBase, Base):
     metadata_type_concept_id: so.Mapped[int] = required_concept_fk()
     name: so.Mapped[str] = so.mapped_column(sa.String(250), nullable=False)
     value_as_string: so.Mapped[Optional[str]] = so.mapped_column(sa.String(250), nullable=True)
-    value_as_concept_id: so.Mapped[Optional[int]] = optional_concept_fk()
-    value_as_number: so.Mapped[Optional[float]] = so.mapped_column(sa.Float, nullable=True)
+    # value_as_concept_id: so.Mapped[Optional[int]] = optional_concept_fk()
+    # value_as_number: so.Mapped[Optional[float]] = so.mapped_column(sa.Float, nullable=True)
     metadata_date: so.Mapped[Optional[date]] = so.mapped_column(sa.Date,nullable=True)
     metadata_datetime: so.Mapped[Optional[date]] = so.mapped_column(sa.DateTime,nullable=True)
 

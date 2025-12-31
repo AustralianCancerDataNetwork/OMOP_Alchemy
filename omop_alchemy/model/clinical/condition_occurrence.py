@@ -7,7 +7,6 @@ from datetime import date, datetime
 
 from omop_alchemy.cdm.base import (
     Base,
-    DatedEvent, 
     PersonScoped, 
     HealthSystemContext, 
     FactTable, 
@@ -50,8 +49,6 @@ class Condition_OccurrenceContext(ReferenceContextMixin):
     condition_type: so.Mapped["Concept"] = ReferenceContextMixin._reference_relationship(target="Concept", local_fk="condition_type_concept_id", remote_pk="concept_id")  # type: ignore[assignment]
     condition_source_concept: so.Mapped["Concept"] = ReferenceContextMixin._reference_relationship(target="Concept", local_fk="condition_source_concept_id", remote_pk="concept_id")  # type: ignore[assignment]
     condition_status: so.Mapped["Concept"] = ReferenceContextMixin._reference_relationship(target="Concept", local_fk="condition_status_concept_id", remote_pk="concept_id")  # type: ignore[assignment]
-    location: so.Mapped["Location"] = ReferenceContextMixin._reference_relationship(target="Location",local_fk="location_id",remote_pk="location_id")  # type: ignore[assignment]   
-    care_site: so.Mapped["Care_Site"] = ReferenceContextMixin._reference_relationship(target="Care_Site",local_fk="care_site_id",remote_pk="care_site_id")  # type: ignore[assignment]
 
     @declared_attr
     def visit_occurrence(cls) -> so.Mapped[Optional["Visit_Occurrence"]]:
