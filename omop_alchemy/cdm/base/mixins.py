@@ -169,7 +169,6 @@ class DomainValidationMixin:
             return False
         concept = session.get(ConceptCls, concept_id) # type: ignore
         return concept.domain_id in expected.domains if concept else False
-        
 
 
     @property
