@@ -6,7 +6,7 @@ from omop_alchemy.cdm.base import bootstrap
 import sqlalchemy as sa
 from sqlalchemy.orm import sessionmaker
 
-from omop_alchemy.model.vocabulary import (
+from omop_alchemy.cdm.model.vocabulary import (
     Domain,
     Vocabulary,
     Concept_Class,
