@@ -71,3 +71,6 @@ include-package-data = true
 
 [tool.setuptools.packages.find]
 include = ["omop_alchemy*"]
+
+[tool.setuptools.package-data]
+omop_alchemy = ["py.typed"]
