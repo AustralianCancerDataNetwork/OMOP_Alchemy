@@ -244,7 +244,7 @@ class CDMModelRegistry:
             return
 
         if engine is not None:
-            from ...model.vocabulary.domain import Domain
+            from ..model.vocabulary.domain import Domain
 
             with Session(engine) as session:
                 known_domains = set([d[0] for d in session.query(Domain.domain_id).all()])
@@ -291,7 +291,7 @@ class CDMModelRegistry:
         engine,
         report: ValidationReport,
     ) -> None:
-        from omop_alchemy.model.vocabulary import Concept
+        from omop_alchemy.cdm.model.vocabulary import Concept
         logger.info("Running domain semantic validation against database")
         with Session(engine) as session:
             for model in self._models.values():

@@ -19,7 +19,7 @@ from omop_alchemy.cdm.base import (
     ExpectedDomain,
 )
 
-from ...cdm.base.declarative import get_table_by_name
+from ...base.declarative import get_table_by_name
 
 if TYPE_CHECKING:
     from ..vocabulary import Concept

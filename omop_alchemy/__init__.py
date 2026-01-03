@@ -1,7 +1,7 @@
 from .config import load_environment, get_engine_name, TEST_PATH, ROOT_PATH
 from .cdm.base import Base, create_db
 from .cdm.utils import get_logger, configure_logging
-from .model.vocabulary import Concept
+from .cdm.model.vocabulary import Concept
 
 __all__ = [
     "Base",

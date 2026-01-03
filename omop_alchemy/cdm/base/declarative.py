@@ -67,7 +67,7 @@ def bootstrap(engine, *, create: bool = True):
     """
     Initialise OMOP schema against a provided SQLAlchemy engine.
     """
-    from omop_alchemy.model import __all__ as model_modules
+    from omop_alchemy.cdm.model import __all__ as model_modules
     # for module_name in model_modules:
     #     __import__(f"omop_alchemy.model.{module_name}")
     #     print(module_name)

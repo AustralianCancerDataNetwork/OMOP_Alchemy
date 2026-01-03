@@ -10,8 +10,8 @@ import sqlalchemy.orm as so
 from .declarative import get_table_by_name
 
 if TYPE_CHECKING:
-    from omop_alchemy.model.clinical import Measurement, Observation
-    from omop_alchemy.model.structural import Episode_Event
+    from omop_alchemy.cdm.model.clinical import Measurement, Observation
+    from omop_alchemy.cdm.model.structural import Episode_Event
 
 @dataclass(frozen=True)
 class DomainRule:
