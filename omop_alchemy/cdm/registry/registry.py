@@ -285,6 +285,7 @@ class CDMModelRegistry:
                 for rule in rules:
                     self._validate_domain_rule(rule, report)
 
+
     def _validate_domain_semantics_data(
         self,
         engine,

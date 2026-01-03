@@ -81,7 +81,7 @@ def bootstrap(engine, *, create: bool = True):
         
 def get_table_by_name(tablename: str) -> ORMTable | None:
     for cls in Base.__subclasses__():
-        if cls.__tablename__ == tablename:
+        if cls.__tablename__ == tablename.lower().strip():
             if isinstance(cls, ORMTable):
                 return cls
     return None

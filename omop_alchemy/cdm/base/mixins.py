@@ -6,6 +6,9 @@ from dataclasses import dataclass
 import sqlalchemy as sa
 import sqlalchemy.orm as so
 
+
+from .declarative import get_table_by_name
+
 if TYPE_CHECKING:
     from omop_alchemy.model.clinical import Measurement, Observation
     from omop_alchemy.model.structural import Episode_Event
@@ -157,11 +160,17 @@ class DomainValidationMixin:
         if concept_id == 0:
             return True  # OMOP allows 0
 
-        try:
-            concept = getattr(self, field.replace("_concept_id", ""))
-            return concept.domain_id in expected.domains
-        except Exception:
+        session = so.object_session(self)
+        if session is None:
+            return True  # detached; best-effort
+        # need to be able to query concept table but can't import directly here to avoid circular imports
+        ConceptCls = get_table_by_name("Concept")
+        if ConceptCls is None:
             return False
+        concept = session.get(ConceptCls, concept_id) # type: ignore
+        return concept.domain_id in expected.domains if concept else False
+        
+
 
     @property
     def domain_violations(self) -> list[str]:

@@ -1,7 +1,7 @@
 from .condition_occurrence import Condition_Occurrence, Condition_OccurrenceContext, Condition_OccurrenceView
 from .measurement import Measurement
 from .observation import Observation
-from .person import Person
+from .person import Person, PersonView
 from .drug_exposure import Drug_Exposure
 from .procedure_occurrence import Procedure_Occurrence
 from .device_exposure import Device_Exposure
@@ -19,5 +19,6 @@ __all__ = [
     "Procedure_Occurrence",
     "Device_Exposure",
     "Death",
-    "Specimen"
+    "Specimen",
+    "PersonView"
 ]

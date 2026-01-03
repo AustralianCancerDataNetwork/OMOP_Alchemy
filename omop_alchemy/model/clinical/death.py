@@ -1,6 +1,6 @@
 import sqlalchemy as sa
 import sqlalchemy.orm as so
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from datetime import date
 from omop_alchemy.cdm.base import (
     Base,
@@ -11,6 +11,10 @@ from omop_alchemy.cdm.base import (
     DomainValidationMixin,
     ExpectedDomain,
 )
+
+if TYPE_CHECKING:
+    from ..vocabulary import Concept
+    from ..clinical import Person, PersonView
 
 @cdm_table
 class Death(CDMTableBase, Base):
@@ -36,3 +40,8 @@ class DeathView(Death, DeathContext, DomainValidationMixin):
     __expected_domains__ = {
 
     }
+    person: so.Mapped["PersonView"] = so.relationship(
+        "PersonView",
+        viewonly=True,
+        lazy="joined",
+    )
