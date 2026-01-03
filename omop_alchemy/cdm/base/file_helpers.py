@@ -55,17 +55,39 @@ def normalise_csv_to_model(model_columns: dict[str, sa.Column], df: pd.DataFrame
         df = df.loc[~null_mask]
     return df
                 
-def dedupe_csv(df: pd.DataFrame, pk_names: list[str], cls: Type[HasTableName], session: so.Session) -> pd.DataFrame:
+def dedupe_csv(df: pd.DataFrame, pk_names: list[str], cls: Type[HasTableName], session: so.Session, max_bind_vars=1_000) -> pd.DataFrame:
     before = len(df)
     df = df.drop_duplicates(subset=pk_names, keep="first")
     dropped = before - len(df)
     logger.info(f'Dropping {dropped} duplicates from csv file for table {cls.__tablename__}')
     pk_tuples = list(df[pk_names].itertuples(index=False, name=None))
     pk_cols = [getattr(cls, c) for c in pk_names]
-    existing = pd.DataFrame(
-        session.query(*pk_cols)
-        .filter(sa.tuple_(*pk_cols).in_(pk_tuples))
-    )
+
+    vars_per_row = len(pk_cols)
+    chunk_size = max_bind_vars // vars_per_row
+    existing_rows: list[tuple] = []
+    for i in range(0, len(pk_tuples), chunk_size):
+        chunk = pk_tuples[i : i + chunk_size]
+
+        rows = (
+            session.query(*pk_cols)
+            .filter(sa.tuple_(*pk_cols).in_(chunk))
+            .all()
+        )
+
+        existing_rows.extend(rows)
+
+
+    if not existing_rows:
+        return df
+
+    existing = pd.DataFrame(existing_rows, columns=pk_names)
+
+
+    # existing = pd.DataFrame(
+    #     session.query(*pk_cols)
+    #     .filter(sa.tuple_(*pk_cols).in_(pk_tuples))
+    # )
     if len(existing) > 0:
         logger.warning(f'{len(existing)} duplicate records in csv file {cls.__tablename__} will be dropped')
         df = df.merge(
