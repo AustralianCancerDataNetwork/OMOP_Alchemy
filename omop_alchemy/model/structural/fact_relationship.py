@@ -9,7 +9,7 @@ from omop_alchemy.cdm.base import (
 )
 
 @cdm_table
-class FactRelationship(CDMTableBase, Base):
+class Fact_Relationship(CDMTableBase, Base):
     __tablename__ = "fact_relationship"
 
     domain_concept_id_1: so.Mapped[int] = required_concept_fk()

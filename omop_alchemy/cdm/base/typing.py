@@ -1,6 +1,6 @@
 
 from typing import Protocol, ClassVar, runtime_checkable, TYPE_CHECKING, Optional
-from sqlalchemy.orm import DeclarativeMeta
+from sqlalchemy.orm import DeclarativeMeta, Mapper
 from datetime import date
 
 if TYPE_CHECKING:
@@ -11,6 +11,12 @@ if TYPE_CHECKING:
 @runtime_checkable
 class HasTableName(Protocol):
     __tablename__: ClassVar[str]
+
+    @classmethod
+    def mapper_for(cls) -> Mapper: ...
+
+    @classmethod
+    def pk_names(cls) -> list[str]: ...
 
 @runtime_checkable
 class HasConceptId(Protocol):

@@ -1,4 +1,4 @@
-from .declarative import Base, create_db, bootstrap
+from .declarative import Base, create_db, bootstrap, get_table_by_name
 from .typing import HasTableName, ORMTable, DomainSemanticTable
 from .cdm_constants import ModifierFieldConcepts
 from .decorators import cdm_table
@@ -49,4 +49,5 @@ __all__ = [
     "ModifierTargetMixin",
     "ModifierTargetRegistry",
     "bootstrap",
+    "get_table_by_name"
 ]

@@ -29,7 +29,7 @@ class Episode_Event(CDMTableBase, Base):
 
     episode_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey("episode.episode_id"),nullable=False,primary_key=True)
     event_id: so.Mapped[int] = so.mapped_column(nullable=False,primary_key=True)
-    episode_event_field_concept_id: so.Mapped[int] = required_concept_fk()
+    episode_event_field_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey("concept.concept_id"),nullable=False,primary_key=True)
 
     def __repr__(self) -> str:
         return f"<EpisodeEvent ep={self.episode_id} event={self.event_id}>"

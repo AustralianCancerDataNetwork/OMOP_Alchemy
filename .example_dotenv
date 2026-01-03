@@ -1,1 +1,2 @@
 ENGINE=sqlite://///your/database/url/goes/here/test.db
+SOURCE_PATH=/where/do/you/keep/unzipped/athena_source/files/

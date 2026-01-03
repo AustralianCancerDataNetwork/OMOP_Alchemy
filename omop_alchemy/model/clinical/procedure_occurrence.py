@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from ..health_system import Provider, Visit_Occurrence, Visit_Detail
 
 @cdm_table
-class ProcedureOccurrence(CDMTableBase, Base, PersonScoped, HealthSystemContext):
+class Procedure_Occurrence(CDMTableBase, Base, PersonScoped, HealthSystemContext):
     __tablename__ = "procedure_occurrence"
     procedure_occurrence_id: so.Mapped[int] = so.mapped_column(primary_key=True)
     procedure_concept_id: so.Mapped[int] = required_concept_fk()
@@ -39,10 +39,10 @@ class ProcedureOccurrence(CDMTableBase, Base, PersonScoped, HealthSystemContext)
     modifier_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50),nullable=True,)
 
     def __repr__(self) -> str:
-        return f"<ProcedureOccurrence {self.procedure_occurrence_id}>"
+        return f"<Procedure_Occurrence {self.procedure_occurrence_id}>"
 
 
-class ProcedureOccurrenceContext(ReferenceContextMixin):
+class Procedure_OccurrenceContext(ReferenceContextMixin):
     person: so.Mapped["Person"] = ReferenceContextMixin._reference_relationship(
         target="Person",
         local_fk="person_id",
@@ -100,9 +100,9 @@ class ProcedureOccurrenceContext(ReferenceContextMixin):
     )  # type: ignore[assignment]
 
 
-class ProcedureOccurrenceView(
-    ProcedureOccurrence,
-    ProcedureOccurrenceContext,
+class Procedure_OccurrenceView(
+    Procedure_Occurrence,
+    Procedure_OccurrenceContext,
     DomainValidationMixin,
 ):
     __tablename__ = "procedure_occurrence"
@@ -129,7 +129,7 @@ class ProcedureOccurrenceView(
 
     def __repr__(self) -> str:
         return (
-            f"<ProcedureOccurrence {self.procedure_occurrence_id}: "
+            f"<Procedure_Occurrence {self.procedure_occurrence_id}: "
             f"{self.procedure_concept_id} "
             f"({self.procedure_date})>"
         )

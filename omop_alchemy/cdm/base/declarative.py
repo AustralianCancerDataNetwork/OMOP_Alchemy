@@ -6,6 +6,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
 from omop_alchemy.cdm.utils import get_logger
+from .typing import ORMTable
 
 logger = get_logger(__name__)
 
@@ -78,3 +79,9 @@ def bootstrap(engine, *, create: bool = True):
         logger.info("Schema creation skipped (existing schema assumed)")
 
         
+def get_table_by_name(tablename: str) -> ORMTable | None:
+    for cls in Base.__subclasses__():
+        if cls.__tablename__ == tablename:
+            if isinstance(cls, ORMTable):
+                return cls
+    return None
