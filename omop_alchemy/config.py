@@ -8,12 +8,12 @@ TEST_PATH = Path(__file__).parent.parent / "tests"
 
 logger = get_logger(__name__)
 
-def load_environment(dotenv: bool = True) -> None:
+def load_environment(dotenv: str = '') -> None:
     """
     Explicitly load environment variables for the application.
     Safe: does not log sensitive values.
     """
-    if dotenv and load_dotenv():
+    if load_dotenv(dotenv) or load_dotenv():
         logger.info("Environment variables loaded from .env file")
     else:
         logger.debug("No .env file loaded")
