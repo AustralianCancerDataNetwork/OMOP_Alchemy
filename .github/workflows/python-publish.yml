@@ -4,8 +4,6 @@ on:
   release:
     types: [published]
 
-environment:
-  name: pypi
 
 jobs:
   publish:
@@ -13,6 +11,8 @@ jobs:
     permissions:
       id-token: write  # REQUIRED for trusted publishing
       contents: read
+    environment:
+        name: pypi
 
     steps:
       - uses: actions/checkout@v4
