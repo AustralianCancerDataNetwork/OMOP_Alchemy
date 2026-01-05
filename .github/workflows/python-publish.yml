@@ -4,6 +4,9 @@ on:
   release:
     types: [published]
 
+environment:
+  name: pypi
+
 jobs:
   publish:
     runs-on: ubuntu-latest
