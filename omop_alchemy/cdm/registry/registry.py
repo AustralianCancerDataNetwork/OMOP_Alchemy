@@ -262,7 +262,7 @@ class CDMModelRegistry:
                     )
                 )
         else:
-            logger.warning("No engine provided; skipping domain existence check for DomainRule on %s.%s", table, field)
+            logger.warning(f"No engine provided; skipping domain existence check for DomainRule on {table}.{field}")
 
         if rule.allowed_classes:
             report.add(
@@ -297,7 +297,7 @@ class CDMModelRegistry:
             for model in self._models.values():
                 cls = model.model
                 if is_domain_semantic_table(cls):
-                    logger.info("Checking domain semantics in table '%s'", model.table_name)    
+                    logger.info(f"Checking domain semantics in table '{model.table_name}'")    
                     for field, expected in cls.__expected_domains__.items(): 
                         concept_fk = getattr(cls, field)
                         try:

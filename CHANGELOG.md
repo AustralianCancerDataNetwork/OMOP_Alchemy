@@ -14,3 +14,7 @@
 - added bulk_load_context for trusted bulk loads (e.g. Athena vocabulary)
 - Disables FK enforcement where supported
 - Suppresses autoflush during bulk load operations
+
+## 0.2.4
+- fstrings in logging throughout
+- changed type handling for string columns that may contain numeric data to prevent errors during load

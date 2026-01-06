@@ -1,14 +1,15 @@
 import pandas as pd
-import json
+from dataclasses import dataclass, field
 from datetime import date, datetime
 from typing import Type
+from collections import defaultdict
 import sqlalchemy as sa
 import sqlalchemy.orm as so
+
 from .typing import HasTableName
 from ..utils import CDMValidationError, perform_cast, get_logger
 
 logger = get_logger(__name__)
-
 
 def _json_default(obj):
     if isinstance(obj, (date, datetime)):
@@ -37,22 +38,46 @@ def load_by_chunk(
         total += len(records)
     return total
 
+
+@dataclass
+class CastingStats:
+    count: int = 0
+    examples: defaultdict[str, list[str]] = field(
+        default_factory=lambda: defaultdict(list)
+    )
+    def record(self, value: str, col_name: str, example_limit: int = 3):
+        self.count += 1
+        if len(self.examples[col_name]) < example_limit:
+            self.examples[col_name].append(value)
+
 def normalise_csv_to_model(model_columns: dict[str, sa.Column], df: pd.DataFrame, cls: Type[HasTableName]) -> pd.DataFrame:
     if df.empty:
         return df
     
+    cast_errors: dict[str, CastingStats] = defaultdict(CastingStats)
+
     for col, sa_col in model_columns.items():
-        logger.debug(f'Coercing data from csv against model for {cls.__tablename__}.{col}')
         if col not in df.columns:
-            continue
-        df[col] = df[col].map(lambda v: perform_cast(v, sa_col.type))
+                    continue
+        
+        def _on_cast_error(value: str, *, _col_type=f'{sa_col.type}', _col=col):
+            cast_errors[_col_type].record(value, _col)
+
+        df[col] = df[col].map(lambda v: perform_cast(v, sa_col.type))#, on_cast_error=_on_cast_error))
 
     required_cols = [name for name, col in model_columns.items() if not col.nullable]
+    for c in required_cols:
+        null_mask = df[c].isna()
+        null_count = int(null_mask.sum())
+        if null_count > 0:
+            logger.warning(f"Found {null_count} rows with unexpected nulls in {cls.__tablename__}.{c}")
+
     null_mask = df[required_cols].isna().any(axis=1)
-    null_count = int(null_mask.sum())
-    if null_count > 0:
-        logger.warning("Found %d rows with NULL primary keys in %s", null_count, cls.__tablename__)
-        df = df.loc[~null_mask]
+    df = df.loc[~null_mask]
+
+    for error_type, details in cast_errors.items():
+        for col, stats in details.items():
+            logger.warning(f"{error_type.upper()} {cls.__tablename__}.{col}: cast issue with {stats.count} row(s). Examples: {stats.examples}")
     return df
                 
 def dedupe_csv(df: pd.DataFrame, pk_names: list[str], cls: Type[HasTableName], session: so.Session, max_bind_vars=1_000) -> pd.DataFrame:
@@ -74,20 +99,13 @@ def dedupe_csv(df: pd.DataFrame, pk_names: list[str], cls: Type[HasTableName], s
             .filter(sa.tuple_(*pk_cols).in_(chunk))
             .all()
         )
-
         existing_rows.extend(rows)
-
 
     if not existing_rows:
         return df
 
     existing = pd.DataFrame(existing_rows, columns=pk_names)
 
-
-    # existing = pd.DataFrame(
-    #     session.query(*pk_cols)
-    #     .filter(sa.tuple_(*pk_cols).in_(pk_tuples))
-    # )
     if len(existing) > 0:
         logger.warning(f'{len(existing)} duplicate records in csv file {cls.__tablename__} will be dropped')
         df = df.merge(

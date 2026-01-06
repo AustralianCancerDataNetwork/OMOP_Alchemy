@@ -1,9 +1,10 @@
-from typing import Any
-from sqlalchemy import Integer, Float, Boolean, Date, DateTime, Enum, String, Text
-from typing import Any
+from typing import Any, Callable
+from sqlalchemy import Integer, Float, Boolean, Date, DateTime, String, Text
 from datetime import date, datetime 
 import math
+import re
 
+_NUMERIC_RE = re.compile(r"^[+-]?\d+(\.\d+)?$")
 
 _ATHENA_DATE_FORMATS = (
     "%d-%b-%Y",        # 24-AUG-2017 (Athena standard)
@@ -46,13 +47,30 @@ def _to_bool(value: Any) -> bool | None:
         return False
     return None
 
-def perform_cast(value: Any, col_type: Any) -> Any:
+
+def _to_numeric_string(value: str | None) -> str | None:
+    if value is None:
+        return None
+
+    if not _NUMERIC_RE.match(value):
+        return value  
+
+    if "." in value:
+        f = float(value)
+        if f.is_integer():
+            return str(int(f))
+        return str(f)
+
+    return str(int(value))
+
+def perform_cast(value: Any, col_type: Any, *, on_cast_error: Callable | None = None) -> Any:
     if value is None:
         return None
     if isinstance(value, float) and math.isnan(value):
         return None
     if isinstance(value, str) and value.strip() == "":
         return None
+    
     # Integer
     if type(col_type) == Integer:
         try:
@@ -65,10 +83,15 @@ def perform_cast(value: Any, col_type: Any) -> Any:
         try:
             return float(value)
         except (ValueError, TypeError):
+            if on_cast_error:
+                on_cast_error(value)
             return None
     # Boolean
     if type(col_type) == Boolean:
-        return _to_bool(value)
+        v = _to_bool(value)
+        if v is None and on_cast_error:
+            on_cast_error(value)
+        return v
 
     # Date, DateTime
     if type(col_type) == Date:
@@ -77,7 +100,10 @@ def perform_cast(value: Any, col_type: Any) -> Any:
         if isinstance(value, datetime):
             return value.date()
         if isinstance(value, str):
-            return _parse_date(value)
+            v = _parse_date(value)
+            if not v and on_cast_error:
+                on_cast_error(value)
+            return v
         return None
     
     if type(col_type) == DateTime:
@@ -86,11 +112,13 @@ def perform_cast(value: Any, col_type: Any) -> Any:
         if isinstance(value, date):
             return datetime.combine(value, datetime.min.time())
         if isinstance(value, str):
-            return _parse_datetime(value)
-        return None
+            v = _parse_datetime(value)
+            if not v and on_cast_error:
+                on_cast_error(value)
+        return v
 
     # String / Text
-    if type(col_type) == String or type(col_type) == Text:
+    if isinstance(col_type, String) or isinstance(col_type, Text):
         # Canonicalise numeric-looking identifiers
         if isinstance(value, float) and value.is_integer():
             return str(int(value))
@@ -99,14 +127,13 @@ def perform_cast(value: Any, col_type: Any) -> Any:
             v = value.strip()
             if v == "":
                 return None
-            if v.isdigit():
-                return str(int(v))
-            try:
-                f = float(v)
-                if f.is_integer():
-                    return str(int(f))
-            except ValueError:
-                pass
+            # conservative numeric normalisation for string types - avoiding scientific notation and floating point precision issues
+            v = _to_numeric_string(v)
+            if col_type.length and len(v) > col_type.length:
+                if on_cast_error:
+                    on_cast_error(value)
+                v = v[: col_type.length]
+            assert not col_type.length or len(v) <= col_type.length, (f"{v!r} exceeds {col_type.length} chars")
             return v
 
         return str(value)

@@ -148,7 +148,7 @@ class CDMTableBase:
             dataframe=df,
             chunk_size=chunk_size,
         )
-        logger.info("%s: inserted %d rows from CSV",cls.__tablename__,total)
+        logger.info(f"{cls.__tablename__}: inserted {total} rows from CSV")
         return total
 
     @classmethod

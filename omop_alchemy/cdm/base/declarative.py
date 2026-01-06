@@ -46,10 +46,7 @@ def explain_sqlite_fk_error(session, exc: IntegrityError, raise_error: bool = Tr
         )
 
     for r in rows:
-        logger.debug(
-            "FK violation: table=%s rowid=%s references=%s fk_index=%s",
-            r[0], r[1], r[2], r[3]
-        )
+        logger.debug(f"FK violation: table={r[0]} rowid={r[1]} references={r[2]} fk_index={r[3]}")
     if raise_error:
         raise exc
 
@@ -58,18 +55,14 @@ class Base(DeclarativeBase):
     metadata = metadata
 
 def create_db(Base, engine):
-    logger.debug("Database dialect: %s", engine.dialect.name)
+    logger.debug(f"Database dialect: {engine.dialect.name}")
     Base.metadata.create_all(engine)
 
 def bootstrap(engine, *, create: bool = True):
     """
     Initialise OMOP schema against a provided SQLAlchemy engine.
     """
-    from omop_alchemy.cdm.model import __all__ as model_modules
-    # for module_name in model_modules:
-    #     __import__(f"omop_alchemy.model.{module_name}")
-    #     print(module_name)
-    logger.info("Bootstrapping OMOP schema (create=%s)", create)
+    logger.info(f"Bootstrapping OMOP schema (create={create})")
     if create:
         logger.info("Schema creation enabled")
         create_db(Base, engine)
@@ -117,6 +110,11 @@ def bulk_load_context(
                 yield
         else:
             yield
+
+    
+    except Exception:
+        session.rollback()
+        raise
 
     finally:
         if fk_disabled:
