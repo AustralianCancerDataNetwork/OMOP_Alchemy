@@ -30,10 +30,11 @@ def load_by_chunk(
 
     for chunk in iter_chunks(dataframe, chunk_size):
         records = chunk.to_dict(orient="records")
-        objs = [cls(**r) for r in records]  # type: ignore - assume we are only getting to this point with valid data
-        session.add_all(objs)
-        total += len(objs)
-
+        session.execute(
+            sa.insert(cls.__table__),
+            records
+        )
+        total += len(records)
     return total
 
 def normalise_csv_to_model(model_columns: dict[str, sa.Column], df: pd.DataFrame, cls: Type[HasTableName]) -> pd.DataFrame:
