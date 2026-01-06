@@ -104,30 +104,25 @@ class CDMTableBase:
     @classmethod
     def next_id(cls, session) -> int:
         return cls.max_id(session) + 1
+    
 
     @classmethod
-    def load_csv(
+    def load_df(
         cls: Type[HasTableName],
         session: so.Session,
-        path: Path,
+        df: pd.DataFrame,
         *,
+        model_columns: dict[str, sa.Column],
+        pk_names: list[str],
+        normalise: bool,
+        dedupe: bool,
         strict: bool = True,
-        delimiter: str = "\t",
-        dedupe: bool = False,
-        normalise: bool = True,
-        chunk_size: int = 10_000,
     ) -> int:
 
-        logger.debug(f'Loading csv file for {cls.__tablename__}')
-        if path.stem.lower() != cls.__tablename__:
-            raise ValueError(f"CSV filename '{path.name}' does not match table '{cls.__tablename__}'")
-        mapper = cls.mapper_for()
-        model_columns: dict[str, sa.Column] = {c.key: c for c in mapper.columns}
-        pk_names = cls.pk_names()
-        df = pd.read_csv(path, delimiter=delimiter, dtype=str)
-
+        if df.empty:
+            return 0
+        
         if strict:
-            logger.debug(f'Checking csv file against model for {cls.__tablename__}')
             unknown = set(df.columns) - set(model_columns)
             if unknown:
                 raise ValueError(f"Unknown columns in file: {cls.__tablename__}: {unknown}")
@@ -139,17 +134,127 @@ class CDMTableBase:
 
         if normalise:
             df = normalise_csv_to_model(model_columns, df, cls)
+
         if dedupe:
             df = dedupe_csv(df, pk_names, cls, session)
 
-        total = load_by_chunk(
+        if df.empty:
+            return 0
+
+        return load_by_chunk(
             cls=cls,
             session=session,
-            dataframe=df,
-            chunk_size=chunk_size,
+            dataframe=df
         )
+
+
+    @classmethod
+    def load_csv(
+        cls: Type[HasTableName],
+        session: so.Session,
+        path: Path,
+        *,
+        strict: bool = True,
+        delimiter: str = "\t",
+        normalise: bool = True,
+        dedupe: bool = False,
+        chunksize: int | None = None,
+        commit_on_chunk: bool = False,
+    ) -> int:
+        logger.debug("Loading CSV for %s", cls.__tablename__)
+
+        if path.stem.lower() != cls.__tablename__:
+            raise ValueError(
+                f"CSV filename '{path.name}' does not match table '{cls.__tablename__}'"
+            )
+
+        mapper = cls.mapper_for()
+        model_columns: dict[str, sa.Column] = {c.key: c for c in mapper.columns}
+        pk_names = cls.pk_names()
+        total = 0
+        if chunksize:
+            for df in pd.read_csv(
+                path,
+                delimiter=delimiter,
+                dtype=str,
+                chunksize=chunksize,
+            ):
+                total += cls.load_df(
+                    session, 
+                    df,
+                    model_columns=model_columns,
+                    pk_names=pk_names,
+                    normalise=normalise,
+                    dedupe=dedupe,
+                    strict=False,
+                )
+                if commit_on_chunk:
+                    session.commit()
+        else:
+            df = pd.read_csv(path, delimiter=delimiter, dtype=str)
+            total = cls.load_df(
+                session,
+                df,
+                model_columns=model_columns,
+                pk_names=pk_names,
+                normalise=normalise,
+                dedupe=dedupe,
+                strict=strict,
+            )
+            if commit_on_chunk:
+                session.commit()
+
         logger.info(f"{cls.__tablename__}: inserted {total} rows from CSV")
         return total
+
+    # @classmethod
+    # def load_csv(
+    #     cls: Type[HasTableName],
+    #     session: so.Session,
+    #     path: Path,
+    #     *,
+    #     strict: bool = True,
+    #     delimiter: str = "\t",
+    #     dedupe: bool = False,
+    #     normalise: bool = True,
+    #     chunk_size: int = 10_000,
+    #     flush_by_chunk: bool = False, # don't use this for initial load of core tables for preserving FK interdependencies - ok for ancestry and relationship load (i.e. large and unwieldy files)
+    # ) -> int:
+
+    #     logger.debug(f'Loading csv file for {cls.__tablename__}')
+    #     if path.stem.lower() != cls.__tablename__:
+    #         raise ValueError(f"CSV filename '{path.name}' does not match table '{cls.__tablename__}'")
+    #     mapper = cls.mapper_for()
+    #     model_columns: dict[str, sa.Column] = {c.key: c for c in mapper.columns}
+    #     pk_names = cls.pk_names()
+    #     df = pd.read_csv(path, delimiter=delimiter, dtype=str)
+
+    #     if strict:
+    #         logger.debug(f'Checking csv file against model for {cls.__tablename__}')
+    #         unknown = set(df.columns) - set(model_columns)
+    #         if unknown:
+    #             raise ValueError(f"Unknown columns in file: {cls.__tablename__}: {unknown}")
+    #         missing = set(model_columns) - set(df.columns)
+    #         if missing:
+    #             raise ValueError(f"Missing columns in {cls.__tablename__}: {missing}")
+
+    #     df = df[[c for c in df.columns if c in model_columns]]
+
+    #     if normalise:
+    #         df = normalise_csv_to_model(model_columns, df, cls)
+    #     if dedupe:
+    #         df = dedupe_csv(df, pk_names, cls, session)
+
+    #     total = load_by_chunk(
+    #         cls=cls,
+    #         session=session,
+    #         dataframe=df,
+    #         chunk_size=chunk_size,
+    #     )
+    #     logger.info(f"{cls.__tablename__}: inserted {total} rows from CSV")
+    #     if flush_by_chunk:
+    #         session.flush()
+    #     return total
 
     @classmethod
     def extra_validate(cls) -> list["ValidationIssue"]:

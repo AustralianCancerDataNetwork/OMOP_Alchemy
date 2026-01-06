@@ -18,3 +18,6 @@
 ## 0.2.4
 - fstrings in logging throughout
 - changed type handling for string columns that may contain numeric data to prevent errors during load
+
+## 0.2.5
+- optional commit on chunk load to reduce transaction size for large files

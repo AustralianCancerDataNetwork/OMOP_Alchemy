@@ -1,6 +1,6 @@
 [project]
 name = "omop-alchemy"
-version = "0.2.4"
+version = "0.2.5"
 description = "SQLAlchemy-based models, validation, and utilities for the OHDSI OMOP Common Data Model"
 readme = "README.md"
 requires-python = ">=3.10"
