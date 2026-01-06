@@ -32,7 +32,6 @@ def load_by_chunk(
         records = chunk.to_dict(orient="records")
         objs = [cls(**r) for r in records]  # type: ignore - assume we are only getting to this point with valid data
         session.add_all(objs)
-        session.flush()
         total += len(objs)
 
     return total

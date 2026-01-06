@@ -1,10 +1,8 @@
-from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy import MetaData
-from sqlalchemy import event
+from sqlalchemy import MetaData, event, text
+from sqlalchemy.orm import DeclarativeBase, Session
 from sqlalchemy.engine import Engine
-from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
-
+from contextlib import contextmanager
 from omop_alchemy.cdm.utils import get_logger
 from .typing import ORMTable
 
@@ -78,7 +76,59 @@ def bootstrap(engine, *, create: bool = True):
     else:
         logger.info("Schema creation skipped (existing schema assumed)")
 
-        
+
+@contextmanager
+def bulk_load_context(
+    session: Session,
+    *,
+    disable_fk: bool = True,
+    no_autoflush: bool = True,
+):
+    """
+    Context manager for trusted bulk loads (e.g. Athena vocabulary).
+
+    - Disables FK enforcement where supported
+    - Suppresses autoflush
+    - Restores state reliably
+    """
+
+    engine = session.get_bind()
+    dialect = engine.dialect.name
+
+    # FK control
+    fk_disabled = False
+
+    try:
+        if disable_fk:
+            if dialect == "postgresql":
+                session.execute(text(
+                    "SET session_replication_role = replica"
+                ))
+                fk_disabled = True
+
+            elif dialect == "sqlite":
+                session.execute(text(
+                    "PRAGMA foreign_keys = OFF"
+                ))
+                fk_disabled = True
+
+        if no_autoflush:
+            with session.no_autoflush:
+                yield
+        else:
+            yield
+
+    finally:
+        if fk_disabled:
+            if dialect == "postgresql":
+                session.execute(text(
+                    "SET session_replication_role = DEFAULT"
+                ))
+            elif dialect == "sqlite":
+                session.execute(text(
+                    "PRAGMA foreign_keys = ON"
+                ))
+
 def get_table_by_name(tablename: str) -> ORMTable | None:
     for cls in Base.__subclasses__():
         if cls.__tablename__ == tablename.lower().strip():

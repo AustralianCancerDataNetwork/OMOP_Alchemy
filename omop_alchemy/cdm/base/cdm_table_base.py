@@ -117,11 +117,10 @@ class CDMTableBase:
         normalise: bool = True,
         chunk_size: int = 10_000,
     ) -> int:
-        
+
         logger.debug(f'Loading csv file for {cls.__tablename__}')
         if path.stem.lower() != cls.__tablename__:
             raise ValueError(f"CSV filename '{path.name}' does not match table '{cls.__tablename__}'")
-
         mapper = cls.mapper_for()
         model_columns: dict[str, sa.Column] = {c.key: c for c in mapper.columns}
         pk_names = cls.pk_names()
