@@ -21,3 +21,6 @@
 
 ## 0.2.5
 - optional commit on chunk load to reduce transaction size for large files
+
+## 0.2.6
+- extra episode demo and modify joined load strategy for conceptview objects
