@@ -5,7 +5,7 @@ from typing import Optional, TYPE_CHECKING, List
 from datetime import date
 from sqlalchemy.ext.hybrid import hybrid_method
 from sqlalchemy.orm.exc import DetachedInstanceError
-
+from sqlalchemy.ext.declarative import declared_attr
 from omop_alchemy.cdm.base import (
     Base, 
     cdm_table,
@@ -22,6 +22,8 @@ from omop_alchemy.cdm.base import (
 if TYPE_CHECKING:
     from ..vocabulary import Concept
     from ..clinical import Condition_Occurrence, Person
+    from .episode_event import Episode_Event, Episode_EventView
+    from ...base.typing import HasEpisodeId
 
 @cdm_table
 class Episode(CDMTableBase, Base, PersonScoped):
@@ -52,6 +54,16 @@ class EpisodeContext(ReferenceContextMixin):
     episode_object_concept: so.Mapped["Concept"] = ReferenceContextMixin._reference_relationship(target="Concept",local_fk="episode_object_concept_id",remote_pk="concept_id")  # type: ignore[assignment]
     episode_type_concept: so.Mapped["Concept"] = ReferenceContextMixin._reference_relationship(target="Concept",local_fk="episode_type_concept_id",remote_pk="concept_id")  # type: ignore[assignment]
     parent_episode: so.Mapped[Optional["Episode"]] = ReferenceContextMixin._reference_relationship(target="Episode",local_fk="episode_parent_id",remote_pk="episode_id")  # type: ignore[assignment]
+    
+    @declared_attr
+    def episode_events(cls: type['HasEpisodeId']) -> so.Mapped[List["Episode_EventView"]]:
+        return so.relationship(
+            "Episode_EventView",
+            primaryjoin="Episode.episode_id == Episode_EventView.episode_id",
+            viewonly=True,
+            lazy="selectin",
+        )
+
 
 class EpisodeView(Episode, EpisodeContext, DomainValidationMixin):
     """
@@ -68,10 +80,25 @@ class EpisodeView(Episode, EpisodeContext, DomainValidationMixin):
 
     __expected_domains__ = {
         "episode_concept_id": ExpectedDomain("Episode"),
-# todo: extend ExpectedDomain to support multiple domains
-#        "episode_object_concept_id": ExpectedDomain(["Condition", "Procedure", "Regimen"]),
+        "episode_object_concept_id": ExpectedDomain("Condition", "Procedure", "Regimen"),
         "episode_type_concept_id": ExpectedDomain("Type Concept"),
     }
+
+    @property
+    def events(self) -> list[object]:
+        """
+        All linked OMOP event rows (Condition_Occurrence, Drug_Exposure, etc).
+        """
+        if not self.episode_events:
+            return []
+
+        resolved = []
+        for ee in self.episode_events:
+            target = ee.resolved_event
+            if target is not None:
+                resolved.append(target)
+
+        return resolved
 
     def __repr__(self) -> str:
         return (

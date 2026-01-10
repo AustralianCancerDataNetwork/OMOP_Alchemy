@@ -23,6 +23,10 @@ class HasConceptId(Protocol):
     concept_id: int
 
 @runtime_checkable
+class HasEpisodeId(Protocol):
+    episode_id: int
+
+@runtime_checkable
 class HasPersonId(Protocol):
     person_id: int
 

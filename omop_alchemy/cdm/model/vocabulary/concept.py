@@ -49,7 +49,7 @@ class ConceptContext(ReferenceContextMixin):
             primaryjoin=f"{cls.__name__}.concept_id == Concept_Relationship.concept_id_1", # type: ignore
             foreign_keys="Concept_Relationship.concept_id_1",
             viewonly=True,
-            lazy="selectin",
+            lazy="select",
         )
 
     @declared_attr
@@ -59,7 +59,7 @@ class ConceptContext(ReferenceContextMixin):
             primaryjoin=f"{cls.__name__}.concept_id == Concept_Relationship.concept_id_2", # type: ignore
             foreign_keys="Concept_Relationship.concept_id_2",
             viewonly=True,
-            lazy="selectin",
+            lazy="select",
         )
 
     @declared_attr
@@ -69,7 +69,7 @@ class ConceptContext(ReferenceContextMixin):
             primaryjoin=f"{cls.__name__}.concept_id == Concept_Ancestor.descendant_concept_id", # type: ignore
             foreign_keys="Concept_Ancestor.descendant_concept_id",
             viewonly=True,
-            lazy="selectin",
+            lazy="select",
         )
 
     @declared_attr
@@ -79,7 +79,7 @@ class ConceptContext(ReferenceContextMixin):
             primaryjoin=f"{cls.__name__}.concept_id == Concept_Ancestor.ancestor_concept_id", # type: ignore
             foreign_keys="Concept_Ancestor.ancestor_concept_id",
             viewonly=True,
-            lazy="selectin",
+            lazy="select",
         )
 
 class ConceptView(Concept, ConceptContext):
