@@ -24,3 +24,8 @@
 
 ## 0.2.6
 - extra episode demo and modify joined load strategy for conceptview objects
+
+## 0.5.0
+- significant refactor
+- extract generic ORM loading, validation, and metadata into base library (orm-loader)
+- elements now reusable in other downstream data models

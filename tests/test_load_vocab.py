@@ -2,7 +2,7 @@
 
 import pytest
 from pathlib import Path
-from omop_alchemy.cdm.base import bootstrap
+from orm_loader.helpers import configure_logging, bootstrap
 import sqlalchemy as sa
 from sqlalchemy.orm import sessionmaker
 
