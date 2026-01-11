@@ -5,21 +5,7 @@ from typing import Optional, List, TYPE_CHECKING, Type, Any
 from dataclasses import dataclass
 import sqlalchemy as sa
 import sqlalchemy.orm as so
-
-
-from .declarative import get_table_by_name
-
-if TYPE_CHECKING:
-    from omop_alchemy.cdm.model.clinical import Measurement, Observation
-    from omop_alchemy.cdm.model.structural import Episode_Event
-
-@dataclass(frozen=True)
-class DomainRule:
-    table: str
-    field: str
-    allowed_domains: set[str]
-    # Optional: concept_class_id constraints
-    allowed_classes: Optional[set[str]] = None
+from orm_loader.helpers import get_model_by_tablename
 
 
 """
@@ -119,69 +105,3 @@ class UnitConcept:
     Mixin for unit_concept_id.
     """
     unit_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey("concept.concept_id"), index=True, nullable=True)
-
-class ExpectedDomain:
-    def __init__(self, *domains: str):
-        self.domains = set(domains)
-
-class DomainValidationMixin:
-    """
-    Adds lightweight OMOP domain validation helpers.
-
-    Intended for *View* classes only.
-    """
-    __expected_domains__: dict[str, ExpectedDomain] = {}
-
-    @classmethod
-    def collect_domain_rules(cls) -> list[DomainRule]:
-        rules: list[DomainRule] = []
-        
-        if not hasattr(cls, "__tablename__"):
-            raise TypeError(
-                f"{cls.__name__} defines domain rules but is not a mapped table"
-            )
-        
-        for field, spec in cls.__expected_domains__.items():
-            rules.append(
-                DomainRule(
-                    table=cls.__tablename__, # type: ignore[attr-defined]
-                    field=field,
-                    allowed_domains=spec.domains,
-                )
-            )
-        return rules
-
-    def _check_domain(self, field: str) -> bool:
-        expected = self.__expected_domains__.get(field)
-        if not expected:
-            return True
-
-        concept_id = getattr(self, field)
-        if concept_id == 0:
-            return True  # OMOP allows 0
-
-        session = so.object_session(self)
-        if session is None:
-            return True  # detached; best-effort
-        # need to be able to query concept table but can't import directly here to avoid circular imports
-        ConceptCls = get_table_by_name("Concept")
-        if ConceptCls is None:
-            return False
-        concept = session.get(ConceptCls, concept_id) # type: ignore
-        return concept.domain_id in expected.domains if concept else False
-
-
-    @property
-    def domain_violations(self) -> list[str]:
-        issues = []
-        for field, expected in self.__expected_domains__.items():
-            if not self._check_domain(field):
-                issues.append(
-                    f"{field} not in domain(s): {sorted(expected.domains)}"
-                )
-        return issues
-
-    @property
-    def is_domain_valid(self) -> bool:
-        return not self.domain_violations
-

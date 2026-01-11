@@ -2,11 +2,10 @@ import sqlalchemy as sa
 import sqlalchemy.orm as so
 from typing import Optional
 from datetime import date
+from orm_loader.helpers import Base
 from omop_alchemy.cdm.base import (
-    Base,
     cdm_table,
     CDMTableBase,
-    optional_concept_fk,
     required_concept_fk,
 )
 

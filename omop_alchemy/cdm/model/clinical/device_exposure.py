@@ -3,8 +3,8 @@ import sqlalchemy.orm as so
 from typing import Optional, TYPE_CHECKING
 from datetime import date, datetime
 
+from orm_loader.helpers import Base
 from omop_alchemy.cdm.base import (
-    Base,
     PersonScoped, 
     HealthSystemContext, 
     FactTable, 

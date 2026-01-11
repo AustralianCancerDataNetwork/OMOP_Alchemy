@@ -2,9 +2,9 @@ import sqlalchemy as sa
 import sqlalchemy.orm as so
 from typing import Optional
 from datetime import date
+from orm_loader.helpers import Base
 
 from omop_alchemy.cdm.base import (
-    Base,
     cdm_table,
     CDMTableBase,
     required_concept_fk,
@@ -20,8 +20,6 @@ class Metadata(CDMTableBase, Base, ValueMixin):
     metadata_type_concept_id: so.Mapped[int] = required_concept_fk()
     name: so.Mapped[str] = so.mapped_column(sa.String(250), nullable=False)
     value_as_string: so.Mapped[Optional[str]] = so.mapped_column(sa.String(250), nullable=True)
-    # value_as_concept_id: so.Mapped[Optional[int]] = optional_concept_fk()
-    # value_as_number: so.Mapped[Optional[float]] = so.mapped_column(sa.Float, nullable=True)
     metadata_date: so.Mapped[Optional[date]] = so.mapped_column(sa.Date,nullable=True)
     metadata_datetime: so.Mapped[Optional[date]] = so.mapped_column(sa.DateTime,nullable=True)
 

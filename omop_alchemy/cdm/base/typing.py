@@ -9,16 +9,6 @@ if TYPE_CHECKING:
 
 
 @runtime_checkable
-class HasTableName(Protocol):
-    __tablename__: ClassVar[str]
-
-    @classmethod
-    def mapper_for(cls) -> Mapper: ...
-
-    @classmethod
-    def pk_names(cls) -> list[str]: ...
-
-@runtime_checkable
 class HasConceptId(Protocol):
     concept_id: int
 
@@ -29,11 +19,6 @@ class HasEpisodeId(Protocol):
 @runtime_checkable
 class HasPersonId(Protocol):
     person_id: int
-
-@runtime_checkable
-class ORMTable(Protocol):
-    __tablename__: ClassVar[str]
-    __mapper__: ClassVar[DeclarativeMeta]
 
 @runtime_checkable
 class DomainSemanticTable(Protocol):

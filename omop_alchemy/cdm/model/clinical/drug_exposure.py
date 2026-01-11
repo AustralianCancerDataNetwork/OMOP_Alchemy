@@ -2,13 +2,12 @@ import sqlalchemy as sa
 import sqlalchemy.orm as so
 from typing import Optional, TYPE_CHECKING
 from datetime import date, datetime
-
+from orm_loader.helpers import Base
 from omop_alchemy.cdm.base import (
-    Base,
     PersonScoped, 
     HealthSystemContext, 
     FactTable, 
-    ReferenceContextMixin,
+    ReferenceContext,
     CDMTableBase,
     cdm_table, 
     required_concept_fk,
@@ -57,11 +56,11 @@ class Drug_Exposure(
     route_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50))
     dose_unit_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50))
 
-class Drug_ExposureContext(ReferenceContextMixin):
-    drug_concept: so.Mapped["Concept"] = ReferenceContextMixin._reference_relationship(target="Concept", local_fk="drug_concept_id", remote_pk="concept_id")  # type: ignore[assignment]
-    drug_type: so.Mapped["Concept"] = ReferenceContextMixin._reference_relationship(target="Concept", local_fk="drug_type_concept_id", remote_pk="concept_id")  # type: ignore[assignment]
-    route: so.Mapped["Concept"] = ReferenceContextMixin._reference_relationship(target="Concept", local_fk="route_concept_id", remote_pk="concept_id")  # type: ignore[assignment]
-    drug_source_concept: so.Mapped["Concept"] = ReferenceContextMixin._reference_relationship(target="Concept", local_fk="drug_source_concept_id", remote_pk="concept_id")  # type: ignore[assignment]
+class Drug_ExposureContext(ReferenceContext):
+    drug_concept: so.Mapped["Concept"] = ReferenceContext._reference_relationship(target="Concept", local_fk="drug_concept_id", remote_pk="concept_id")  # type: ignore[assignment]
+    drug_type: so.Mapped["Concept"] = ReferenceContext._reference_relationship(target="Concept", local_fk="drug_type_concept_id", remote_pk="concept_id")  # type: ignore[assignment]
+    route: so.Mapped["Concept"] = ReferenceContext._reference_relationship(target="Concept", local_fk="route_concept_id", remote_pk="concept_id")  # type: ignore[assignment]
+    drug_source_concept: so.Mapped["Concept"] = ReferenceContext._reference_relationship(target="Concept", local_fk="drug_source_concept_id", remote_pk="concept_id")  # type: ignore[assignment]
 
 
 class Drug_ExposureView(

@@ -2,9 +2,8 @@ import sqlalchemy as sa
 import sqlalchemy.orm as so
 from typing import Optional
 from datetime import date
-
-
-from omop_alchemy.cdm.base import ReferenceTable, Base, cdm_table, CDMTableBase, DatedEvent
+from orm_loader.helpers import Base
+from omop_alchemy.cdm.base import ReferenceTable, cdm_table, CDMTableBase, DatedEvent
 
 @cdm_table
 class Drug_Strength(

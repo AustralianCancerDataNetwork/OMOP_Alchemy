@@ -4,13 +4,12 @@ from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.ext.hybrid import hybrid_property, hybrid_method
 from typing import Optional, TYPE_CHECKING, List
 from datetime import date, datetime
-
+from orm_loader.helpers import Base
 from omop_alchemy.cdm.base import (
-    Base,
     PersonScoped, 
     HealthSystemContext, 
     FactTable, 
-    ReferenceContextMixin,
+    ReferenceContext,
     CDMTableBase,
     cdm_table, 
     ModifierFieldConcepts,
@@ -44,11 +43,11 @@ class Condition_Occurrence(
     condition_source_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey("concept.concept_id"), index=True)
     condition_status_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey("concept.concept_id"), index=True)
 
-class Condition_OccurrenceContext(ReferenceContextMixin):
-    condition_concept: so.Mapped["Concept"] = ReferenceContextMixin._reference_relationship(target="Concept", local_fk="condition_concept_id", remote_pk="concept_id")  # type: ignore[assignment]
-    condition_type: so.Mapped["Concept"] = ReferenceContextMixin._reference_relationship(target="Concept", local_fk="condition_type_concept_id", remote_pk="concept_id")  # type: ignore[assignment]
-    condition_source_concept: so.Mapped["Concept"] = ReferenceContextMixin._reference_relationship(target="Concept", local_fk="condition_source_concept_id", remote_pk="concept_id")  # type: ignore[assignment]
-    condition_status: so.Mapped["Concept"] = ReferenceContextMixin._reference_relationship(target="Concept", local_fk="condition_status_concept_id", remote_pk="concept_id")  # type: ignore[assignment]
+class Condition_OccurrenceContext(ReferenceContext):
+    condition_concept: so.Mapped["Concept"] = ReferenceContext._reference_relationship(target="Concept", local_fk="condition_concept_id", remote_pk="concept_id")  # type: ignore[assignment]
+    condition_type: so.Mapped["Concept"] = ReferenceContext._reference_relationship(target="Concept", local_fk="condition_type_concept_id", remote_pk="concept_id")  # type: ignore[assignment]
+    condition_source_concept: so.Mapped["Concept"] = ReferenceContext._reference_relationship(target="Concept", local_fk="condition_source_concept_id", remote_pk="concept_id")  # type: ignore[assignment]
+    condition_status: so.Mapped["Concept"] = ReferenceContext._reference_relationship(target="Concept", local_fk="condition_status_concept_id", remote_pk="concept_id")  # type: ignore[assignment]
 
     @declared_attr
     def visit_occurrence(cls) -> so.Mapped[Optional["Visit_Occurrence"]]:

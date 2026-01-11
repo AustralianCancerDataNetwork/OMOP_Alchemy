@@ -1,8 +1,8 @@
 import sqlalchemy as sa
 import sqlalchemy.orm as so
+from orm_loader.helpers import Base
 
 from omop_alchemy.cdm.base import (
-    Base,
     CDMTableBase,
     cdm_table, 
     required_concept_fk,

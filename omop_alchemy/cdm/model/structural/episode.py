@@ -3,18 +3,16 @@ import sqlalchemy.orm as so
 from sqlalchemy.ext.declarative import declared_attr
 from typing import Optional, TYPE_CHECKING, List
 from datetime import date
-from sqlalchemy.ext.hybrid import hybrid_method
-from sqlalchemy.orm.exc import DetachedInstanceError
 from sqlalchemy.ext.declarative import declared_attr
+from orm_loader.helpers import Base 
 from omop_alchemy.cdm.base import (
-    Base, 
     cdm_table,
     CDMTableBase, 
     required_concept_fk,
     optional_concept_fk,
     PersonScoped,
     optional_int,
-    ReferenceContextMixin,
+    ReferenceContext,
     DomainValidationMixin,
     ExpectedDomain,
 )
@@ -48,12 +46,12 @@ class Episode(CDMTableBase, Base, PersonScoped):
     def __repr__(self) -> str:
         return f"<Episode {self.episode_id}>"
     
-class EpisodeContext(ReferenceContextMixin):
-    person: so.Mapped["Person"] = ReferenceContextMixin._reference_relationship(target="Person",local_fk="person_id",remote_pk="person_id")  # type: ignore[assignment]
-    episode_concept: so.Mapped["Concept"] = ReferenceContextMixin._reference_relationship(target="Concept",local_fk="episode_concept_id",remote_pk="concept_id")  # type: ignore[assignment]
-    episode_object_concept: so.Mapped["Concept"] = ReferenceContextMixin._reference_relationship(target="Concept",local_fk="episode_object_concept_id",remote_pk="concept_id")  # type: ignore[assignment]
-    episode_type_concept: so.Mapped["Concept"] = ReferenceContextMixin._reference_relationship(target="Concept",local_fk="episode_type_concept_id",remote_pk="concept_id")  # type: ignore[assignment]
-    parent_episode: so.Mapped[Optional["Episode"]] = ReferenceContextMixin._reference_relationship(target="Episode",local_fk="episode_parent_id",remote_pk="episode_id")  # type: ignore[assignment]
+class EpisodeContext(ReferenceContext):
+    person: so.Mapped["Person"] = ReferenceContext._reference_relationship(target="Person",local_fk="person_id",remote_pk="person_id")  # type: ignore[assignment]
+    episode_concept: so.Mapped["Concept"] = ReferenceContext._reference_relationship(target="Concept",local_fk="episode_concept_id",remote_pk="concept_id")  # type: ignore[assignment]
+    episode_object_concept: so.Mapped["Concept"] = ReferenceContext._reference_relationship(target="Concept",local_fk="episode_object_concept_id",remote_pk="concept_id")  # type: ignore[assignment]
+    episode_type_concept: so.Mapped["Concept"] = ReferenceContext._reference_relationship(target="Concept",local_fk="episode_type_concept_id",remote_pk="concept_id")  # type: ignore[assignment]
+    parent_episode: so.Mapped[Optional["Episode"]] = ReferenceContext._reference_relationship(target="Episode",local_fk="episode_parent_id",remote_pk="episode_id")  # type: ignore[assignment]
     
     @declared_attr
     def episode_events(cls: type['HasEpisodeId']) -> so.Mapped[List["Episode_EventView"]]:

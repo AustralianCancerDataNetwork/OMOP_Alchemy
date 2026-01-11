@@ -10,7 +10,8 @@ if TYPE_CHECKING:
     from .concept_ancestor import Concept_Ancestor
     from .concept_relationship import Concept_Relationship
 
-from omop_alchemy.cdm.base import ReferenceTable, Base, cdm_table, CDMTableBase, ReferenceContextMixin
+from orm_loader.helpers import Base
+from omop_alchemy.cdm.base import ReferenceTable, cdm_table, CDMTableBase, ReferenceContext
 
 @cdm_table
 class Concept(
@@ -30,7 +31,7 @@ class Concept(
     valid_end_date: so.Mapped[date] = so.mapped_column(nullable=False)
     invalid_reason: so.Mapped[Optional[str]] = so.mapped_column(sa.String(1))
 
-class ConceptContext(ReferenceContextMixin):
+class ConceptContext(ReferenceContext):
     """
     Navigational relationships for Concept.
 
@@ -38,9 +39,9 @@ class ConceptContext(ReferenceContextMixin):
     foreign keys into reference tables and hierarchy navigation.
     """
     
-    domain: so.Mapped["Domain"] = ReferenceContextMixin._reference_relationship(target="Domain",local_fk="domain_id",remote_pk="domain_id") # type: ignore[assignment]
-    vocabulary: so.Mapped["Vocabulary"] = ReferenceContextMixin._reference_relationship(target="Vocabulary",local_fk="vocabulary_id",remote_pk="vocabulary_id") # type: ignore[assignment]
-    concept_class: so.Mapped["Concept_Class"] = ReferenceContextMixin._reference_relationship(target="Concept_Class",local_fk="concept_class_id",remote_pk="concept_class_id") # type: ignore[assignment]
+    domain: so.Mapped["Domain"] = ReferenceContext._reference_relationship(target="Domain",local_fk="domain_id",remote_pk="domain_id") # type: ignore[assignment]
+    vocabulary: so.Mapped["Vocabulary"] = ReferenceContext._reference_relationship(target="Vocabulary",local_fk="vocabulary_id",remote_pk="vocabulary_id") # type: ignore[assignment]
+    concept_class: so.Mapped["Concept_Class"] = ReferenceContext._reference_relationship(target="Concept_Class",local_fk="concept_class_id",remote_pk="concept_class_id") # type: ignore[assignment]
 
     @declared_attr
     def outgoing_relationships(cls) -> so.Mapped[List["Concept_Relationship"]]:

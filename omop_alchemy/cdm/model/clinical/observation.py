@@ -5,9 +5,8 @@ import sqlalchemy.orm as so
 from sqlalchemy.ext.hybrid import hybrid_property
 from typing import Optional
 from datetime import date, datetime
-
+from orm_loader.helpers import Base
 from omop_alchemy.cdm.base import (
-    Base,
     CDMTableBase,
     cdm_table,
     ValueMixin

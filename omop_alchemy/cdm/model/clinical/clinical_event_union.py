@@ -2,9 +2,7 @@ from sqlalchemy import select, union_all, literal
 from .condition_occurrence import Condition_Occurrence
 #from .drug_exposure import Drug_Exposure
 
-from omop_alchemy.cdm.base import (
-    Base
-)
+from orm_loader.helpers import Base
 
 clinical_event_union = union_all(
     select(

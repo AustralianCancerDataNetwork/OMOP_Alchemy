@@ -1,7 +1,7 @@
 import os
 from dotenv import load_dotenv
 from pathlib import Path
-from .cdm.utils import get_logger
+from orm_loader.helpers import get_logger
 
 ROOT_PATH = Path(__file__).parent
 TEST_PATH = Path(__file__).parent.parent / "tests"

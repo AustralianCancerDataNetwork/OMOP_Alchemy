@@ -3,8 +3,9 @@ import sqlalchemy.orm as so
 from typing import Optional
 from datetime import date
 
-from omop_alchemy.cdm.base import ReferenceTable, Base, cdm_table, CDMTableBase, DatedEvent
-from omop_alchemy.cdm.registry import ValidationIssue
+from orm_loader.helpers import Base
+from orm_loader.registry import ValidationIssue
+from omop_alchemy.cdm.base import ReferenceTable, cdm_table, CDMTableBase, DatedEvent
 
 @cdm_table
 class Source_To_Concept_Map(

@@ -6,8 +6,9 @@ from datetime import date
 from sqlalchemy.ext.hybrid import hybrid_method, hybrid_property
 from sqlalchemy.orm.exc import DetachedInstanceError
 
+from orm_loader.helpers import Base
+
 from omop_alchemy.cdm.base import (
-    Base, 
     cdm_table,
     CDMTableBase, 
     required_concept_fk,
@@ -15,7 +16,7 @@ from omop_alchemy.cdm.base import (
     required_int,
     optional_int,
     HealthSystemContext,
-    ReferenceContextMixin,
+    ReferenceContext,
     DomainValidationMixin,
     ExpectedDomain,
 )
@@ -55,13 +56,13 @@ class Person(CDMTableBase,Base,HealthSystemContext):
     def __repr__(self) -> str:
         return f"<Person {self.person_id}>"
 
-class PersonContext(ReferenceContextMixin):
-    gender: so.Mapped["Concept"] = ReferenceContextMixin._reference_relationship(target="Concept",local_fk="gender_concept_id",remote_pk="concept_id")  # type: ignore[assignment]
-    race: so.Mapped["Concept"] = ReferenceContextMixin._reference_relationship(target="Concept",local_fk="race_concept_id",remote_pk="concept_id")  # type: ignore[assignment]
-    ethnicity: so.Mapped["Concept"] = ReferenceContextMixin._reference_relationship(target="Concept",local_fk="ethnicity_concept_id",remote_pk="concept_id")  # type: ignore[assignment]
-    location: so.Mapped["Location"] = ReferenceContextMixin._reference_relationship(target="Location",local_fk="location_id",remote_pk="location_id")  # type: ignore[assignment]   
-    provider: so.Mapped["Provider"] = ReferenceContextMixin._reference_relationship(target="Provider",local_fk="provider_id",remote_pk="provider_id")  # type: ignore[assignment]
-    care_site: so.Mapped["Care_Site"] = ReferenceContextMixin._reference_relationship(target="Care_Site",local_fk="care_site_id",remote_pk="care_site_id")  # type: ignore[assignment]
+class PersonContext(ReferenceContext):
+    gender: so.Mapped["Concept"] = ReferenceContext._reference_relationship(target="Concept",local_fk="gender_concept_id",remote_pk="concept_id")  # type: ignore[assignment]
+    race: so.Mapped["Concept"] = ReferenceContext._reference_relationship(target="Concept",local_fk="race_concept_id",remote_pk="concept_id")  # type: ignore[assignment]
+    ethnicity: so.Mapped["Concept"] = ReferenceContext._reference_relationship(target="Concept",local_fk="ethnicity_concept_id",remote_pk="concept_id")  # type: ignore[assignment]
+    location: so.Mapped["Location"] = ReferenceContext._reference_relationship(target="Location",local_fk="location_id",remote_pk="location_id")  # type: ignore[assignment]   
+    provider: so.Mapped["Provider"] = ReferenceContext._reference_relationship(target="Provider",local_fk="provider_id",remote_pk="provider_id")  # type: ignore[assignment]
+    care_site: so.Mapped["Care_Site"] = ReferenceContext._reference_relationship(target="Care_Site",local_fk="care_site_id",remote_pk="care_site_id")  # type: ignore[assignment]
 
     @declared_attr
     def death(cls) -> so.Mapped[Optional["Death"]]:

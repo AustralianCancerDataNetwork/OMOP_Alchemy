@@ -3,24 +3,16 @@ import sqlalchemy.orm as so
 from typing import Optional, TYPE_CHECKING
 from datetime import date, datetime
 
+from orm_loader.helpers import Base
+
 from omop_alchemy.cdm.base import (
-    Base,
-    PersonScoped, 
-    ReferenceContextMixin,
     CDMTableBase,
     cdm_table, 
-    required_concept_fk,
     optional_concept_fk,
-    optional_int,
-    DomainValidationMixin,
-    ExpectedDomain,
-    HealthSystemContext
 )
 
 if TYPE_CHECKING:
     from ..vocabulary import Concept
-    from ..clinical import Visit_Occurrence, Visit_Detail, Person
-    from ..health_system import Provider
 
 @cdm_table
 

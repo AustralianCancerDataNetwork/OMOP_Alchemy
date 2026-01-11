@@ -3,8 +3,8 @@ import sqlalchemy as sa
 import sqlalchemy.orm as so
 from typing import Optional, TYPE_CHECKING
 from datetime import date
+from orm_loader.helpers import Base
 from omop_alchemy.cdm.base import (
-    Base,
     cdm_table,
     CDMTableBase,
     optional_concept_fk,
@@ -12,7 +12,7 @@ from omop_alchemy.cdm.base import (
     PersonScoped,
     optional_int,
     HealthSystemContext,
-    ReferenceContextMixin,
+    ReferenceContext,
     DomainValidationMixin,
     ExpectedDomain,
 )
@@ -42,41 +42,41 @@ class Procedure_Occurrence(CDMTableBase, Base, PersonScoped, HealthSystemContext
         return f"<Procedure_Occurrence {self.procedure_occurrence_id}>"
 
 
-class Procedure_OccurrenceContext(ReferenceContextMixin):
-    person: so.Mapped["Person"] = ReferenceContextMixin._reference_relationship(
+class Procedure_OccurrenceContext(ReferenceContext):
+    person: so.Mapped["Person"] = ReferenceContext._reference_relationship(
         target="Person",
         local_fk="person_id",
         remote_pk="person_id",
     )  # type: ignore[assignment]
 
-    procedure_concept: so.Mapped["Concept"] = ReferenceContextMixin._reference_relationship(
+    procedure_concept: so.Mapped["Concept"] = ReferenceContext._reference_relationship(
         target="Concept",
         local_fk="procedure_concept_id",
         remote_pk="concept_id",
     )  # type: ignore[assignment]
 
-    procedure_type_concept: so.Mapped["Concept"] = ReferenceContextMixin._reference_relationship(
+    procedure_type_concept: so.Mapped["Concept"] = ReferenceContext._reference_relationship(
         target="Concept",
         local_fk="procedure_type_concept_id",
         remote_pk="concept_id",
     )  # type: ignore[assignment]
 
     modifier_concept: so.Mapped[Optional["Concept"]] = (
-        ReferenceContextMixin._reference_relationship(
+        ReferenceContext._reference_relationship(
             target="Concept",
             local_fk="modifier_concept_id",
             remote_pk="concept_id",
         )
     )  # type: ignore[assignment]
 
-    provider: so.Mapped[Optional["Provider"]] = ReferenceContextMixin._reference_relationship(
+    provider: so.Mapped[Optional["Provider"]] = ReferenceContext._reference_relationship(
         target="Provider",
         local_fk="provider_id",
         remote_pk="provider_id",
     )  # type: ignore[assignment]
 
     visit_occurrence: so.Mapped[Optional["Visit_Occurrence"]] = (
-        ReferenceContextMixin._reference_relationship(
+        ReferenceContext._reference_relationship(
             target="Visit_Occurrence",
             local_fk="visit_occurrence_id",
             remote_pk="visit_occurrence_id",
@@ -84,7 +84,7 @@ class Procedure_OccurrenceContext(ReferenceContextMixin):
     )  # type: ignore[assignment]
 
     visit_detail: so.Mapped[Optional["Visit_Detail"]] = (
-        ReferenceContextMixin._reference_relationship(
+        ReferenceContext._reference_relationship(
             target="Visit_Detail",
             local_fk="visit_detail_id",
             remote_pk="visit_detail_id",
@@ -92,7 +92,7 @@ class Procedure_OccurrenceContext(ReferenceContextMixin):
     )  # type: ignore[assignment]
 
     procedure_source_concept: so.Mapped[Optional["Concept"]] = (
-        ReferenceContextMixin._reference_relationship(
+        ReferenceContext._reference_relationship(
             target="Concept",
             local_fk="procedure_source_concept_id",
             remote_pk="concept_id",

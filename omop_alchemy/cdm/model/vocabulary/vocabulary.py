@@ -14,7 +14,8 @@ from typing import Optional
 
 import sqlalchemy as sa
 import sqlalchemy.orm as so
-from omop_alchemy.cdm.base import ReferenceTable, Base, cdm_table, CDMTableBase
+from orm_loader.helpers import Base
+from omop_alchemy.cdm.base import ReferenceTable, cdm_table, CDMTableBase
 
 @cdm_table
 class Vocabulary(Base, ReferenceTable, CDMTableBase):

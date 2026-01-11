@@ -5,8 +5,8 @@ import sqlalchemy.orm as so
 from sqlalchemy.ext.hybrid import hybrid_property
 from typing import Optional
 from datetime import date, datetime
+from orm_loader.helpers import Base
 from omop_alchemy.cdm.base import (
-    Base,
     CDMTableBase,
     cdm_table,
     ValueMixin
@@ -24,8 +24,6 @@ class Measurement(Base, CDMTableBase, ValueMixin):
     measurement_time: so.Mapped[Optional[str]]
     measurement_type_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey("concept.concept_id"), nullable=False)
     operator_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey("concept.concept_id"))
-    # value_as_number: so.Mapped[Optional[float]]
-    # value_as_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey("concept.concept_id"))
     unit_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey("concept.concept_id"))
 
     range_low: so.Mapped[Optional[float]]

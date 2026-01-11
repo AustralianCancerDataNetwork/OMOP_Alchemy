@@ -3,8 +3,8 @@ import sqlalchemy.orm as so
 from typing import Optional
 from datetime import date
 
+from orm_loader.helpers import Base
 from omop_alchemy.cdm.base import (
-    Base,
     cdm_table,
     CDMTableBase,
     required_int,

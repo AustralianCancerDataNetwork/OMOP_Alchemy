@@ -2,12 +2,13 @@ import sqlalchemy as sa
 import sqlalchemy.orm as so
 from typing import Optional, TYPE_CHECKING
 from datetime import date
+from orm_loader.helpers import Base
+
 from omop_alchemy.cdm.base import (
-    Base,
     CDMTableBase,
     cdm_table,
     optional_concept_fk,
-    ReferenceContextMixin,
+    ReferenceContext,
     DomainValidationMixin,
     ExpectedDomain,
 )
@@ -28,10 +29,10 @@ class Death(CDMTableBase, Base):
     cause_source_concept_id: so.Mapped[Optional[int]] = optional_concept_fk()
 
 
-class DeathContext(ReferenceContextMixin):
-    person: so.Mapped["Person"] = ReferenceContextMixin._reference_relationship(target="Person",local_fk="person_id",remote_pk="person_id")  # type: ignore[assignment]
-    death_type_concept: so.Mapped["Concept"] = ReferenceContextMixin._reference_relationship(target="Concept", local_fk="death_type_concept_id", remote_pk="concept_id")  # type: ignore[assignment]
-    cause_concept: so.Mapped["Concept"] = ReferenceContextMixin._reference_relationship(target="Concept", local_fk="cause_concept_id", remote_pk="concept_id")  # type: ignore[assignment]
+class DeathContext(ReferenceContext):
+    person: so.Mapped["Person"] = ReferenceContext._reference_relationship(target="Person",local_fk="person_id",remote_pk="person_id")  # type: ignore[assignment]
+    death_type_concept: so.Mapped["Concept"] = ReferenceContext._reference_relationship(target="Concept", local_fk="death_type_concept_id", remote_pk="concept_id")  # type: ignore[assignment]
+    cause_concept: so.Mapped["Concept"] = ReferenceContext._reference_relationship(target="Concept", local_fk="cause_concept_id", remote_pk="concept_id")  # type: ignore[assignment]
 
 
 class DeathView(Death, DeathContext, DomainValidationMixin):

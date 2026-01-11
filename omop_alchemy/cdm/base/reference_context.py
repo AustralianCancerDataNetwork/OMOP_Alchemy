@@ -5,12 +5,12 @@ import sqlalchemy as sa
 from typing import Type, Any
 from sqlalchemy.ext.declarative import declared_attr
 
-class ReferenceContextMixin:
+class ReferenceContext:
 
     """
     Helper for defining read-only reference relationships.
 
-    This mixin is purely structural: it resolves foreign keys
+    This class is purely structural: it resolves foreign keys
     into reference tables (Domain, Vocabulary, ConceptClass, etc.)
     with explicit join conditions.
     """
