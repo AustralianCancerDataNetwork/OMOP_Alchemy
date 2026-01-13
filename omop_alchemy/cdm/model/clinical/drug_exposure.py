@@ -1,7 +1,7 @@
 import sqlalchemy as sa
 import sqlalchemy.orm as so
-from typing import Optional, TYPE_CHECKING
-from datetime import date, datetime
+from typing import Mapping, Optional, TYPE_CHECKING, Any
+from datetime import date, datetime, time
 from orm_loader.helpers import Base
 from omop_alchemy.cdm.base import (
     PersonScoped, 
@@ -14,7 +14,7 @@ from omop_alchemy.cdm.base import (
     optional_concept_fk,
     optional_int,
     ModifierTargetMixin,
-    ModifierFieldConcepts
+    ModifierFieldConcepts,
 )
 
 if TYPE_CHECKING:
@@ -55,6 +55,7 @@ class Drug_Exposure(
     drug_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50))
     route_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50))
     dose_unit_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50))
+
 
 class Drug_ExposureContext(ReferenceContext):
     drug_concept: so.Mapped["Concept"] = ReferenceContext._reference_relationship(target="Concept", local_fk="drug_concept_id", remote_pk="concept_id")  # type: ignore[assignment]

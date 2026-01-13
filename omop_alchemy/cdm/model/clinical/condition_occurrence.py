@@ -2,8 +2,8 @@ import sqlalchemy as sa
 import sqlalchemy.orm as so
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.ext.hybrid import hybrid_property, hybrid_method
-from typing import Optional, TYPE_CHECKING, List
-from datetime import date, datetime
+from typing import Optional, TYPE_CHECKING, List, Mapping, Any
+from datetime import date, datetime, time
 from orm_loader.helpers import Base
 from omop_alchemy.cdm.base import (
     PersonScoped, 
@@ -13,7 +13,7 @@ from omop_alchemy.cdm.base import (
     CDMTableBase,
     cdm_table, 
     ModifierFieldConcepts,
-    ModifierTargetMixin
+    ModifierTargetMixin,
 )
 
 if TYPE_CHECKING:
@@ -42,6 +42,8 @@ class Condition_Occurrence(
     condition_status_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50))
     condition_source_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey("concept.concept_id"), index=True)
     condition_status_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey("concept.concept_id"), index=True)
+
+
 
 class Condition_OccurrenceContext(ReferenceContext):
     condition_concept: so.Mapped["Concept"] = ReferenceContext._reference_relationship(target="Concept", local_fk="condition_concept_id", remote_pk="concept_id")  # type: ignore[assignment]

@@ -9,7 +9,7 @@ from orm_loader.helpers import Base
 from omop_alchemy.cdm.base import (
     CDMTableBase,
     cdm_table,
-    ValueMixin
+    ValueMixin,
 )
 
 @cdm_table

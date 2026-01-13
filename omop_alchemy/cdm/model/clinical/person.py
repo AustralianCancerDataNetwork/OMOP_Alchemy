@@ -227,3 +227,4 @@ class PersonView(Person, PersonContext, DomainValidationMixin):
                 Observation_Period.observation_period_end_date >= on_date,
             )
         )
+
