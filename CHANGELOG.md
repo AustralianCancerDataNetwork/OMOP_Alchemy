@@ -29,3 +29,6 @@
 - significant refactor
 - extract generic ORM loading, validation, and metadata into base library (orm-loader)
 - elements now reusable in other downstream data models
+
+## 0.5.1
+- change get_engine_name to take optional parameter

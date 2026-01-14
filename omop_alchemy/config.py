@@ -18,10 +18,36 @@ def load_environment(dotenv: str = '') -> None:
     else:
         logger.debug("No .env file loaded")
 
-def get_engine_name() -> str:
-    engine = os.getenv("ENGINE", "")
+
+def get_engine_name(schema: str | None = None) -> str:
+    """
+    Resolve database engine URI.
+
+    Resolution order:
+    1. ENGINE_<SCHEMA> (if schema provided)
+    2. ENGINE (fallback / legacy)
+
+    Raises if nothing is configured.
+    """
+    if schema:
+        key = f"ENGINE_{schema.upper()}"
+        engine = os.getenv(key)
+        if engine:
+            logger.info("Database engine configured for schema '%s'", schema)
+            return engine
+        else:
+            logger.debug(
+                "No schema-specific engine found for '%s' (%s)",
+                schema,
+                key,
+            )
+
+    engine = os.getenv("ENGINE")
     if engine:
-        logger.info("Database engine configured")
-    else:
-        logger.warning("Database engine not configured")
-    return engine
+        logger.info("Default database engine configured")
+        return engine
+
+    raise RuntimeError(
+        f"No database engine configured"
+        + (f" for schema '{schema}'" if schema else "")
+    )

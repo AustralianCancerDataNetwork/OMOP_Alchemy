@@ -52,3 +52,4 @@ CONCEPT_CLASS.csv
 RELATIONSHIP.csv
 DOMAIN.csv
 CONCEPT_ANCESTOR.csv
+*.db-journal
