@@ -32,3 +32,7 @@
 
 ## 0.5.1
 - change get_engine_name to take optional parameter
+
+## 0.5.2
+- mostly just upversioning orm_loader base
+- added table_has_rows convenience function

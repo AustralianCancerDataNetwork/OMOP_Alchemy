@@ -39,6 +39,15 @@ wheels = [
 ]
 
 [[package]]
+name = "chardet"
+version = "5.2.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/f3/0d/f7b6ab21ec75897ed80c17d79b15951a719226b9fababf1e40ea74d69079/chardet-5.2.0.tar.gz", hash = "sha256:1b3b6ff479a8c414bc3fa2c0852995695c4a026dcd6d0633b2dd092ca39c1cf7", size = 2069618, upload-time = "2023-08-01T19:23:02.662Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/38/6f/f5fbc992a329ee4e0f288c1fe0e2ad9485ed064cac731ed2fe47dcc38cbf/chardet-5.2.0-py3-none-any.whl", hash = "sha256:e1cf59446890a00105fe7b7912492ea04b6e6f06d4b742b2c788469e34c82970", size = 199385, upload-time = "2023-08-01T19:23:00.661Z" },
+]
+
+[[package]]
 name = "charset-normalizer"
 version = "3.4.4"
 source = { registry = "https://pypi.org/simple" }
@@ -610,7 +619,7 @@ wheels = [
 
 [[package]]
 name = "omop-alchemy"
-version = "0.2.6"
+version = "0.5.2"
 source = { editable = "." }
 dependencies = [
     { name = "orm-loader" },
@@ -639,7 +648,7 @@ requires-dist = [
     { name = "ipython", marker = "extra == 'dev'", specifier = ">=8.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.8" },
     { name = "myst-parser", marker = "extra == 'docs'" },
-    { name = "orm-loader", specifier = ">=0.1.1" },
+    { name = "orm-loader", specifier = ">=0.2.0" },
     { name = "pandas", specifier = ">=2.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.0" },
@@ -654,15 +663,16 @@ provides-extras = ["dev", "docs"]
 
 [[package]]
 name = "orm-loader"
-version = "0.1.1"
+version = "0.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
+    { name = "chardet" },
     { name = "pandas" },
     { name = "sqlalchemy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c9/2f/4a90fb029c32ddda1440091e91e6de4658859bff8c80ee749c0114bb27c4/orm_loader-0.1.1.tar.gz", hash = "sha256:d8b02367976903d5da9db5f7444ad2cf2f20966fbcdd3ba833d6ae08bdf994b9", size = 15144, upload-time = "2026-01-11T22:17:29.768Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/85/3a/174fd4f6dae787eac8b04d8d46fe2316944cac22f968829ce6bbefb3ac55/orm_loader-0.2.0.tar.gz", hash = "sha256:60bc838b2e41270fd4b312cba5c5bd16ba5a5955fd82cef5f230013d65e1b5fb", size = 16891, upload-time = "2026-01-16T01:27:16.302Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e2/43/c5d60781c5612dda973afb227b12d993b90e14b8dd4975b5b86dcf6411a8/orm_loader-0.1.1-py3-none-any.whl", hash = "sha256:acc30f817872ee4c9f5c7c92cb8337ddb1afb2e7e7283a592ab1d4c01d8c7c86", size = 24184, upload-time = "2026-01-11T22:17:28.232Z" },
+    { url = "https://files.pythonhosted.org/packages/05/0c/39e15309aba4d73547eee036bb20fa1280a8d8ce95d93e8c0b01a250eece/orm_loader-0.2.0-py3-none-any.whl", hash = "sha256:015655e4931967c0cfb4c450e63178cbdaf182e03b3e4f10da7113137c19c231", size = 26096, upload-time = "2026-01-16T01:27:14.09Z" },
 ]
 
 [[package]]
