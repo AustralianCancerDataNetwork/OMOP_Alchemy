@@ -7,14 +7,12 @@ from omop_alchemy.cdm.base import (
     ReferenceTable,
     cdm_table,
     CDMTableBase,
-    DatedEvent,
     merge_table_args,
     omop_index,
 )
 
 @cdm_table
 class Drug_Strength(
-    DatedEvent,
     CDMTableBase,
     ReferenceTable,
     Base,

@@ -53,6 +53,7 @@ nav:
   - Getting Started:
       - Overview: getting-started/index.md
       - Installation: getting-started/installation.md
+      - Maintenance CLI: getting-started/maintenance.md
       - Quickstart: getting-started/quickstart.md
       - Sessions: getting-started/sessions.md
   
@@ -75,4 +76,5 @@ nav:
       - Overview: advanced/index.md
       - Views & Analytics: advanced/views.md
       - Event Timelines: advanced/timelines.md
+      - PostgreSQL Full-Text Search: advanced/fulltext.md
       - Querying Tips: advanced/query_patterns.md

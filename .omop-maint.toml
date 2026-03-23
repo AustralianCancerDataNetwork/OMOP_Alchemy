@@ -1,0 +1,3 @@
+[defaults]
+dotenv = ".env"
+engine_schema = "cdm"

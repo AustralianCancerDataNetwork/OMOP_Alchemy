@@ -24,6 +24,7 @@ The CLI is designed for:
 - validating PostgreSQL foreign key relationships before re-enabling enforcement
 - disabling and re-enabling ORM-defined secondary indexes
 - applying ORM-defined PostgreSQL clustering metadata
+- installing, populating, and dropping PostgreSQL full-text sidecar `tsvector` columns
 - creating restore-ready PostgreSQL backup artifacts
 - restoring PostgreSQL backup artifacts into a target environment
 
@@ -131,6 +132,7 @@ PostgreSQL-only:
 
 - `backup-database`
 - `restore-database`
+- `fulltext`
 - `reset-sequences`
 - `truncate-tables`
 - `foreign-keys`
@@ -164,11 +166,13 @@ Runs a read-only operational health check over:
 
 - connection readiness
 - missing ORM-managed tables
-- schema drift against ORM metadata
 - PostgreSQL foreign key trigger state
 - PostgreSQL backup-tool availability
 
-On PostgreSQL, `--deep` also validates selected foreign key relationships.
+On PostgreSQL, `--deep` also:
+
+- reconciles ORM metadata against the live schema
+- validates selected foreign key relationships
 
 Examples:
 
@@ -495,6 +499,50 @@ Important gotchas:
 
 ---
 
+## Full-text search sidecars
+
+### `fulltext`
+
+Manages PostgreSQL sidecar `tsvector` columns for OMOP vocabulary text fields.
+
+- `fulltext install` adds nullable `tsvector` columns and optional GIN indexes
+- `fulltext populate` backfills those columns from the source text columns
+- `fulltext drop` removes the managed indexes and sidecar columns
+
+Examples:
+
+```bash
+omop-maint fulltext install --dry-run
+omop-maint fulltext install
+omop-maint fulltext populate
+omop-maint fulltext populate --regconfig simple
+omop-maint fulltext drop --dry-run
+```
+
+Notes:
+
+- this currently manages sidecar vectors for `concept.concept_name` and
+  `concept_synonym.concept_synonym_name`
+- the feature uses ordinary nullable `tsvector` columns, not generated columns
+- `fulltext populate` is what actually fills or refreshes the stored vectors
+- the library can register these optional columns into SQLAlchemy metadata when the
+  feature is enabled, so query builders can target the stored vectors directly
+- for query-side usage and the optional library integration model, see
+  [PostgreSQL Full-Text Search](../advanced/fulltext.md)
+
+Important gotchas:
+
+- `fulltext` is PostgreSQL-only
+- because these are sidecar columns rather than generated columns, future vocabulary
+  changes are not reflected automatically; rerun `omop-maint fulltext populate` after
+  bulk updates when you want the stored vectors refreshed
+- `fulltext install` and `fulltext drop` modify schema objects, while `populate` issues
+  full-table updates and can be expensive on large vocabularies
+- if you choose `--no-create-indexes` on install, full-text queries can still use the
+  sidecar vectors but won’t get GIN index support until you install indexes later
+
+---
+
 ## Backup and restore
 
 ### `backup-database`
@@ -564,9 +612,11 @@ These are the main sharp edges worth keeping in mind in the current alpha state:
   confident in the exact selection
 - do not assume `indexes enable` only creates indexes; on PostgreSQL it may also apply
   clustering
+- do not assume sidecar full-text vectors refresh themselves after data changes; if you
+  use `fulltext`, you own the refresh cycle
 - do not assume `restore-database` prepares an empty target for you
-- do not assume saved overrides are global; by default they are rooted to the working
-  directory where you run the CLI
+- do not assume saved overrides are global; by default they are rooted to the project
+  tree that contains the nearest `pyproject.toml`
 - do not treat `reconcile-schema` drift as automatically wrong when the environment
   intentionally contains DBA-managed objects outside ORM metadata
 
@@ -639,5 +689,6 @@ omop-maint data-summary --help
 omop-maint reset-sequences --help
 omop-maint foreign-keys --help
 omop-maint indexes --help
+omop-maint fulltext --help
 omop-maint config --help
 ```

@@ -53,3 +53,4 @@ RELATIONSHIP.csv
 DOMAIN.csv
 CONCEPT_ANCESTOR.csv
 *.db-journal
+vocabulary_files/
