@@ -1,11 +1,21 @@
 import sqlalchemy as sa
 import sqlalchemy.orm as so
 from orm_loader.helpers import Base
-from omop_alchemy.cdm.base import ReferenceTable, cdm_table, CDMTableBase
+from omop_alchemy.cdm.base import (
+    ReferenceTable,
+    cdm_table,
+    CDMTableBase,
+    merge_table_args,
+    omop_primary_key_index_name,
+    omop_table_options,
+)
 
 @cdm_table
 class Domain(Base, ReferenceTable, CDMTableBase):
     __tablename__ = "domain"
+    __table_args__ = merge_table_args(
+        omop_table_options(cluster_on=omop_primary_key_index_name("domain")),
+    )
     domain_id: so.Mapped[str] = so.mapped_column(sa.String(20), primary_key=True)
     domain_name: so.Mapped[str] = so.mapped_column(sa.String(255), nullable=False)
     domain_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey("concept.concept_id"),nullable=False)

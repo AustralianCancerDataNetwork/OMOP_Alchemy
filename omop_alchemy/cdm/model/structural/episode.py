@@ -15,6 +15,8 @@ from omop_alchemy.cdm.base import (
     ReferenceContext,
     DomainValidationMixin,
     ExpectedDomain,
+    merge_table_args,
+    omop_index,
 )
 
 if TYPE_CHECKING:
@@ -26,9 +28,16 @@ if TYPE_CHECKING:
 @cdm_table
 class Episode(CDMTableBase, Base, PersonScoped):
     __tablename__ = "episode"
+    __table_args__ = merge_table_args(
+        omop_index("idx_episode_person_id_1", "person_id", cluster=True),
+        omop_index("idx_episode_concept_id_1", "episode_concept_id"),
+        omop_index("ix_episode_episode_object_concept_id", "episode_object_concept_id"),
+        omop_index("ix_episode_episode_type_concept_id", "episode_type_concept_id"),
+        omop_index("ix_episode_episode_parent_id", "episode_parent_id"),
+    )
 
     episode_id: so.Mapped[int] = so.mapped_column(primary_key=True)
-    episode_parent_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey("episode.episode_id"),nullable=True,index=True)
+    episode_parent_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey("episode.episode_id"), nullable=True)
 
     episode_start_date: so.Mapped[date] = so.mapped_column(sa.Date, nullable=False)
     episode_start_datetime: so.Mapped[Optional[date]] = so.mapped_column(sa.DateTime, nullable=True)

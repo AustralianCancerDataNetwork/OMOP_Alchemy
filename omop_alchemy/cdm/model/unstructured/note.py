@@ -15,7 +15,9 @@ from omop_alchemy.cdm.base import (
     optional_int,
     ReferenceContext,
     DomainValidationMixin,
-    ExpectedDomain
+    ExpectedDomain,
+    merge_table_args,
+    omop_index,
 )
 
 if TYPE_CHECKING:
@@ -26,6 +28,16 @@ if TYPE_CHECKING:
 @cdm_table
 class Note(CDMTableBase, Base, PersonScoped, HealthSystemContext):
     __tablename__ = "note"
+    __table_args__ = merge_table_args(
+        omop_index("idx_note_person_id_1", "person_id", cluster=True),
+        omop_index("idx_note_concept_id_1", "note_type_concept_id"),
+        omop_index("idx_note_visit_id_1", "visit_occurrence_id"),
+        omop_index("ix_note_note_class_concept_id", "note_class_concept_id"),
+        omop_index("ix_note_encoding_concept_id", "encoding_concept_id"),
+        omop_index("ix_note_language_concept_id", "language_concept_id"),
+        omop_index("ix_note_provider_id", "provider_id"),
+        omop_index("ix_note_visit_detail_id", "visit_detail_id"),
+    )
     note_id: so.Mapped[int] = so.mapped_column(primary_key=True)
     note_date: so.Mapped[date] = so.mapped_column(sa.Date, nullable=False)
     note_datetime: so.Mapped[Optional[datetime]] = so.mapped_column(sa.DateTime,nullable=True,)

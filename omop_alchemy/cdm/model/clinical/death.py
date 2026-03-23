@@ -11,6 +11,9 @@ from omop_alchemy.cdm.base import (
     ReferenceContext,
     DomainValidationMixin,
     ExpectedDomain,
+    merge_table_args,
+    omop_primary_key_index_name,
+    omop_table_options,
 )
 
 if TYPE_CHECKING:
@@ -20,6 +23,9 @@ if TYPE_CHECKING:
 @cdm_table
 class Death(CDMTableBase, Base):
     __tablename__ = "death"
+    __table_args__ = merge_table_args(
+        omop_table_options(cluster_on=omop_primary_key_index_name("death")),
+    )
     person_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey("person.person_id"), primary_key=True)
     death_date: so.Mapped[date] = so.mapped_column(nullable=False)
     death_datetime: so.Mapped[Optional[date]] = so.mapped_column(sa.DateTime, nullable=True)

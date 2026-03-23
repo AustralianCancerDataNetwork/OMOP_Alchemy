@@ -11,7 +11,16 @@ if TYPE_CHECKING:
     from .concept_relationship import Concept_Relationship
 
 from orm_loader.helpers import Base
-from omop_alchemy.cdm.base import ReferenceTable, cdm_table, CDMTableBase, ReferenceContext
+from omop_alchemy.cdm.base import (
+    ReferenceTable,
+    cdm_table,
+    CDMTableBase,
+    ReferenceContext,
+    merge_table_args,
+    omop_index,
+    omop_primary_key_index_name,
+    omop_table_options,
+)
 
 @cdm_table
 class Concept(
@@ -20,11 +29,18 @@ class Concept(
     Base
 ):
     __tablename__ = "concept"
+    __table_args__ = merge_table_args(
+        omop_index("idx_concept_code", "concept_code"),
+        omop_index("idx_concept_vocabulary_id", "vocabulary_id"),
+        omop_index("idx_concept_domain_id", "domain_id"),
+        omop_index("idx_concept_class_id", "concept_class_id"),
+        omop_table_options(cluster_on=omop_primary_key_index_name("concept")),
+    )
     concept_id: so.Mapped[int] = so.mapped_column(primary_key=True)
     concept_name: so.Mapped[str] = so.mapped_column(sa.String(255), nullable=False)
-    domain_id: so.Mapped[str] = so.mapped_column(sa.ForeignKey("domain.domain_id"), nullable=False, index=True)
-    vocabulary_id: so.Mapped[str] = so.mapped_column(sa.ForeignKey("vocabulary.vocabulary_id"), nullable=False, index=True)
-    concept_class_id: so.Mapped[str] = so.mapped_column(sa.ForeignKey("concept_class.concept_class_id"), nullable=False, index=True)
+    domain_id: so.Mapped[str] = so.mapped_column(sa.ForeignKey("domain.domain_id"), nullable=False)
+    vocabulary_id: so.Mapped[str] = so.mapped_column(sa.ForeignKey("vocabulary.vocabulary_id"), nullable=False)
+    concept_class_id: so.Mapped[str] = so.mapped_column(sa.ForeignKey("concept_class.concept_class_id"), nullable=False)
     standard_concept: so.Mapped[Optional[str]] = so.mapped_column(sa.String(1), nullable=True)
     concept_code: so.Mapped[str] = so.mapped_column(sa.String(50), nullable=False)
     valid_start_date: so.Mapped[date] = so.mapped_column(sa.Date(), nullable=False)

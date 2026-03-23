@@ -26,7 +26,7 @@ class CDM_Source(CDMTableBase, Base):
     cdm_release_date: so.Mapped[date] = so.mapped_column(sa.Date, nullable=False)
 
     cdm_version: so.Mapped[Optional[str]] = so.mapped_column(sa.String(10), nullable=True)
-    cdm_version_concept_id: so.Mapped[int] = required_concept_fk()
+    cdm_version_concept_id: so.Mapped[int] = required_concept_fk(index=True)
 
     vocabulary_version: so.Mapped[str] = so.mapped_column(sa.String(20), nullable=False)
 

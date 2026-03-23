@@ -7,16 +7,21 @@ from omop_alchemy.cdm.base import (
     CDMTableBase,
     optional_concept_fk,
     required_concept_fk,
+    merge_table_args,
+    omop_index,
 )
 
 @cdm_table
 class Cost(CDMTableBase, Base):
     __tablename__ = "cost"
+    __table_args__ = merge_table_args(
+        omop_index("idx_cost_event_id", "cost_event_id"),
+    )
 
     cost_id: so.Mapped[int] = so.mapped_column(primary_key=True)
     cost_event_id: so.Mapped[int] = so.mapped_column(nullable=False)
     cost_domain_id: so.Mapped[str] = so.mapped_column(sa.String(20), nullable=False)
-    cost_type_concept_id: so.Mapped[int] = required_concept_fk()
+    cost_type_concept_id: so.Mapped[int] = required_concept_fk(index=True)
 
     currency_concept_id: so.Mapped[Optional[int]] = optional_concept_fk()
 

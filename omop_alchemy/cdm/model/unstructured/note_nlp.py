@@ -9,6 +9,8 @@ from omop_alchemy.cdm.base import (
     CDMTableBase,
     cdm_table, 
     optional_concept_fk,
+    merge_table_args,
+    omop_index,
 )
 
 if TYPE_CHECKING:
@@ -18,13 +20,16 @@ if TYPE_CHECKING:
 
 class Note_NLP(CDMTableBase, Base):
     __tablename__ = "note_nlp"
+    __table_args__ = merge_table_args(
+        omop_index("idx_note_nlp_note_id_1", "note_id", cluster=True),
+        omop_index("idx_note_nlp_concept_id_1", "note_nlp_concept_id"),
+    )
 
     note_nlp_id: so.Mapped[int] = so.mapped_column(primary_key=True)
 
     note_id: so.Mapped[int] = so.mapped_column(
         sa.ForeignKey("note.note_id"),
         nullable=False,
-        index=True,
     )
 
     section_concept_id: so.Mapped[Optional[int]] = optional_concept_fk()

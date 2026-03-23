@@ -8,11 +8,18 @@ from omop_alchemy.cdm.base import (
     cdm_table,
     required_concept_fk,
     optional_concept_fk,
+    merge_table_args,
+    omop_index,
 )
 
 @cdm_table
 class Specimen(CDMTableBase, Base):
     __tablename__ = "specimen"
+    __table_args__ = merge_table_args(
+        omop_index("idx_specimen_person_id_1", "person_id", cluster=True),
+        omop_index("idx_specimen_concept_id_1", "specimen_concept_id"),
+        omop_index("ix_specimen_specimen_type_concept_id", "specimen_type_concept_id"),
+    )
 
     specimen_id: so.Mapped[int] = so.mapped_column(primary_key=True)
     person_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey("person.person_id"), nullable=False)

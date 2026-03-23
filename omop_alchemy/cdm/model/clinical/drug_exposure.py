@@ -15,6 +15,8 @@ from omop_alchemy.cdm.base import (
     optional_int,
     ModifierTargetMixin,
     ModifierFieldConcepts,
+    merge_table_args,
+    omop_index,
 )
 
 if TYPE_CHECKING:
@@ -31,6 +33,14 @@ class Drug_Exposure(
     Base,
 ):
     __tablename__ = "drug_exposure"
+    __table_args__ = merge_table_args(
+        omop_index("idx_drug_person_id_1", "person_id", cluster=True),
+        omop_index("idx_drug_concept_id_1", "drug_concept_id"),
+        omop_index("idx_drug_visit_id_1", "visit_occurrence_id"),
+        omop_index("ix_drug_exposure_drug_type_concept_id", "drug_type_concept_id"),
+        omop_index("ix_drug_exposure_provider_id", "provider_id"),
+        omop_index("ix_drug_exposure_visit_detail_id", "visit_detail_id"),
+    )
 
     drug_exposure_id: so.Mapped[int] = so.mapped_column(primary_key=True)
     

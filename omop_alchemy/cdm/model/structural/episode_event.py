@@ -9,6 +9,8 @@ from omop_alchemy.cdm.base import (
     ReferenceContext,
     DomainValidationMixin,
     ExpectedDomain,
+    merge_table_args,
+    omop_index,
 )
 
 if TYPE_CHECKING:
@@ -18,6 +20,10 @@ if TYPE_CHECKING:
 @cdm_table
 class Episode_Event(CDMTableBase, Base):
     __tablename__ = "episode_event"
+    __table_args__ = merge_table_args(
+        omop_index("idx_episode_event_id_1", "episode_id", cluster=True),
+        omop_index("idx_ee_field_concept_id_1", "episode_event_field_concept_id"),
+    )
 
     episode_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey("episode.episode_id"),nullable=False,primary_key=True)
     event_id: so.Mapped[int] = so.mapped_column(nullable=False,primary_key=True)

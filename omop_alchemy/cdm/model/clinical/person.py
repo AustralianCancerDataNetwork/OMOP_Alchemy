@@ -19,6 +19,10 @@ from omop_alchemy.cdm.base import (
     ReferenceContext,
     DomainValidationMixin,
     ExpectedDomain,
+    merge_table_args,
+    omop_index,
+    omop_primary_key_index_name,
+    omop_table_options,
 )
 
 from ..vocabulary import Concept
@@ -29,6 +33,15 @@ from ..derived import Observation_Period
 @cdm_table
 class Person(CDMTableBase,Base,HealthSystemContext):
     __tablename__ = "person"
+    __table_args__ = merge_table_args(
+        omop_index("idx_gender", "gender_concept_id"),
+        omop_index("ix_person_location_id", "location_id"),
+        omop_index("ix_person_provider_id", "provider_id"),
+        omop_index("ix_person_care_site_id", "care_site_id"),
+        omop_index("ix_person_visit_occurrence_id", "visit_occurrence_id"),
+        omop_index("ix_person_visit_detail_id", "visit_detail_id"),
+        omop_table_options(cluster_on=omop_primary_key_index_name("person")),
+    )
 
     person_id: so.Mapped[int] = so.mapped_column(primary_key=True)
     
@@ -44,9 +57,9 @@ class Person(CDMTableBase,Base,HealthSystemContext):
     race_source_concept_id: so.Mapped[Optional[int]] = optional_concept_fk()
     ethnicity_source_concept_id: so.Mapped[Optional[int]] = optional_concept_fk()
 
-    location_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey("location.location_id"), nullable=True, index=True)
-    provider_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey("provider.provider_id"), nullable=True, index=True)
-    care_site_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey("care_site.care_site_id"), nullable=True, index=True)
+    location_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey("location.location_id"), nullable=True)
+    provider_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey("provider.provider_id"), nullable=True)
+    care_site_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey("care_site.care_site_id"), nullable=True)
     
     person_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50), nullable=True)
     gender_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50), nullable=True)
@@ -231,4 +244,3 @@ class PersonView(Person, PersonContext, DomainValidationMixin):
                 Observation_Period.observation_period_end_date >= on_date,
             )
         )
-

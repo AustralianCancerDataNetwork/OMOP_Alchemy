@@ -13,7 +13,9 @@ from omop_alchemy.cdm.base import (
     required_concept_fk,
     optional_concept_fk,
     optional_int,
-    ModifierTargetMixin
+    ModifierTargetMixin,
+    merge_table_args,
+    omop_index,
 )
 
 if TYPE_CHECKING:
@@ -30,6 +32,14 @@ class Device_Exposure(
     Base,
 ):
     __tablename__ = "device_exposure"
+    __table_args__ = merge_table_args(
+        omop_index("idx_device_person_id_1", "person_id", cluster=True),
+        omop_index("idx_device_concept_id_1", "device_concept_id"),
+        omop_index("idx_device_visit_id_1", "visit_occurrence_id"),
+        omop_index("ix_device_exposure_device_type_concept_id", "device_type_concept_id"),
+        omop_index("ix_device_exposure_provider_id", "provider_id"),
+        omop_index("ix_device_exposure_visit_detail_id", "visit_detail_id"),
+    )
 
     device_exposure_id: so.Mapped[int] = so.mapped_column(primary_key=True)
     
@@ -49,5 +59,3 @@ class Device_Exposure(
     quantity: so.Mapped[Optional[int]] = optional_int()
     device_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50))
     unit_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50))
-
-

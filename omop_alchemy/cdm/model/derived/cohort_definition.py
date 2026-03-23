@@ -18,9 +18,9 @@ class Cohort_Definition(CDMTableBase, Base):
     cohort_definition_name: so.Mapped[str] = so.mapped_column(sa.String(255), nullable=False)
     cohort_definition_description: so.Mapped[Optional[str]] = so.mapped_column(sa.Text, nullable=True)
 
-    definition_type_concept_id: so.Mapped[int] = required_concept_fk()
+    definition_type_concept_id: so.Mapped[int] = required_concept_fk(index=True)
     cohort_definition_syntax: so.Mapped[Optional[str]] = so.mapped_column(sa.Text, nullable=True)
-    subject_concept_id: so.Mapped[int] = required_concept_fk()
+    subject_concept_id: so.Mapped[int] = required_concept_fk(index=True)
 
     cohort_initiation_date: so.Mapped[Optional[date]] = so.mapped_column(sa.Date, nullable=True)
 

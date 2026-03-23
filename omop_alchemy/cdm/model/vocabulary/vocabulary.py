@@ -15,11 +15,21 @@ from typing import Optional
 import sqlalchemy as sa
 import sqlalchemy.orm as so
 from orm_loader.helpers import Base
-from omop_alchemy.cdm.base import ReferenceTable, cdm_table, CDMTableBase
+from omop_alchemy.cdm.base import (
+    ReferenceTable,
+    cdm_table,
+    CDMTableBase,
+    merge_table_args,
+    omop_primary_key_index_name,
+    omop_table_options,
+)
 
 @cdm_table
 class Vocabulary(Base, ReferenceTable, CDMTableBase):
     __tablename__ = "vocabulary"
+    __table_args__ = merge_table_args(
+        omop_table_options(cluster_on=omop_primary_key_index_name("vocabulary")),
+    )
     vocabulary_id: so.Mapped[str] = so.mapped_column(sa.String(20), primary_key=True)
     vocabulary_name: so.Mapped[str] = so.mapped_column(sa.String(255), nullable=False)
     vocabulary_reference: so.Mapped[Optional[str]] = so.mapped_column(sa.String(255), nullable=True)

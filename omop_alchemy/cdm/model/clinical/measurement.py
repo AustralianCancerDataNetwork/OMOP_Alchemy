@@ -10,15 +10,24 @@ from omop_alchemy.cdm.base import (
     CDMTableBase,
     cdm_table,
     ValueMixin,
+    merge_table_args,
+    omop_index,
 )
 
 @cdm_table
 class Measurement(Base, CDMTableBase, ValueMixin):
     __tablename__ = "measurement"
+    __table_args__ = merge_table_args(
+        ValueMixin.__table_args__,
+        omop_index("idx_measurement_person_id_1", "person_id", cluster=True),
+        omop_index("idx_measurement_concept_id_1", "measurement_concept_id"),
+        omop_index("idx_measurement_visit_id_1", "visit_occurrence_id"),
+        omop_index("ix_measurement_meas_event_field_concept_id", "meas_event_field_concept_id"),
+    )
 
     measurement_id: so.Mapped[int] = so.mapped_column(primary_key=True)
-    person_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey("person.person_id"), nullable=False, index=True)
-    measurement_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey("concept.concept_id"), nullable=False, index=True)
+    person_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey("person.person_id"), nullable=False)
+    measurement_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey("concept.concept_id"), nullable=False)
     measurement_date: so.Mapped[date] = so.mapped_column(nullable=False)
     measurement_datetime: so.Mapped[Optional[datetime]]
     measurement_time: so.Mapped[Optional[str]]
@@ -40,7 +49,7 @@ class Measurement(Base, CDMTableBase, ValueMixin):
 
     value_source_value: so.Mapped[Optional[str]]
     measurement_event_id: so.Mapped[Optional[int]]
-    meas_event_field_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey("concept.concept_id"),index=True,doc="Identifies which OMOP table measurement_event_id refers to",)
+    meas_event_field_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey("concept.concept_id"), doc="Identifies which OMOP table measurement_event_id refers to",)
 
     @hybrid_property
     def modifier_of_event_id(self) -> Optional[int]:
