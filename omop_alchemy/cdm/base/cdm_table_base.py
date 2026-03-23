@@ -7,12 +7,19 @@ class CDMTableBase(CSVLoadableTableInterface, SerialisableTableInterface):
     Base class for CDM tables that support CSV loading and validation.
     """
     __abstract__ = True
+    __omop_is_cdm_table__ = False
+    __omop_table_category__: str | None = None
 
     """
     Adds structural validation of ORM models against
     the official OMOP CDM CSV specifications.
     """
     __cdm_extra_checks__: list[str] = []
+
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        cls.__omop_is_cdm_table__ = False
+        cls.__omop_table_category__ = None
 
     @classmethod
     def table_has_rows(cls, session: so.Session) -> bool:
