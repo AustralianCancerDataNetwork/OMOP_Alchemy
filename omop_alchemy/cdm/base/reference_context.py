@@ -2,6 +2,8 @@
 from __future__ import annotations
 import sqlalchemy.orm as so
 from typing import Type, Any
+from orm_loader.helpers import Base, get_model_by_tablename
+import sqlalchemy as sa
 
 class ReferenceContext:
 
@@ -40,29 +42,16 @@ class ReferenceContext:
         remote_pk: str,
         uselist: bool = False,
     ):
-        
-        def _relationship(cls_: Type[Any]) -> Any:
-            return so.relationship(
+        return so.declared_attr(
+            lambda cls_: so.relationship(
                 target,
-                primaryjoin=f"{cls_.__name__}.{local_fk} == {target}.{remote_pk}",
-                foreign_keys=f"{cls_.__name__}.{local_fk}",
+                primaryjoin=lambda: getattr(cls_, local_fk) == getattr(
+                    sa.inspect(cls_).registry._class_registry[target],
+                    remote_pk,
+                ),
+                foreign_keys=lambda: getattr(cls_, local_fk),
                 viewonly=True,
                 lazy="selectin",
                 uselist=uselist,
             )
-        return so.declared_attr(_relationship)
-    
-
-        # return so.declared_attr(
-        #     lambda cls_: so.relationship(
-        #         target,
-        #         primaryjoin=lambda: getattr(cls_, local_fk) == getattr(
-        #             sa.inspect(cls_).registry._class_registry[target],
-        #             remote_pk,
-        #         ),
-        #         foreign_keys=lambda: getattr(cls_, local_fk),
-        #         viewonly=True,
-        #         lazy="selectin",
-        #         uselist=uselist,
-        #     )
-        # )
+        )
