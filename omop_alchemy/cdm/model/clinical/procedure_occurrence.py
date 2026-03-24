@@ -27,12 +27,9 @@ if TYPE_CHECKING:
 class Procedure_Occurrence(CDMTableBase, Base, PersonScoped, HealthSystemContext):
     __tablename__ = "procedure_occurrence"
     __table_args__ = merge_table_args(
-        omop_index("idx_procedure_person_id_1", "person_id", cluster=True),
-        omop_index("idx_procedure_concept_id_1", "procedure_concept_id"),
-        omop_index("idx_procedure_visit_id_1", "visit_occurrence_id"),
-        omop_index("ix_procedure_occurrence_procedure_type_concept_id", "procedure_type_concept_id"),
-        omop_index("ix_procedure_occurrence_provider_id", "provider_id"),
-        omop_index("ix_procedure_occurrence_visit_detail_id", "visit_detail_id"),
+        omop_index(__tablename__, "person_id", cluster=True),
+        omop_index(__tablename__, "procedure_concept_id"),
+        omop_index(__tablename__, "visit_occurrence_id")
     )
     procedure_occurrence_id: so.Mapped[int] = so.mapped_column(primary_key=True)
     procedure_concept_id: so.Mapped[int] = required_concept_fk()

@@ -15,7 +15,7 @@ from omop_alchemy.cdm.base import (
 class Cost(CDMTableBase, Base):
     __tablename__ = "cost"
     __table_args__ = merge_table_args(
-        omop_index("idx_cost_event_id", "cost_event_id"),
+        omop_index(__tablename__, "cost_event_id"),
     )
 
     cost_id: so.Mapped[int] = so.mapped_column(primary_key=True)

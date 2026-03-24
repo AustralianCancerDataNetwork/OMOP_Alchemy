@@ -30,10 +30,10 @@ class Source_To_Concept_Map(
     __tablename__ = "source_to_concept_map"
     __cdm_extra_checks__ = ["source_concept_id_range"]
     __table_args__ = merge_table_args(
-        omop_index("idx_source_to_concept_map_3", "target_concept_id", cluster=True),
-        omop_index("idx_source_to_concept_map_1", "source_vocabulary_id"),
-        omop_index("idx_source_to_concept_map_2", "target_vocabulary_id"),
-        omop_index("idx_source_to_concept_map_c", "source_code"),
+        omop_index(__tablename__, "target_concept_id", cluster=True),
+        omop_index(__tablename__, "source_vocabulary_id"),
+        omop_index(__tablename__, "target_vocabulary_id"),
+        omop_index(__tablename__, "source_code"),
     )
 
     source_code: so.Mapped[str] = so.mapped_column(sa.String(50),primary_key=True)

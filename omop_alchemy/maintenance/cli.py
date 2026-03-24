@@ -782,6 +782,11 @@ def load_vocab_source_command(
         "upsert",
         help="CSV merge strategy passed to the ORM loader. Defaults to non-destructive `upsert`; use `replace` to overwrite matching primary keys.",
     ),
+    chunksize: int = typer.Option(
+        100_000,
+        min=1,
+        help="Chunk size for fallback ORM CSV loading to reduce memory usage on large Athena files.",
+    ),
     dry_run: bool = typer.Option(False, "--dry-run"),
 ) -> None:
     connection_defaults = _resolve_connection_context(
@@ -822,6 +827,7 @@ def load_vocab_source_command(
                 db_schema=connection_defaults.db_schema,
                 dry_run=dry_run,
                 merge_strategy=merge_strategy,
+                chunksize=chunksize,
             )
         console.print(render_vocab_load_results(report.results))
         console.print(render_vocab_load_summary(report, dry_run=dry_run))

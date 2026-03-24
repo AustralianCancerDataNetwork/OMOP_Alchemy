@@ -24,7 +24,6 @@ if TYPE_CHECKING:
     from ..health_system.care_site import Care_Site
 
 from ..clinical.procedure_occurrence import Procedure_Occurrence
-from ..vocabulary.concept import Concept
 from ..health_system.provider import Provider
 
 
@@ -32,15 +31,8 @@ from ..health_system.provider import Provider
 class Visit_Occurrence(CDMTableBase, Base):
     __tablename__ = "visit_occurrence"
     __table_args__ = merge_table_args(
-        omop_index("idx_visit_person_id_1", "person_id", cluster=True),
-        omop_index("idx_visit_concept_id_1", "visit_concept_id"),
-        omop_index("ix_visit_occurrence_visit_type_concept_id", "visit_type_concept_id"),
-        omop_index("ix_visit_occurrence_provider_id", "provider_id"),
-        omop_index("ix_visit_occurrence_care_site_id", "care_site_id"),
-        omop_index("ix_visit_occurrence_visit_source_concept_id", "visit_source_concept_id"),
-        omop_index("ix_visit_occurrence_admitted_from_concept_id", "admitted_from_concept_id"),
-        omop_index("ix_visit_occurrence_discharged_to_concept_id", "discharged_to_concept_id"),
-        omop_index("ix_visit_occurrence_preceding_visit_occurrence_id", "preceding_visit_occurrence_id"),
+        omop_index(__tablename__, "person_id", cluster=True),
+        omop_index(__tablename__, "visit_concept_id"),
     )
 
     visit_occurrence_id: so.Mapped[int] = so.mapped_column(primary_key=True)
@@ -108,13 +100,11 @@ class VisitView(Visit_Occurrence, VisitContext, DomainValidationMixin):
 
     @property
     def all_providers(self) -> set["Provider"]:
-        providers = set()
+        providers: set[Provider] = set()
         providers.update(getattr(self, "procedure_providers", []) or [])
         providers.update(getattr(self, "observation_providers", []) or [])
-        if self.provider is not None:
-            providers.add(self.provider)
+        providers.add(self.provider)
         return providers
-    
 
     @hybrid_method
     def has_provider_specialty(self, specialty_concept_id: int) -> bool: 

@@ -20,9 +20,9 @@ class Fact_Relationship(CDMTableBase, Base):
             "fact_id_2",
             "relationship_concept_id",
         ),
-        omop_index("idx_fact_relationship_id1", "domain_concept_id_1"),
-        omop_index("idx_fact_relationship_id2", "domain_concept_id_2"),
-        omop_index("idx_fact_relationship_id3", "relationship_concept_id"),
+        omop_index(__tablename__, "domain_concept_id_1"),
+        omop_index(__tablename__, "domain_concept_id_2"),
+        omop_index(__tablename__, "relationship_concept_id"),
     )
 
     domain_concept_id_1: so.Mapped[int] = so.mapped_column(

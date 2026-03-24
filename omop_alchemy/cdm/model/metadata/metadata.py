@@ -18,8 +18,8 @@ class Metadata(CDMTableBase, Base, ValueMixin):
     __tablename__ = "metadata"
     __table_args__ = merge_table_args(
         ValueMixin.__table_args__,
-        omop_index("idx_metadata_concept_id_1", "metadata_concept_id", cluster=True),
-        omop_index("ix_metadata_metadata_type_concept_id", "metadata_type_concept_id"),
+        omop_index(__tablename__, "metadata_concept_id", cluster=True),
+        omop_index(__tablename__, "metadata_type_concept_id"),
     )
 
     metadata_id: so.Mapped[int] = so.mapped_column(primary_key=True)

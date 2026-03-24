@@ -21,8 +21,8 @@ if TYPE_CHECKING:
 class Note_NLP(CDMTableBase, Base):
     __tablename__ = "note_nlp"
     __table_args__ = merge_table_args(
-        omop_index("idx_note_nlp_note_id_1", "note_id", cluster=True),
-        omop_index("idx_note_nlp_concept_id_1", "note_nlp_concept_id"),
+        omop_index(__tablename__, "note_id", cluster=True),
+        omop_index(__tablename__, "note_nlp_concept_id"),
     )
 
     note_nlp_id: so.Mapped[int] = so.mapped_column(primary_key=True)

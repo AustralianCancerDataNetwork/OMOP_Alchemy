@@ -1,7 +1,7 @@
 import sqlalchemy as sa
 import sqlalchemy.orm as so
-from typing import Mapping, Optional, TYPE_CHECKING, Any
-from datetime import date, datetime, time
+from typing import Optional, TYPE_CHECKING
+from datetime import date, datetime
 from orm_loader.helpers import Base
 from omop_alchemy.cdm.base import (
     PersonScoped, 
@@ -21,7 +21,6 @@ from omop_alchemy.cdm.base import (
 
 if TYPE_CHECKING:
     from ..vocabulary import Concept
-    from ..health_system import Visit_Occurrence
 
 @cdm_table
 class Drug_Exposure(
@@ -34,12 +33,9 @@ class Drug_Exposure(
 ):
     __tablename__ = "drug_exposure"
     __table_args__ = merge_table_args(
-        omop_index("idx_drug_person_id_1", "person_id", cluster=True),
-        omop_index("idx_drug_concept_id_1", "drug_concept_id"),
-        omop_index("idx_drug_visit_id_1", "visit_occurrence_id"),
-        omop_index("ix_drug_exposure_drug_type_concept_id", "drug_type_concept_id"),
-        omop_index("ix_drug_exposure_provider_id", "provider_id"),
-        omop_index("ix_drug_exposure_visit_detail_id", "visit_detail_id"),
+        omop_index(__tablename__, "person_id", cluster=True),
+        omop_index(__tablename__, "drug_concept_id"),
+        omop_index(__tablename__, "visit_occurrence_id")
     )
 
     drug_exposure_id: so.Mapped[int] = so.mapped_column(primary_key=True)

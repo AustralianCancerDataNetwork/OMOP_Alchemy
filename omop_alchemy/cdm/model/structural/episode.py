@@ -21,19 +21,20 @@ from omop_alchemy.cdm.base import (
 
 if TYPE_CHECKING:
     from ..vocabulary import Concept
-    from ..clinical import Condition_Occurrence, Person
-    from .episode_event import Episode_Event, Episode_EventView
+    from ..clinical import Person
+    from .episode_event import Episode_EventView
     from ...base.typing import HasEpisodeId
 
 @cdm_table
 class Episode(CDMTableBase, Base, PersonScoped):
     __tablename__ = "episode"
     __table_args__ = merge_table_args(
-        omop_index("idx_episode_person_id_1", "person_id", cluster=True),
-        omop_index("idx_episode_concept_id_1", "episode_concept_id"),
-        omop_index("ix_episode_episode_object_concept_id", "episode_object_concept_id"),
-        omop_index("ix_episode_episode_type_concept_id", "episode_type_concept_id"),
-        omop_index("ix_episode_episode_parent_id", "episode_parent_id"),
+        omop_index(__tablename__, "person_id", cluster=True),
+        omop_index(__tablename__, "episode_concept_id"),
+        # following indices are not specified in the cdm but are likely to be useful for query performance
+        omop_index(__tablename__, "episode_object_concept_id"),
+        omop_index(__tablename__, "episode_type_concept_id"),
+        omop_index(__tablename__, "episode_parent_id"),
     )
 
     episode_id: so.Mapped[int] = so.mapped_column(primary_key=True)
@@ -99,7 +100,7 @@ class EpisodeView(Episode, EpisodeContext, DomainValidationMixin):
         if not self.episode_events:
             return []
 
-        resolved = []
+        resolved: list[object] = []
         for ee in self.episode_events:
             target = ee.resolved_event
             if target is not None:

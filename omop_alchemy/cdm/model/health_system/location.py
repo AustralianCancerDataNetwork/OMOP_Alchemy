@@ -17,7 +17,7 @@ from omop_alchemy.cdm.base import (
 class Location(CDMTableBase, Base):
     __tablename__ = "location"
     __table_args__ = merge_table_args(
-        omop_index("ix_location_country_concept_id", "country_concept_id"),
+        omop_index(__tablename__, "country_concept_id"),
         omop_table_options(cluster_on=omop_primary_key_index_name("location")),
     )
     location_id: so.Mapped[int] = so.mapped_column(primary_key=True)

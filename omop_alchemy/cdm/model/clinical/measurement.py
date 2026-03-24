@@ -19,10 +19,11 @@ class Measurement(Base, CDMTableBase, ValueMixin):
     __tablename__ = "measurement"
     __table_args__ = merge_table_args(
         ValueMixin.__table_args__,
-        omop_index("idx_measurement_person_id_1", "person_id", cluster=True),
-        omop_index("idx_measurement_concept_id_1", "measurement_concept_id"),
-        omop_index("idx_measurement_visit_id_1", "visit_occurrence_id"),
-        omop_index("ix_measurement_meas_event_field_concept_id", "meas_event_field_concept_id"),
+        omop_index(__tablename__, "person_id", cluster=True),
+        omop_index(__tablename__, "measurement_concept_id"),
+        omop_index(__tablename__, "visit_occurrence_id"),
+        # this one is not present in the CDM DDL but is needed for efficient querying of modifiers
+        omop_index(__tablename__, "meas_event_field_concept_id"),
     )
 
     measurement_id: so.Mapped[int] = so.mapped_column(primary_key=True)

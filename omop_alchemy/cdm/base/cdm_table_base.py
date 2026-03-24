@@ -16,7 +16,7 @@ class CDMTableBase(CSVLoadableTableInterface, SerialisableTableInterface):
     """
     __cdm_extra_checks__: list[str] = []
 
-    def __init_subclass__(cls, **kwargs):
+    def __init_subclass__(cls, **kwargs: object) -> None:
         super().__init_subclass__(**kwargs)
         cls.__omop_is_cdm_table__ = False
         cls.__omop_table_category__ = None

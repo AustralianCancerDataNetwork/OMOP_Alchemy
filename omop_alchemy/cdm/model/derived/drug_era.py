@@ -15,8 +15,8 @@ from omop_alchemy.cdm.base import (
 class Drug_Era(CDMTableBase, Base):
     __tablename__ = "drug_era"
     __table_args__ = merge_table_args(
-        omop_index("idx_drug_era_person_id_1", "person_id", cluster=True),
-        omop_index("idx_drug_era_concept_id_1", "drug_concept_id"),
+        omop_index(__tablename__, "person_id", cluster=True),
+        omop_index(__tablename__, "drug_concept_id"),
     )
 
     drug_era_id: so.Mapped[int] = so.mapped_column(primary_key=True)

@@ -55,7 +55,7 @@ services:
     restart: unless-stopped
     volumes:
       - ./data:/home/data:rw
-      - postgres-data:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s

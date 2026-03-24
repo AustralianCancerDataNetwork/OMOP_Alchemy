@@ -30,10 +30,10 @@ class Concept(
 ):
     __tablename__ = "concept"
     __table_args__ = merge_table_args(
-        omop_index("idx_concept_code", "concept_code"),
-        omop_index("idx_concept_vocabulary_id", "vocabulary_id"),
-        omop_index("idx_concept_domain_id", "domain_id"),
-        omop_index("idx_concept_class_id", "concept_class_id"),
+        omop_index(__tablename__, "concept_code"),
+        omop_index(__tablename__, "vocabulary_id"),
+        omop_index(__tablename__, "domain_id"),
+        omop_index(__tablename__, "concept_class_id"),
         omop_table_options(cluster_on=omop_primary_key_index_name("concept")),
     )
     concept_id: so.Mapped[int] = so.mapped_column(primary_key=True)

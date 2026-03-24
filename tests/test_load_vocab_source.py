@@ -8,10 +8,12 @@ from typer.testing import CliRunner
 from omop_alchemy.maintenance.cli import app
 from omop_alchemy.maintenance.defaults import defaults_path
 from omop_alchemy.maintenance.load_vocab import (
+    OPTIONAL_VOCAB_MODELS,
+    REQUIRED_VOCAB_MODELS,
     _load_vocab_model_csv,
     load_vocab_source,
 )
-from omop_alchemy.cdm.model.vocabulary import Concept, Drug_Strength
+from omop_alchemy.cdm.model.vocabulary import Drug_Strength
 
 
 runner = CliRunner()
@@ -21,33 +23,84 @@ def _athena_source_path() -> Path:
     return Path(__file__).parent / "fixtures" / "athena_source"
 
 
-def test_load_vocab_source_on_sqlite_loads_fixture_data(tmp_path):
+def _write_athena_csv(source_path: Path, table_name: str) -> Path:
+    csv_path = source_path / f"{table_name.upper()}.csv"
+    csv_path.write_text("stub\n", encoding="utf-8")
+    return csv_path
+
+
+def _build_required_athena_source(
+    tmp_path: Path,
+    *,
+    include_optional: tuple[str, ...] = (),
+) -> Path:
+    source_path = tmp_path / "athena_source"
+    source_path.mkdir()
+
+    for model in REQUIRED_VOCAB_MODELS:
+        _write_athena_csv(source_path, model.__tablename__)
+
+    for table_name in include_optional:
+        _write_athena_csv(source_path, table_name)
+
+    return source_path
+
+
+def test_load_vocab_source_on_sqlite_creates_tables_and_reports_loaded_results(
+    monkeypatch,
+    tmp_path,
+):
     engine = sa.create_engine(f"sqlite:///{tmp_path / 'load_vocab_source.db'}", future=True)
+    source_path = _build_required_athena_source(tmp_path)
+    loaded_tables: list[tuple[str, str, str, Path]] = []
 
-    report = load_vocab_source(
-        engine,
-        source_path=_athena_source_path(),
+    def fake_load_vocab_model_csv(
+        session,
+        *,
+        model,
+        csv_path,
+        merge_strategy,
+        quote_mode="csv",
+    ) -> int:
+        loaded_tables.append((model.__tablename__, merge_strategy, quote_mode, csv_path))
+        return 1
+
+    monkeypatch.setattr(
+        "omop_alchemy.maintenance.load_vocab._load_vocab_model_csv",
+        fake_load_vocab_model_csv,
     )
 
-    assert any(result.table_name == "concept" and result.status == "loaded" for result in report.results)
-    assert any(result.table_name == "drug_strength" and result.status == "skipped" for result in report.results)
+    report = load_vocab_source(engine, source_path=source_path)
 
-    Session = sessionmaker(bind=engine, future=True)
-    with Session() as session:
-        concept = session.get(Concept, 1)
-        assert concept is not None
-        assert concept.concept_name == "Domain"
-
-
-def test_load_vocab_source_defaults_to_non_destructive_upsert(tmp_path):
-    engine = sa.create_engine(f"sqlite:///{tmp_path / 'load_vocab_source_default_merge.db'}", future=True)
-
-    report = load_vocab_source(
-        engine,
-        source_path=_athena_source_path(),
-    )
+    result_by_name = {
+        result.table_name: result
+        for result in report.results
+    }
 
     assert report.merge_strategy == "upsert"
+    assert all(result_by_name[model.__tablename__].status == "loaded" for model in REQUIRED_VOCAB_MODELS)
+    assert all(result_by_name[model.__tablename__].status == "skipped" for model in OPTIONAL_VOCAB_MODELS)
+    assert all(merge_strategy == "upsert" for _, merge_strategy, _, _ in loaded_tables)
+    assert all(quote_mode == "literal" for _, _, quote_mode, _ in loaded_tables)
+    assert {table_name for table_name, _, _, _ in loaded_tables} == {
+        model.__tablename__
+        for model in REQUIRED_VOCAB_MODELS
+    }
+
+    inspector = sa.inspect(engine)
+    assert inspector.has_table("concept")
+
+
+def test_load_vocab_source_requires_full_required_athena_fixture(tmp_path):
+    engine = sa.create_engine(f"sqlite:///{tmp_path / 'load_vocab_source_missing_required.db'}", future=True)
+
+    with pytest.raises(RuntimeError) as exc_info:
+        load_vocab_source(
+            engine,
+            source_path=_athena_source_path(),
+        )
+
+    assert "Missing required Athena vocabulary CSV files" in str(exc_info.value)
 
 
 def test_drug_strength_model_matches_athena_vocabulary_shape():
@@ -63,14 +116,15 @@ def test_drug_strength_model_matches_athena_vocabulary_shape():
 
 def test_load_vocab_source_dry_run_does_not_create_tables(tmp_path):
     engine = sa.create_engine(f"sqlite:///{tmp_path / 'load_vocab_source_dry_run.db'}", future=True)
+    source_path = _build_required_athena_source(tmp_path)
 
     report = load_vocab_source(
         engine,
-        source_path=_athena_source_path(),
+        source_path=source_path,
         dry_run=True,
     )
 
-    assert any(result.status == "planned" for result in report.results)
+    assert all(result.status == "planned" for result in report.results if result.required)
     assert report.created_table_count == 0
     inspector = sa.inspect(engine)
     assert not inspector.has_table("concept")
@@ -217,23 +271,26 @@ def test_load_vocab_model_csv_passes_quote_mode(monkeypatch, tmp_path):
 
 def test_load_vocab_source_wraps_failed_table_load(monkeypatch, tmp_path):
     engine = sa.create_engine(f"sqlite:///{tmp_path / 'load_vocab_source_error.db'}", future=True)
+    source_path = _build_required_athena_source(tmp_path)
 
-    def fail_load_csv(*args, **kwargs):
-        raise sa.exc.ProgrammingError(
-            "COPY concept FROM STDIN",
-            {},
-            Exception("value too long for type character varying(255)"),
-        )
+    def fake_load_vocab_model_csv(session, *, model, csv_path, merge_strategy, quote_mode="csv"):
+        if model.__tablename__ == "domain":
+            raise sa.exc.ProgrammingError(
+                "COPY domain FROM STDIN",
+                {},
+                Exception("value too long for type character varying(255)"),
+            )
+        return 1
 
     monkeypatch.setattr(
-        "omop_alchemy.cdm.model.vocabulary.Domain.load_csv",
-        fail_load_csv,
+        "omop_alchemy.maintenance.load_vocab._load_vocab_model_csv",
+        fake_load_vocab_model_csv,
     )
 
     with pytest.raises(RuntimeError) as exc_info:
         load_vocab_source(
             engine,
-            source_path=_athena_source_path(),
+            source_path=source_path,
         )
 
     message = str(exc_info.value)

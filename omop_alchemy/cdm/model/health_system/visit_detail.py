@@ -17,17 +17,9 @@ from omop_alchemy.cdm.base import (
 class Visit_Detail(CDMTableBase, Base):
     __tablename__ = "visit_detail"
     __table_args__ = merge_table_args(
-        omop_index("idx_visit_det_person_id_1", "person_id", cluster=True),
-        omop_index("idx_visit_det_concept_id_1", "visit_detail_concept_id"),
-        omop_index("idx_visit_det_occ_id", "visit_occurrence_id"),
-        omop_index("ix_visit_detail_visit_detail_type_concept_id", "visit_detail_type_concept_id"),
-        omop_index("ix_visit_detail_provider_id", "provider_id"),
-        omop_index("ix_visit_detail_care_site_id", "care_site_id"),
-        omop_index("ix_visit_detail_visit_detail_source_concept_id", "visit_detail_source_concept_id"),
-        omop_index("ix_visit_detail_admitted_from_concept_id", "admitted_from_concept_id"),
-        omop_index("ix_visit_detail_discharged_to_concept_id", "discharged_to_concept_id"),
-        omop_index("ix_visit_detail_preceding_visit_detail_id", "preceding_visit_detail_id"),
-        omop_index("ix_visit_detail_parent_visit_detail_id", "parent_visit_detail_id"),
+        omop_index(__tablename__, "person_id", cluster=True),
+        omop_index(__tablename__, "visit_detail_concept_id"),
+        omop_index(__tablename__, "visit_occurrence_id")
     )
 
     visit_detail_id: so.Mapped[int] = so.mapped_column(primary_key=True)

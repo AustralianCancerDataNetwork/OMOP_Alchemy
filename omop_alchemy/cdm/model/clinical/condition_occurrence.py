@@ -1,9 +1,8 @@
 import sqlalchemy as sa
 import sqlalchemy.orm as so
 from sqlalchemy.ext.declarative import declared_attr
-from sqlalchemy.ext.hybrid import hybrid_property, hybrid_method
-from typing import Optional, TYPE_CHECKING, List, Mapping, Any
-from datetime import date, datetime, time
+from typing import Optional, TYPE_CHECKING
+from datetime import date, datetime
 from orm_loader.helpers import Base
 from omop_alchemy.cdm.base import (
     PersonScoped, 
@@ -32,16 +31,10 @@ class Condition_Occurrence(
 ):
     __tablename__ = "condition_occurrence"
     __table_args__ = merge_table_args(
-        omop_index("idx_condition_person_id_1", "person_id", cluster=True),
-        omop_index("idx_condition_concept_id_1", "condition_concept_id"),
-        omop_index("idx_condition_visit_id_1", "visit_occurrence_id"),
-        omop_index("ix_condition_occurrence_condition_type_concept_id", "condition_type_concept_id"),
-        omop_index("ix_condition_occurrence_condition_source_concept_id", "condition_source_concept_id"),
-        omop_index("ix_condition_occurrence_condition_status_concept_id", "condition_status_concept_id"),
-        omop_index("ix_condition_occurrence_provider_id", "provider_id"),
-        omop_index("ix_condition_occurrence_visit_detail_id", "visit_detail_id"),
+        omop_index(__tablename__, "person_id", cluster=True),
+        omop_index(__tablename__, "condition_concept_id"),
+        omop_index(__tablename__, "visit_occurrence_id")
     )
-
     condition_occurrence_id: so.Mapped[int] = so.mapped_column(primary_key=True)
     condition_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey("concept.concept_id"), nullable=False)
     condition_start_date: so.Mapped[date] = so.mapped_column(nullable=False)
@@ -54,8 +47,6 @@ class Condition_Occurrence(
     condition_status_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50))
     condition_source_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey("concept.concept_id"))
     condition_status_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey("concept.concept_id"))
-
-
 
 class Condition_OccurrenceContext(ReferenceContext):
     condition_concept: so.Mapped["Concept"] = ReferenceContext._reference_relationship(target="Concept", local_fk="condition_concept_id", remote_pk="concept_id")  # type: ignore[assignment]
@@ -72,7 +63,6 @@ class Condition_OccurrenceContext(ReferenceContext):
             viewonly=True,
             lazy="selectin",
         )
-    
 
 class Condition_OccurrenceView(
     Condition_Occurrence, 

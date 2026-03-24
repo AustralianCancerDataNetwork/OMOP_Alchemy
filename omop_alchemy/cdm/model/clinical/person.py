@@ -1,11 +1,11 @@
 import sqlalchemy as sa
 import sqlalchemy.orm as so
 from sqlalchemy.ext.declarative import declared_attr
-from typing import Optional, TYPE_CHECKING, List
+from typing import Optional
 from datetime import date
 from sqlalchemy.ext.hybrid import hybrid_method, hybrid_property
 from sqlalchemy.orm.exc import DetachedInstanceError
-
+from sqlalchemy.sql import ColumnElement
 from orm_loader.helpers import Base
 
 from omop_alchemy.cdm.base import (
@@ -34,12 +34,7 @@ from ..derived import Observation_Period
 class Person(CDMTableBase,Base,HealthSystemContext):
     __tablename__ = "person"
     __table_args__ = merge_table_args(
-        omop_index("idx_gender", "gender_concept_id"),
-        omop_index("ix_person_location_id", "location_id"),
-        omop_index("ix_person_provider_id", "provider_id"),
-        omop_index("ix_person_care_site_id", "care_site_id"),
-        omop_index("ix_person_visit_occurrence_id", "visit_occurrence_id"),
-        omop_index("ix_person_visit_detail_id", "visit_detail_id"),
+        omop_index(__tablename__, "gender_concept_id"),
         omop_table_options(cluster_on=omop_primary_key_index_name("person")),
     )
 
@@ -124,8 +119,8 @@ class PersonView(Person, PersonContext, DomainValidationMixin):
         return on_date.year - self.year_of_birth
 
     @age_at.expression
-    def age_at(cls, on_date):
-        return sa.func.extract("year", on_date) - cls.year_of_birth
+    def age_at(cls, on_date: date) -> ColumnElement[int]:
+        return sa.func.extract("year", on_date) - cls.year_of_birth # type: ignore
     
     @property
     def age(self) -> Optional[int]:
@@ -138,8 +133,7 @@ class PersonView(Person, PersonContext, DomainValidationMixin):
         """
         try:
             gender = self.gender  # type: ignore[attr-defined]
-            if gender is not None:
-                return gender.concept_name[:1].upper()
+            return gender.concept_name[:1].upper()
         except DetachedInstanceError:
             pass
         except Exception:
@@ -195,7 +189,7 @@ class PersonView(Person, PersonContext, DomainValidationMixin):
     def first_observation_date(self) -> date | None: 
         if not getattr(self, "observation_periods", None):
             return None
-        starts = [op.observation_period_start_date for op in self.observation_periods if op is not None]
+        starts = [op.observation_period_start_date for op in self.observation_periods]
         return min(starts) if starts else None
 
     @first_observation_date.expression
@@ -212,7 +206,7 @@ class PersonView(Person, PersonContext, DomainValidationMixin):
     def last_observation_date(self) -> date | None: 
         if not getattr(self, "observation_periods", None):
             return None
-        ends = [op.observation_period_end_date for op in self.observation_periods if op is not None]
+        ends = [op.observation_period_end_date for op in self.observation_periods]
         return max(ends) if ends else None
 
     @last_observation_date.expression
@@ -236,7 +230,10 @@ class PersonView(Person, PersonContext, DomainValidationMixin):
 
     @under_observation_on.expression
     @classmethod
-    def _under_observation_on(cls, on_date):
+    def _under_observation_on(
+        cls, 
+        on_date: date,
+    ) -> ColumnElement[bool]:
         return sa.exists().where(
             sa.and_(
                 Observation_Period.person_id == cls.person_id,

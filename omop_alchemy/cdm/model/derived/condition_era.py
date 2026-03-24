@@ -6,7 +6,6 @@ from orm_loader.helpers import Base
 from omop_alchemy.cdm.base import (
     cdm_table,
     CDMTableBase,
-    optional_concept_fk,
     required_concept_fk,
     merge_table_args,
     omop_index,
@@ -16,8 +15,8 @@ from omop_alchemy.cdm.base import (
 class Condition_Era(CDMTableBase, Base):
     __tablename__ = "condition_era"
     __table_args__ = merge_table_args(
-        omop_index("idx_condition_era_person_id_1", "person_id", cluster=True),
-        omop_index("idx_condition_era_concept_id_1", "condition_concept_id"),
+        omop_index(__tablename__, "person_id", cluster=True),
+        omop_index(__tablename__, "condition_concept_id"),
     )
 
     condition_era_id: so.Mapped[int] = so.mapped_column(primary_key=True)

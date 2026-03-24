@@ -5,13 +5,11 @@ selected vocabulary text fields.
 
 This feature is deliberately bolt-on:
 
-- the library works without it
+- OMOP_Alchemy works without the full-text search feature (i.e. optional)
 - the ORM models do not require the extra database columns
-- the query helpers can fall back to inline `to_tsvector(...)` expressions when the
-  sidecar columns are not installed
+- the query helpers can fall back to inline `to_tsvector(...)` expressions when the sidecar columns are not installed
 
-That makes it useful when you want faster repeated text-search workloads on PostgreSQL,
-without forcing every environment to carry extra full-text infrastructure.
+This is useful when you want faster repeated text-search workloads on PostgreSQL, without forcing every environment to carry extra full-text infrastructure.
 
 ---
 
@@ -37,6 +35,37 @@ These helpers return the best available expression for the configured environmen
   stored column
 - otherwise they fall back to an inline computed PostgreSQL expression using
   `to_tsvector(...)`
+
+### Example (PostgreSQL Documentation)
+
+A tsvector value is a sorted list of distinct lexemes, which are words that have been normalized to merge different variants of the same word. 
+Sorting and duplicate-elimination are done automatically during input
+
+
+A `tsvector` value is a sorted list of distinct lexemes (normalized word forms).  
+Sorting and duplicate elimination are applied automatically during input.
+
+```sql
+SELECT 'a fat cat sat on a mat and ate a fat rat'::tsvector;
+
+-- Result:
+-- 'a' 'and' 'ate' 'cat' 'fat' 'mat' 'on' 'rat' 'sat'
+---
+```
+
+## When To Use It
+
+Use the optional full-text feature when:
+
+- you are on PostgreSQL
+- you run repeated vocabulary-name or synonym-name search workloads
+- inline `to_tsvector(...)` search is becoming a bottleneck
+
+Skip it when:
+
+- you only do occasional text search
+- you want to keep the database as close as possible to the base OMOP schema
+- you do not want to own the refresh cycle for derived search columns
 
 ---
 
@@ -235,19 +264,3 @@ drop lifecycle is only meaningful on PostgreSQL.
   database additions outside the core OMOP schema
 - GIN indexes can be expensive to build on large vocabularies, so plan that as a real
   maintenance operation rather than a trivial toggle
-
----
-
-## When To Use It
-
-Use the optional full-text feature when:
-
-- you are on PostgreSQL
-- you run repeated vocabulary-name or synonym-name search workloads
-- inline `to_tsvector(...)` search is becoming a bottleneck
-
-Skip it when:
-
-- you only do occasional text search
-- you want to keep the database as close as possible to the base OMOP schema
-- you do not want to own the refresh cycle for derived search columns

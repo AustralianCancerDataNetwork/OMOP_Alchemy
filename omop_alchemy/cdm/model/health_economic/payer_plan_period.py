@@ -15,7 +15,7 @@ from omop_alchemy.cdm.base import (
 class Payer_Plan_Period(CDMTableBase, Base):
     __tablename__ = "payer_plan_period"
     __table_args__ = merge_table_args(
-        omop_index("idx_period_person_id_1", "person_id", cluster=True),
+        omop_index(__tablename__, "person_id", cluster=True),
     )
 
     payer_plan_period_id: so.Mapped[int] = so.mapped_column(primary_key=True)

@@ -51,8 +51,11 @@ CONCEPT_CLASS.csv
 RELATIONSHIP.csv
 DOMAIN.csv
 CONCEPT_ANCESTOR.csv
+CONCEPT_SYNONYM.csv
+data/
 *.db-journal
 vocabulary_files/
 .vscode/launch.json      
 .vscode/tasks.json       
 .vscode/*.code-workspace
+test_clinical_csvs/

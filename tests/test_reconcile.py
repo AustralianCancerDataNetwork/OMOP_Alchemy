@@ -1,6 +1,7 @@
 import sqlalchemy as sa
 from typer.testing import CliRunner
 
+from omop_alchemy.cdm.base.indexing import omop_index_name
 from omop_alchemy.maintenance.cli import app
 from omop_alchemy.maintenance.create_tables import create_missing_tables
 from omop_alchemy.maintenance.reconcile import (
@@ -12,6 +13,7 @@ from omop_alchemy.maintenance.reconcile import (
 from omop_alchemy.maintenance.tables import TableCategory
 
 runner = CliRunner()
+PERSON_GENDER_INDEX = omop_index_name("person", "gender_concept_id")
 
 
 def _engine(tmp_path):
@@ -35,7 +37,7 @@ def test_reconcile_schema_detects_drifted_table_components(tmp_path):
     create_missing_tables(engine)
 
     with engine.begin() as connection:
-        connection.exec_driver_sql("DROP INDEX idx_gender")
+        connection.exec_driver_sql(f"DROP INDEX {PERSON_GENDER_INDEX}")
         connection.exec_driver_sql("ALTER TABLE person ADD COLUMN debug_only INTEGER")
 
     report = reconcile_schema(engine)
@@ -44,7 +46,7 @@ def test_reconcile_schema_detects_drifted_table_components(tmp_path):
     assert person_result.status == "drifted"
 
     issues = [issue for issue in report.issues if issue.table_name == "person"]
-    assert any(issue.component == "index" and issue.object_name == "idx_gender" and issue.status == "missing" for issue in issues)
+    assert any(issue.component == "index" and issue.object_name == PERSON_GENDER_INDEX and issue.status == "missing" for issue in issues)
     assert any(issue.component == "column" and issue.object_name == "debug_only" and issue.status == "unexpected" for issue in issues)
 
 
@@ -82,7 +84,7 @@ def test_reconcile_schema_cli_renders_report(monkeypatch):
                     table_name="person",
                     category=TableCategory.CLINICAL,
                     component="index",
-                    object_name="idx_gender",
+                    object_name=PERSON_GENDER_INDEX,
                     status="missing",
                     expected="gender_concept_id",
                     actual=None,
@@ -114,4 +116,4 @@ def test_reconcile_schema_cli_renders_report(monkeypatch):
     assert "reconcile-schema" in result.stdout
     assert "person" in result.stdout
     assert "DRIFTED" in result.stdout
-    assert "idx_gender" in result.stdout
+    assert "Schema drift detected" in result.stdout

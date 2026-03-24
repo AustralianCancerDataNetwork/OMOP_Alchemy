@@ -16,9 +16,9 @@ from omop_alchemy.cdm.base import (
 class Provider(CDMTableBase, Base):
     __tablename__ = "provider"
     __table_args__ = merge_table_args(
-        omop_index("ix_provider_specialty_concept_id", "specialty_concept_id"),
-        omop_index("ix_provider_care_site_id", "care_site_id"),
-        omop_index("ix_provider_gender_concept_id", "gender_concept_id"),
+        omop_index(__tablename__, "specialty_concept_id"),
+        omop_index(__tablename__, "care_site_id"),
+        omop_index(__tablename__, "gender_concept_id"),
         omop_table_options(cluster_on=omop_primary_key_index_name("provider")),
     )
 

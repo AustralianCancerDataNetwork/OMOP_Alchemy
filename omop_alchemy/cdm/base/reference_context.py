@@ -1,9 +1,7 @@
 
 from __future__ import annotations
 import sqlalchemy.orm as so
-import sqlalchemy as sa
 from typing import Type, Any
-from sqlalchemy.ext.declarative import declared_attr
 
 class ReferenceContext:
 
@@ -16,13 +14,13 @@ class ReferenceContext:
     into reference tables (Domain, Vocabulary, ConceptClass, etc.)
     with explicit join conditions.
 
-    
     These relationships are:
 
     - `viewonly=True`
     - explicitly joined
-    - resolved lazily using `selectin`
+    - loaded using `selectin` (batched eager loading)
     - defined outside the core table
+    - deterministic projections of foreign keys
 
     They are intended for:
 
@@ -42,16 +40,29 @@ class ReferenceContext:
         remote_pk: str,
         uselist: bool = False,
     ):
-        return so.declared_attr(
-            lambda cls_: so.relationship(
+        
+        def _relationship(cls_: Type[Any]) -> Any:
+            return so.relationship(
                 target,
-                primaryjoin=lambda: getattr(cls_, local_fk) == getattr(
-                    sa.inspect(cls_).registry._class_registry[target],
-                    remote_pk,
-                ),
-                foreign_keys=lambda: getattr(cls_, local_fk),
+                primaryjoin=f"{cls_.__name__}.{local_fk} == {target}.{remote_pk}",
+                foreign_keys=f"{cls_.__name__}.{local_fk}",
                 viewonly=True,
                 lazy="selectin",
                 uselist=uselist,
             )
-        )
+        return so.declared_attr(_relationship)
+    
+
+        # return so.declared_attr(
+        #     lambda cls_: so.relationship(
+        #         target,
+        #         primaryjoin=lambda: getattr(cls_, local_fk) == getattr(
+        #             sa.inspect(cls_).registry._class_registry[target],
+        #             remote_pk,
+        #         ),
+        #         foreign_keys=lambda: getattr(cls_, local_fk),
+        #         viewonly=True,
+        #         lazy="selectin",
+        #         uselist=uselist,
+        #     )
+        # )

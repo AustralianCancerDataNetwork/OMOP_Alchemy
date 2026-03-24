@@ -19,10 +19,10 @@ class Observation(Base, CDMTableBase, ValueMixin):
     __tablename__ = "observation"
     __table_args__ = merge_table_args(
         ValueMixin.__table_args__,
-        omop_index("idx_observation_person_id_1", "person_id", cluster=True),
-        omop_index("idx_observation_concept_id_1", "observation_concept_id"),
-        omop_index("idx_observation_visit_id_1", "visit_occurrence_id"),
-        omop_index("ix_observation_obs_event_field_concept_id", "obs_event_field_concept_id"),
+        omop_index(__tablename__, "person_id", cluster=True),
+        omop_index(__tablename__, "observation_concept_id"),
+        omop_index(__tablename__, "visit_occurrence_id"),
+        omop_index(__tablename__, "obs_event_field_concept_id"),
     )
 
     observation_id: so.Mapped[int] = so.mapped_column(primary_key=True)

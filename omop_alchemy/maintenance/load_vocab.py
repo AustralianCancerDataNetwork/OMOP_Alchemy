@@ -96,6 +96,7 @@ def _load_vocab_model_csv(
     csv_path: Path,
     merge_strategy: str,
     quote_mode: str = "csv",
+    chunksize: int | None = None,
 ) -> int:
     try:
         return int(
@@ -104,6 +105,7 @@ def _load_vocab_model_csv(
                 csv_path,
                 merge_strategy=merge_strategy,
                 quote_mode=quote_mode,
+                chunksize=chunksize,
             )
         )
     except Exception as exc:
@@ -118,6 +120,7 @@ def _load_vocab_model_csv(
                 csv_path,
                 merge_strategy=merge_strategy,
                 quote_mode=quote_mode,
+                chunksize=chunksize,
             )
         )
 
@@ -210,6 +213,7 @@ def load_vocab_source(
     db_schema: str | None = None,
     dry_run: bool = False,
     merge_strategy: str = "upsert",
+    chunksize: int | None = None,
 ) -> VocabularyLoadReport:
     _ensure_supported_backend(engine)
 
@@ -287,6 +291,7 @@ def load_vocab_source(
                     csv_path=csv_path,
                     merge_strategy=merge_strategy,
                     quote_mode="literal",
+                    chunksize=chunksize,
                 )
                 session.commit()
                 results.append(
