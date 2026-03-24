@@ -42,7 +42,6 @@ oa_system_config.yaml
 pwd_override.txt
 logs/
 *.db
-.vscode/
 *_old/
 old/
 CONCEPT.csv
@@ -54,3 +53,6 @@ DOMAIN.csv
 CONCEPT_ANCESTOR.csv
 *.db-journal
 vocabulary_files/
+.vscode/launch.json      
+.vscode/tasks.json       
+.vscode/*.code-workspace
