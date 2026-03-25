@@ -13,7 +13,7 @@ from omop_alchemy.cdm.handlers.fulltext import FullTextResult
 from .analyze_tables import AnalyzeTableResult
 from .ascii import render_banner
 from .backup import DatabaseBackupResult, DatabaseRestoreResult
-from .backend_support import backend_label
+from ..backend_support import backend_label
 from .create_tables import TableCreationResult
 from .data_summary import TableSummaryResult
 from .defaults import ConnectionDefaults
@@ -139,6 +139,7 @@ def render_connection_defaults(
     grid.add_row("engine_schema", defaults.engine_schema or "-")
     grid.add_row("db_schema", defaults.db_schema or "-")
     grid.add_row("athena_source", defaults.athena_source or "-")
+    grid.add_row("logging", defaults.logging or "file")
     return Panel.fit(grid, title=f"[bold]{title}[/bold]", border_style="blue")
 
 

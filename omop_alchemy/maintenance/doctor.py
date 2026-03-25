@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from omop_alchemy import create_engine_with_dependencies, get_engine_name, load_environment
 
-from .backend_support import POSTGRESQL_DIALECT
+from ..backend_support import POSTGRESQL_DIALECT
 from .foreign_keys import (
     ForeignKeyStatusResult,
     ForeignKeyValidationReport,

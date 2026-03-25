@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TypeAlias, cast
@@ -21,11 +22,15 @@ from omop_alchemy.cdm.model.vocabulary import (
     Vocabulary,
 )
 
-from .backend_support import POSTGRESQL_DIALECT, require_backend
+from ..backend_support import POSTGRESQL_DIALECT, require_backend
 from .reset_sequences import reset_model_sequences
 from .tables import TableCategory, schema_adjusted_metadata, select_maintenance_tables
 
 VocabularyModel: TypeAlias = type[CSVTableProtocol]
+VocabularyLoadProgressCallback: TypeAlias = Callable[["VocabularyLoadProgress"], None]
+
+LOAD_PROGRESS_FRACTION = 0.30
+COMMIT_PROGRESS_FRACTION = 0.70
 
 
 @dataclass(frozen=True)
@@ -47,6 +52,26 @@ class VocabularyLoadReport:
     created_table_count: int
     sequence_reset_count: int
     results: tuple[VocabularyLoadResult, ...]
+
+
+@dataclass(frozen=True)
+class VocabularyLoadProgress:
+    phase: str
+    table_name: str | None
+    table_index: int
+    table_count: int
+    completed_units: float
+    total_units: float
+    percent: float
+    detail: str
+
+
+@dataclass(frozen=True)
+class _VocabularyLoadItem:
+    model: VocabularyModel
+    csv_path: Path
+    required: bool
+    size_bytes: int
 
 
 REQUIRED_VOCAB_MODELS: tuple[VocabularyModel, ...] = cast(
@@ -75,6 +100,36 @@ class VocabularyLoadError(RuntimeError):
     """Raised when a single Athena vocabulary table load fails."""
 
 
+def _emit_progress(
+    progress_callback: VocabularyLoadProgressCallback | None,
+    *,
+    phase: str,
+    table_name: str | None,
+    table_index: int,
+    table_count: int,
+    completed_units: float,
+    total_units: float,
+    detail: str,
+) -> None:
+    if progress_callback is None:
+        return
+
+    bounded_total = total_units if total_units > 0 else 1.0
+    bounded_completed = min(max(completed_units, 0.0), bounded_total)
+    progress_callback(
+        VocabularyLoadProgress(
+            phase=phase,
+            table_name=table_name,
+            table_index=table_index,
+            table_count=table_count,
+            completed_units=bounded_completed,
+            total_units=bounded_total,
+            percent=(bounded_completed / bounded_total) * 100.0,
+            detail=detail,
+        )
+    )
+
+
 def _is_missing_staging_table_error(
     exc: Exception,
     *,
@@ -98,14 +153,19 @@ def _load_vocab_model_csv(
     quote_mode: str = "csv",
     chunksize: int | None = None,
 ) -> int:
+    load_kwargs: dict[str, object] = {
+        "merge_strategy": merge_strategy,
+        "quote_mode": quote_mode,
+    }
+    if chunksize is not None:
+        load_kwargs["chunksize"] = chunksize
+
     try:
         return int(
             model.load_csv(
                 session,
                 csv_path,
-                merge_strategy=merge_strategy,
-                quote_mode=quote_mode,
-                chunksize=chunksize,
+                **load_kwargs,
             )
         )
     except Exception as exc:
@@ -118,9 +178,7 @@ def _load_vocab_model_csv(
             model.load_csv(
                 session,
                 csv_path,
-                merge_strategy=merge_strategy,
-                quote_mode=quote_mode,
-                chunksize=chunksize,
+                **load_kwargs,
             )
         )
 
@@ -212,8 +270,9 @@ def load_vocab_source(
     source_path: str | Path,
     db_schema: str | None = None,
     dry_run: bool = False,
-    merge_strategy: str = "upsert",
+    merge_strategy: str = "replace",
     chunksize: int | None = None,
+    progress_callback: VocabularyLoadProgressCallback | None = None,
 ) -> VocabularyLoadReport:
     _ensure_supported_backend(engine)
 
@@ -234,6 +293,54 @@ def load_vocab_source(
     created_table_count = 0
     sequence_reset_count = 0
 
+    load_items: list[_VocabularyLoadItem] = []
+    missing_optional_results: list[VocabularyLoadResult] = []
+    for model in REQUIRED_VOCAB_MODELS + OPTIONAL_VOCAB_MODELS:
+        csv_path = _find_vocab_csv_path(
+            resolved_source_path,
+            model.__tablename__,
+        )
+        required = model in REQUIRED_VOCAB_MODELS
+        if csv_path is None:
+            missing_optional_results.append(
+                VocabularyLoadResult(
+                    table_name=model.__tablename__,
+                    status="skipped",
+                    row_count=None,
+                    csv_path=None,
+                    required=required,
+                    detail="optional Athena CSV not found; table skipped",
+                )
+            )
+            continue
+
+        file_size = csv_path.stat().st_size
+        load_items.append(
+            _VocabularyLoadItem(
+                model=model,
+                csv_path=csv_path,
+                required=required,
+                size_bytes=file_size if file_size > 0 else 1,
+            )
+        )
+
+    load_items.sort(key=lambda item: (item.size_bytes, item.model.__tablename__))
+
+    total_units = float(sum(item.size_bytes for item in load_items) or 1)
+    completed_units = 0.0
+    table_count = len(load_items)
+
+    _emit_progress(
+        progress_callback,
+        phase="start",
+        table_name=None,
+        table_index=0,
+        table_count=table_count,
+        completed_units=completed_units,
+        total_units=total_units,
+        detail=f"Preparing Athena vocabulary load for {table_count} CSV file(s)",
+    )
+
     with engine.connect() as connection:
         _configure_loader_connection(
             connection,
@@ -251,28 +358,37 @@ def load_vocab_source(
         current_model_name: str | None = None
         current_csv_path: str | None = None
         try:
-            for model in REQUIRED_VOCAB_MODELS + OPTIONAL_VOCAB_MODELS:
+            for table_index, item in enumerate(load_items, start=1):
+                model = item.model
+                csv_path = item.csv_path
                 current_model_name = model.__tablename__
-                csv_path = _find_vocab_csv_path(
-                    resolved_source_path,
-                    model.__tablename__,
-                )
-                current_csv_path = None if csv_path is None else str(csv_path)
-                required = model in REQUIRED_VOCAB_MODELS
-                if csv_path is None:
-                    results.append(
-                        VocabularyLoadResult(
-                            table_name=model.__tablename__,
-                            status="skipped",
-                            row_count=None,
-                            csv_path=None,
-                            required=required,
-                            detail="optional Athena CSV not found; table skipped",
-                        )
-                    )
-                    continue
-
+                current_csv_path = str(csv_path)
                 if dry_run:
+                    _emit_progress(
+                        progress_callback,
+                        phase="plan",
+                        table_name=model.__tablename__,
+                        table_index=table_index,
+                        table_count=table_count,
+                        completed_units=completed_units,
+                        total_units=total_units,
+                        detail=(
+                            f"Planning {model.__tablename__} ({table_index}/{table_count})"
+                        ),
+                    )
+                    completed_units += item.size_bytes
+                    _emit_progress(
+                        progress_callback,
+                        phase="planned",
+                        table_name=model.__tablename__,
+                        table_index=table_index,
+                        table_count=table_count,
+                        completed_units=completed_units,
+                        total_units=total_units,
+                        detail=(
+                            f"Planned {model.__tablename__} ({table_index}/{table_count})"
+                        ),
+                    )
                     results.append(
                         VocabularyLoadResult(
                             table_name=model.__tablename__,
@@ -285,15 +401,63 @@ def load_vocab_source(
                     )
                     continue
 
+                loader_kwargs: dict[str, object] = {
+                    "model": model,
+                    "csv_path": csv_path,
+                    "merge_strategy": merge_strategy,
+                    "quote_mode": "literal",
+                }
+                if chunksize is not None:
+                    loader_kwargs["chunksize"] = chunksize
+
+                _emit_progress(
+                    progress_callback,
+                    phase="load",
+                    table_name=model.__tablename__,
+                    table_index=table_index,
+                    table_count=table_count,
+                    completed_units=completed_units,
+                    total_units=total_units,
+                    detail=(
+                        f"Loading {model.__tablename__} ({table_index}/{table_count})"
+                    ),
+                )
+
                 row_count = _load_vocab_model_csv(
                     session,
-                    model=model,
-                    csv_path=csv_path,
-                    merge_strategy=merge_strategy,
-                    quote_mode="literal",
-                    chunksize=chunksize,
+                    **loader_kwargs,
                 )
+
+                completed_units += item.size_bytes * LOAD_PROGRESS_FRACTION
+                _emit_progress(
+                    progress_callback,
+                    phase="load-complete",
+                    table_name=model.__tablename__,
+                    table_index=table_index,
+                    table_count=table_count,
+                    completed_units=completed_units,
+                    total_units=total_units,
+                    detail=(
+                        f"Loaded {model.__tablename__}; committing ({table_index}/{table_count})"
+                    ),
+                )
+
                 session.commit()
+
+                completed_units += item.size_bytes * COMMIT_PROGRESS_FRACTION
+                _emit_progress(
+                    progress_callback,
+                    phase="commit-complete",
+                    table_name=model.__tablename__,
+                    table_index=table_index,
+                    table_count=table_count,
+                    completed_units=completed_units,
+                    total_units=total_units,
+                    detail=(
+                        f"Committed {model.__tablename__} ({table_index}/{table_count})"
+                    ),
+                )
+
                 results.append(
                     VocabularyLoadResult(
                         table_name=model.__tablename__,
@@ -306,6 +470,16 @@ def load_vocab_source(
                 )
             if not dry_run:
                 connection.commit()
+            _emit_progress(
+                progress_callback,
+                phase="complete",
+                table_name=None,
+                table_index=table_count,
+                table_count=table_count,
+                completed_units=total_units,
+                total_units=total_units,
+                detail="Athena vocabulary load complete",
+            )
         except Exception as exc:
             session.rollback()
             if not dry_run:
@@ -318,6 +492,8 @@ def load_vocab_source(
             ) from exc
         finally:
             session.close()
+
+    results.extend(missing_optional_results)
 
     if not dry_run and engine.dialect.name == POSTGRESQL_DIALECT:
         sequence_results = reset_model_sequences(

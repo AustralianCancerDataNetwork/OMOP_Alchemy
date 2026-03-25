@@ -12,8 +12,7 @@ from sqlalchemy.sql import ColumnElement, ColumnExpressionArgument, func
 from ...model.vocabulary.concept import Concept
 from ...model.vocabulary.concept_synonym import Concept_Synonym
 
-
-POSTGRESQL_DIALECT = "postgresql"
+from ....backend_support import POSTGRESQL_DIALECT
 
 
 @dataclass(frozen=True)

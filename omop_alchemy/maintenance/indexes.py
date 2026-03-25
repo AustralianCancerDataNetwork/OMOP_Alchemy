@@ -7,7 +7,7 @@ import sqlalchemy as sa
 
 from omop_alchemy.cdm.base.indexing import OMOP_CLUSTER_INDEX_INFO_KEY
 
-from .backend_support import POSTGRESQL_DIALECT, backend_label, supports_backend
+from ..backend_support import POSTGRESQL_DIALECT, backend_label, supports_backend
 from .tables import (
     MaintenanceTable,
     TableCategory,

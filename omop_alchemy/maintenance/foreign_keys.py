@@ -5,7 +5,7 @@ from enum import StrEnum
 
 import sqlalchemy as sa
 
-from .backend_support import POSTGRESQL_DIALECT, require_backend
+from ..backend_support import POSTGRESQL_DIALECT, require_backend
 from .tables import (
     MaintenanceTable,
     TableCategory,

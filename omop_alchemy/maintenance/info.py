@@ -11,7 +11,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from omop_alchemy import create_engine_with_dependencies, get_engine_name, load_environment
 
-from .backend_support import POSTGRESQL_DIALECT, backend_label
+from ..backend_support import POSTGRESQL_DIALECT, backend_label
 from .create_tables import collect_missing_tables
 from .defaults import defaults_path
 from .tables import TableCategory, select_maintenance_tables

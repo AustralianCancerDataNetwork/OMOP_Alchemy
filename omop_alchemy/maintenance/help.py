@@ -11,7 +11,7 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
-from .backend_support import POSTGRESQL_ONLY_HELP
+from ..backend_support import POSTGRESQL_ONLY_HELP
 
 
 def _optional_str(value: object) -> str | None:

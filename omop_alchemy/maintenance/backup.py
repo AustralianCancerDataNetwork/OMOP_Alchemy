@@ -10,7 +10,7 @@ import subprocess
 
 import sqlalchemy as sa
 
-from .backend_support import POSTGRESQL_DIALECT, require_backend
+from ..backend_support import POSTGRESQL_DIALECT, require_backend
 
 
 class BackupFormat(StrEnum):
