@@ -875,7 +875,7 @@ def load_vocab_source_command(
             task_id = progress.add_task(
                 "Preparing Athena vocabulary load...",
                 total=100.0,
-                completed=0.0,
+                completed=0,
             )
             completed_tables: list[str] = []
 

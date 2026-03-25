@@ -165,7 +165,7 @@ def _load_vocab_model_csv(
             model.load_csv(
                 session,
                 csv_path,
-                **load_kwargs,
+                **load_kwargs, # type: ignore[arg-type]
             )
         )
     except Exception as exc:
@@ -178,7 +178,7 @@ def _load_vocab_model_csv(
             model.load_csv(
                 session,
                 csv_path,
-                **load_kwargs,
+                **load_kwargs, # type: ignore[arg-type]
             )
         )
 
@@ -425,7 +425,7 @@ def load_vocab_source(
 
                 row_count = _load_vocab_model_csv(
                     session,
-                    **loader_kwargs,
+                    **loader_kwargs, # type: ignore[arg-type]
                 )
 
                 completed_units += item.size_bytes * LOAD_PROGRESS_FRACTION
