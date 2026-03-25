@@ -3,7 +3,6 @@ import sqlalchemy.orm as so
 from sqlalchemy.ext.declarative import declared_attr
 from typing import Optional, TYPE_CHECKING, List
 from datetime import date
-from sqlalchemy.ext.declarative import declared_attr
 from orm_loader.helpers import Base 
 from omop_alchemy.cdm.base import (
     cdm_table,
@@ -61,7 +60,7 @@ class EpisodeContext(ReferenceContext):
     episode_concept: so.Mapped["Concept"] = ReferenceContext._reference_relationship(target="Concept",local_fk="episode_concept_id",remote_pk="concept_id")  # type: ignore[assignment]
     episode_object_concept: so.Mapped["Concept"] = ReferenceContext._reference_relationship(target="Concept",local_fk="episode_object_concept_id",remote_pk="concept_id")  # type: ignore[assignment]
     episode_type_concept: so.Mapped["Concept"] = ReferenceContext._reference_relationship(target="Concept",local_fk="episode_type_concept_id",remote_pk="concept_id")  # type: ignore[assignment]
-    parent_episode: so.Mapped[Optional["Episode"]] = ReferenceContext._reference_relationship(target="Episode",local_fk="episode_parent_id",remote_pk="episode_id")  # type: ignore[assignment]
+    #parent_episode: so.Mapped[Optional["Episode"]] = ReferenceContext._reference_relationship(target="Episode",local_fk="episode_parent_id",remote_pk="episode_id")  # type: ignore[assignment]
     
     @declared_attr
     def episode_events(cls: type['HasEpisodeId']) -> so.Mapped[List["Episode_EventView"]]:
@@ -71,7 +70,17 @@ class EpisodeContext(ReferenceContext):
             viewonly=True,
             lazy="selectin",
         )
-
+    @declared_attr
+    def parent_episode(cls) -> so.Mapped[Optional["Episode"]]:
+        return so.relationship(
+            "Episode",
+            primaryjoin=lambda: cls.episode_parent_id == so.remote(Episode.episode_id),
+            foreign_keys=lambda: [cls.episode_parent_id],
+            remote_side=lambda: [Episode.episode_id],
+            viewonly=True,
+            lazy="selectin",
+            uselist=False,
+        )
 
 class EpisodeView(Episode, EpisodeContext, DomainValidationMixin):
     """
