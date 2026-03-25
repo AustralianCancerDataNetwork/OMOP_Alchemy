@@ -56,11 +56,16 @@ services:
     volumes:
       - ./data:/home/data:rw
       - postgres-data:/var/lib/postgresql
+      - ./custom.conf:/etc/postgresql/custom.conf
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
       retries: 10
+    command:
+      - postgres
+      - -c
+      - include_if_exists=/etc/postgresql/custom.conf
   cava-jupyter-notebook:
     profiles: [ "jupyter"]
     build: ./jupyter
