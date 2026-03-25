@@ -46,10 +46,17 @@ def _build_required_athena_source(
     return source_path
 
 
+def _write_csv_with_size(source_path: Path, table_name: str, size_bytes: int) -> Path:
+    csv_path = source_path / f"{table_name.upper()}.csv"
+    csv_path.write_text("x" * size_bytes, encoding="utf-8")
+    return csv_path
+
+
 def test_load_vocab_source_on_sqlite_creates_tables_and_reports_loaded_results(
     monkeypatch,
     tmp_path,
 ):
+    """Test load vocab source on sqlite creates tables and reports loaded results."""
     engine = sa.create_engine(f"sqlite:///{tmp_path / 'load_vocab_source.db'}", future=True)
     source_path = _build_required_athena_source(tmp_path)
     loaded_tables: list[tuple[str, str, str, Path]] = []
@@ -92,6 +99,7 @@ def test_load_vocab_source_on_sqlite_creates_tables_and_reports_loaded_results(
 
 
 def test_load_vocab_source_requires_full_required_athena_fixture(tmp_path):
+    """Test load vocab source requires full required athena fixture."""
     engine = sa.create_engine(f"sqlite:///{tmp_path / 'load_vocab_source_missing_required.db'}", future=True)
 
     with pytest.raises(RuntimeError) as exc_info:
@@ -104,6 +112,7 @@ def test_load_vocab_source_requires_full_required_athena_fixture(tmp_path):
 
 
 def test_drug_strength_model_matches_athena_vocabulary_shape():
+    """Test drug strength model matches athena vocabulary shape."""
     column_names = set(Drug_Strength.__table__.columns.keys())
 
     assert "valid_start_date" in column_names
@@ -115,6 +124,7 @@ def test_drug_strength_model_matches_athena_vocabulary_shape():
 
 
 def test_load_vocab_source_dry_run_does_not_create_tables(tmp_path):
+    """Test load vocab source dry run does not create tables."""
     engine = sa.create_engine(f"sqlite:///{tmp_path / 'load_vocab_source_dry_run.db'}", future=True)
     source_path = _build_required_athena_source(tmp_path)
 
@@ -131,6 +141,7 @@ def test_load_vocab_source_dry_run_does_not_create_tables(tmp_path):
 
 
 def test_load_vocab_source_cli_uses_saved_athena_source(monkeypatch):
+    """Test load vocab source cli uses saved athena source."""
     calls: dict[str, object] = {}
 
     def fake_load_environment(dotenv: str) -> None:
@@ -152,6 +163,7 @@ def test_load_vocab_source_cli_uses_saved_athena_source(monkeypatch):
         db_schema: str | None = None,
         dry_run: bool = False,
         merge_strategy: str = "upsert",
+        progress_callback=None,
     ):
         from omop_alchemy.maintenance.load_vocab import VocabularyLoadReport, VocabularyLoadResult
 
@@ -227,6 +239,7 @@ def test_load_vocab_source_cli_uses_saved_athena_source(monkeypatch):
 
 
 def test_load_vocab_model_csv_passes_quote_mode(monkeypatch, tmp_path):
+    """Test load vocab model csv passes quote mode."""
     engine = sa.create_engine(f"sqlite:///{tmp_path / 'load_vocab_source_quote_mode.db'}", future=True)
 
     class FakeModel:
@@ -269,7 +282,81 @@ def test_load_vocab_model_csv_passes_quote_mode(monkeypatch, tmp_path):
     assert calls["quote_mode"] == "literal"
 
 
+def test_load_vocab_source_loads_smallest_files_first(monkeypatch, tmp_path):
+    """Test load vocab source loads smallest files first."""
+    engine = sa.create_engine(f"sqlite:///{tmp_path / 'load_vocab_source_order.db'}", future=True)
+    source_path = _build_required_athena_source(tmp_path)
+
+    for model in REQUIRED_VOCAB_MODELS:
+        _write_csv_with_size(source_path, model.__tablename__, 500)
+
+    _write_csv_with_size(source_path, "domain", 10)
+    _write_csv_with_size(source_path, "vocabulary", 200)
+    _write_csv_with_size(source_path, "concept_class", 50)
+
+    loaded_order: list[str] = []
+
+    def fake_load_vocab_model_csv(
+        session,
+        *,
+        model,
+        csv_path,
+        merge_strategy,
+        quote_mode="csv",
+    ) -> int:
+        loaded_order.append(model.__tablename__)
+        return 1
+
+    monkeypatch.setattr(
+        "omop_alchemy.maintenance.load_vocab._load_vocab_model_csv",
+        fake_load_vocab_model_csv,
+    )
+
+    load_vocab_source(engine, source_path=source_path)
+
+    assert loaded_order[:3] == ["domain", "concept_class", "vocabulary"]
+
+
+def test_load_vocab_source_reports_weighted_progress(monkeypatch, tmp_path):
+    """Test load vocab source reports weighted progress."""
+    engine = sa.create_engine(f"sqlite:///{tmp_path / 'load_vocab_source_progress.db'}", future=True)
+    source_path = _build_required_athena_source(tmp_path)
+
+    _write_csv_with_size(source_path, "domain", 10)
+    _write_csv_with_size(source_path, "vocabulary", 40)
+
+    events: list[object] = []
+
+    def fake_load_vocab_model_csv(
+        session,
+        *,
+        model,
+        csv_path,
+        merge_strategy,
+        quote_mode="csv",
+    ) -> int:
+        return 1
+
+    monkeypatch.setattr(
+        "omop_alchemy.maintenance.load_vocab._load_vocab_model_csv",
+        fake_load_vocab_model_csv,
+    )
+
+    load_vocab_source(
+        engine,
+        source_path=source_path,
+        progress_callback=events.append,
+    )
+
+    assert events
+    percents = [event.percent for event in events]
+    assert percents[0] == pytest.approx(0.0)
+    assert percents[-1] == pytest.approx(100.0)
+    assert percents == sorted(percents)
+
+
 def test_load_vocab_source_wraps_failed_table_load(monkeypatch, tmp_path):
+    """Test load vocab source wraps failed table load."""
     engine = sa.create_engine(f"sqlite:///{tmp_path / 'load_vocab_source_error.db'}", future=True)
     source_path = _build_required_athena_source(tmp_path)
 
@@ -301,6 +388,7 @@ def test_load_vocab_source_wraps_failed_table_load(monkeypatch, tmp_path):
 
 
 def test_load_vocab_model_csv_retries_missing_staging_table(monkeypatch, tmp_path):
+    """Test load vocab model csv retries missing staging table."""
     engine = sa.create_engine(f"sqlite:///{tmp_path / 'load_vocab_source_retry.db'}", future=True)
 
     class FakeModel:
@@ -351,6 +439,7 @@ def test_load_vocab_model_csv_retries_missing_staging_table(monkeypatch, tmp_pat
 
 
 def test_load_vocab_source_cli_surfaces_database_error_detail(monkeypatch):
+    """Test load vocab source cli surfaces database error detail."""
     def fake_build_engine(*, dotenv: str | None, engine_schema: str | None):
         return "ENGINE"
 

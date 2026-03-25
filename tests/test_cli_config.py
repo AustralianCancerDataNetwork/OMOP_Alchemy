@@ -10,6 +10,7 @@ runner = CliRunner()
 
 
 def test_config_set_overrides_and_show():
+    """Config set-overrides persists values and config show surfaces them."""
     with runner.isolated_filesystem():
         result = runner.invoke(
             app,
@@ -43,6 +44,7 @@ def test_config_set_overrides_and_show():
 
 
 def test_cli_uses_saved_connection_defaults(monkeypatch):
+    """CLI commands consume persisted connection defaults when flags are omitted."""
     calls: dict[str, object] = {}
 
     def fake_load_environment(dotenv: str) -> None:
@@ -112,3 +114,20 @@ def test_cli_uses_saved_connection_defaults(monkeypatch):
     assert calls["dotenv"] == expected_dotenv
     assert calls["engine_schema"] == "cdm"
     assert calls["db_schema"] == "public"
+
+
+def test_config_show_surfaces_manual_logging_setting() -> None:
+    """Config show surfaces manually configured logging mode from defaults file."""
+    with runner.isolated_filesystem():
+        defaults_path().write_text(
+            "[defaults]\nlogging = \"off\"\n",
+            encoding="utf-8",
+        )
+
+        loaded_defaults = load_connection_defaults()
+        assert loaded_defaults.logging == "off"
+
+        show_result = runner.invoke(app, ["config", "show"])
+        assert show_result.exit_code == 0
+        assert "logging" in show_result.stdout
+        assert "off" in show_result.stdout

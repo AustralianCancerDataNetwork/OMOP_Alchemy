@@ -4,8 +4,10 @@ from pathlib import Path
 import pytest
 import sqlalchemy as sa
 from orm_loader.helpers import bootstrap
+import sqlalchemy.orm as so
 from sqlalchemy.orm import Session, sessionmaker
 
+from omop_alchemy.maintenance.load_vocab import _load_vocab_model_csv
 from omop_alchemy.cdm.model.clinical import Condition_Occurrence, Person
 from omop_alchemy.cdm.model.derived import Observation_Period
 from omop_alchemy.cdm.model.structural import Episode, Episode_Event
@@ -32,15 +34,30 @@ ATHENA_LOAD_ORDER = [
 
 
 def _athena_source_path() -> Path:
+    """Return the repo-local Athena fixture directory."""
     return Path(__file__).parent / "fixtures" / "athena_source"
 
 
-def _load_fixture_vocabulary(session: Session) -> None:
+def _load_fixture_vocabulary(engine: sa.Engine) -> None:
+    """Load required Athena vocabulary fixtures into the test database."""
     base_path = _athena_source_path()
-
-    for model in ATHENA_LOAD_ORDER:
-        csv_path = base_path / f"{model.__tablename__.upper()}.csv"
-        model.load_csv(session, csv_path)
+    with engine.connect() as connection:
+        SessionLocal = so.sessionmaker(bind=connection, future=True)
+        session = SessionLocal()
+        try:
+            for model in ATHENA_LOAD_ORDER:
+                csv_path = base_path / f"{model.__tablename__.upper()}.csv"
+                _load_vocab_model_csv(
+                    session,
+                    model=model,
+                    csv_path=csv_path,
+                    merge_strategy="upsert",
+                    quote_mode="literal",
+                )
+                session.commit()
+            connection.commit()
+        finally:
+            session.close()
 
 
 def _concept_id(
@@ -49,6 +66,7 @@ def _concept_id(
     concept_name: str | None = None,
     domain_id: str | None = None,
 ) -> int:
+    """Resolve a concept_id from seeded fixtures, raising if not found."""
     query = sa.select(Concept.concept_id)
 
     if concept_name is not None:
@@ -66,6 +84,7 @@ def _concept_id(
 
 
 def _seed_basic_clinical_data(session: Session) -> None:
+    """Insert a compact clinical graph used by core model relationship tests."""
     male_concept_id = _concept_id(session, concept_name="MALE", domain_id="Gender")
     race_concept_id = _concept_id(session, concept_name="White", domain_id="Race")
     ethnicity_concept_id = _concept_id(
@@ -164,13 +183,15 @@ def engine(tmp_path_factory: pytest.TempPathFactory):
         f"sqlite:///{db_path}",
         future=True,
         echo=False,
+        poolclass=sa.pool.StaticPool,
+        connect_args={"check_same_thread": False, "timeout": 30},
     )
 
     bootstrap(engine, create=True)
+    _load_fixture_vocabulary(engine)
 
     SessionLocal = sessionmaker(bind=engine, future=True, expire_on_commit=False)
     with SessionLocal() as seed_session:
-        _load_fixture_vocabulary(seed_session)
         _seed_basic_clinical_data(seed_session)
 
     try:

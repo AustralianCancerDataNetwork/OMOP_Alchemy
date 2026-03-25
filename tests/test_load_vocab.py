@@ -85,12 +85,14 @@ def athena_vocab(connection):
     yield
 
 def test_concept_loaded(db_session, athena_vocab):
+    """Test concept loaded."""
     concept = db_session.get(Concept, 1)
     assert concept is not None
     assert concept.concept_name == "Domain"
     assert concept.domain_id == "Metadata"  
 
 def test_concept_ancestor(db_session, athena_vocab):
+    """Test concept ancestor."""
     ancestors = (
         # running tests with metadata concepts so that they are definitely present
         # assuming the logic to produce test db is stable
@@ -104,6 +106,7 @@ def test_concept_ancestor(db_session, athena_vocab):
     assert 1147423 in a
 
 def test_all_concepts_reference_valid_domain(db_session, athena_vocab):
+    """Test all concepts reference valid domain."""
     invalid = (
         db_session.query(Concept)
         .outerjoin(Domain, Concept.domain_id == Domain.domain_id)
@@ -114,6 +117,7 @@ def test_all_concepts_reference_valid_domain(db_session, athena_vocab):
     assert invalid == 0
 
 def test_relationship_vocab_loaded(db_session, athena_vocab):
+    """Test relationship vocab loaded."""
     rel = (
         db_session.query(Relationship)
         .filter_by(relationship_id="Has type")
@@ -123,6 +127,7 @@ def test_relationship_vocab_loaded(db_session, athena_vocab):
     assert rel.reverse_relationship_id == "Type of"
 
 def test_expected_domains_exist(db_session, athena_vocab):
+    """Test expected domains exist."""
     domains = {
         d.domain_id
         for d in db_session.query(Domain.domain_id).all()
@@ -133,6 +138,7 @@ def test_expected_domains_exist(db_session, athena_vocab):
     assert "Drug" in domains
 
 def test_domains_are_consistent(db_session, athena_vocab):
+    """Test domains are consistent."""
     concepts = (
         db_session.query(Concept)
         .filter(Concept.domain_id.in_(["Condition", "Procedure"]))
@@ -145,6 +151,7 @@ def test_domains_are_consistent(db_session, athena_vocab):
         assert c.domain_id in {"Condition", "Procedure"}
 
 def test_procedure_concepts_exist(db_session, athena_vocab):
+    """Test procedure concepts exist."""
     assert (
         db_session.query(Concept)
         .filter(Concept.domain_id == "Procedure")
@@ -153,6 +160,7 @@ def test_procedure_concepts_exist(db_session, athena_vocab):
     )
 
 def test_relationships_reference_valid_concepts(db_session, athena_vocab):
+    """Test relationships reference valid concepts."""
     rels = db_session.query(Concept_Relationship).limit(50).all()
 
     for r in rels:
