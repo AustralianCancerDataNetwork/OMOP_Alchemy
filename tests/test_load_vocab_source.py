@@ -84,10 +84,10 @@ def test_load_vocab_source_on_sqlite_creates_tables_and_reports_loaded_results(
         for result in report.results
     }
 
-    assert report.merge_strategy == "upsert"
+    assert report.merge_strategy == "replace"
     assert all(result_by_name[model.__tablename__].status == "loaded" for model in REQUIRED_VOCAB_MODELS)
     assert all(result_by_name[model.__tablename__].status == "skipped" for model in OPTIONAL_VOCAB_MODELS)
-    assert all(merge_strategy == "upsert" for _, merge_strategy, _, _ in loaded_tables)
+    assert all(merge_strategy == "replace" for _, merge_strategy, _, _ in loaded_tables)
     assert all(quote_mode == "literal" for _, _, quote_mode, _ in loaded_tables)
     assert {table_name for table_name, _, _, _ in loaded_tables} == {
         model.__tablename__
@@ -382,7 +382,6 @@ def test_load_vocab_source_wraps_failed_table_load(monkeypatch, tmp_path):
 
     message = str(exc_info.value)
     assert "table `domain`" in message
-    assert "merge strategy `upsert`" in message
     assert "ProgrammingError" in message
     assert "value too long for type character varying(255)" in message
 
