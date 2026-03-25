@@ -20,6 +20,7 @@ class ConnectionDefaults:
     engine_schema: str | None = None
     db_schema: str | None = None
     athena_source: str | None = None
+    logging: str | None = None
 
     def with_updates(
         self,
@@ -28,6 +29,7 @@ class ConnectionDefaults:
         engine_schema: str | None = None,
         db_schema: str | None = None,
         athena_source: str | None = None,
+        logging: str | None = None,
     ) -> "ConnectionDefaults":
         return ConnectionDefaults(
             dotenv=self.dotenv if dotenv is None else dotenv,
@@ -36,6 +38,7 @@ class ConnectionDefaults:
             athena_source=(
                 self.athena_source if athena_source is None else athena_source
             ),
+            logging=self.logging if logging is None else logging,
         )
 
 
@@ -107,6 +110,7 @@ def load_connection_defaults() -> ConnectionDefaults:
             path,
             defaults.get("athena_source", connection.get("athena_source")),
         ),
+        logging=_clean(defaults.get("logging", connection.get("logging"))),
     )
 
 
@@ -125,6 +129,8 @@ def save_connection_defaults(defaults: ConnectionDefaults) -> Path:
     athena_source = _relative_path_for_storage(path, defaults.athena_source)
     if athena_source is not None:
         lines.append(f"athena_source = {json.dumps(athena_source)}")
+    if defaults.logging is not None:
+        lines.append(f"logging = {json.dumps(defaults.logging)}")
     lines.append("")
 
     path.write_text("\n".join(lines), encoding="utf-8")
@@ -152,6 +158,7 @@ def clear_connection_defaults(
         engine_schema=None if clear_engine_schema else current.engine_schema,
         db_schema=None if clear_db_schema else current.db_schema,
         athena_source=None if clear_athena_source else current.athena_source,
+        logging=current.logging,
     )
 
     if all(
@@ -161,6 +168,7 @@ def clear_connection_defaults(
             updated.engine_schema,
             updated.db_schema,
             updated.athena_source,
+            updated.logging,
         )
     ):
         path.unlink()

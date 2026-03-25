@@ -59,3 +59,7 @@ vocabulary_files/
 .vscode/tasks.json       
 .vscode/*.code-workspace
 test_clinical_csvs/
+logging/
+*.log
+.devcontainer/
+.vscode/
