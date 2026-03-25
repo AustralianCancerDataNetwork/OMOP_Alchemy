@@ -1,3 +1,5 @@
 [defaults]
 dotenv = ".env"
 engine_schema = "cdm"
+athena_source = "docker/data"
+logging = "file"
