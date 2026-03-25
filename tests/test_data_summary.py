@@ -9,6 +9,7 @@ def _engine(tmp_path):
 
 
 def test_collect_data_summary_can_include_missing_tables(tmp_path):
+    """Test collect data summary can include missing tables."""
     engine = _engine(tmp_path)
     results = collect_data_summary(engine, existing_only=False)
     assert results
@@ -16,6 +17,7 @@ def test_collect_data_summary_can_include_missing_tables(tmp_path):
 
 
 def test_collect_data_summary_reports_row_counts(tmp_path):
+    """Test collect data summary reports row counts."""
     engine = _engine(tmp_path)
     create_missing_tables(engine)
 
@@ -34,6 +36,7 @@ def test_collect_data_summary_reports_row_counts(tmp_path):
 
 
 def test_collect_data_summary_excludes_vocabulary_by_default(tmp_path):
+    """Test collect data summary excludes vocabulary by default."""
     engine = _engine(tmp_path)
     create_missing_tables(engine)
 

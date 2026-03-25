@@ -5,6 +5,7 @@ from omop_alchemy.cdm.base import ModifierFieldConcepts
 
 
 def test_condition_occurrence_view_modifier_contract():
+    """Condition_OccurrenceView exposes the expected modifier metadata contract."""
     cls = Condition_OccurrenceView
 
     assert cls.__event_id_col__ == "condition_occurrence_id"
@@ -15,6 +16,7 @@ def test_condition_occurrence_view_modifier_contract():
 
 
 def test_modifier_target_properties_python():
+    """ModifierTargetMixin convenience properties resolve correctly in Python."""
     c = Condition_OccurrenceView(
         condition_occurrence_id=123,
         condition_concept_id=456,
@@ -33,6 +35,7 @@ def test_modifier_target_properties_python():
 
 
 def test_event_id_hybrid_expression(session):
+    """The event_id hybrid compiles to condition_occurrence_id in SQL."""
     q = (
         session.query(Condition_OccurrenceView)
         .filter(Condition_OccurrenceView.event_id == 1)
@@ -42,6 +45,7 @@ def test_event_id_hybrid_expression(session):
     assert "condition_occurrence_id" in sql
 
 def test_modifier_target_identity():
+    """Modifier target identity methods return stable OMOP metadata values."""
     cls = Condition_OccurrenceView
 
     assert cls.modifier_target_table() == "condition_occurrence"

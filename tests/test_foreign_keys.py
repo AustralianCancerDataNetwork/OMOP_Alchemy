@@ -21,6 +21,7 @@ def _engine(tmp_path):
 
 
 def test_collect_foreign_key_targets_finds_participating_tables(tmp_path):
+    """Test collect foreign key targets finds participating tables."""
     engine = _engine(tmp_path)
     create_missing_tables(engine)
 
@@ -34,6 +35,7 @@ def test_collect_foreign_key_targets_finds_participating_tables(tmp_path):
 
 
 def test_manage_foreign_key_triggers_supports_dry_run(tmp_path):
+    """Test manage foreign key triggers supports dry run."""
     engine = _engine(tmp_path)
     create_missing_tables(engine)
 
@@ -48,6 +50,7 @@ def test_manage_foreign_key_triggers_supports_dry_run(tmp_path):
 
 
 def test_collect_foreign_key_trigger_status_is_safe_on_sqlite(tmp_path):
+    """Test collect foreign key trigger status is safe on sqlite."""
     engine = _engine(tmp_path)
     create_missing_tables(engine)
 
@@ -58,6 +61,7 @@ def test_collect_foreign_key_trigger_status_is_safe_on_sqlite(tmp_path):
 
 
 def test_validate_foreign_key_constraints_is_safe_on_sqlite(tmp_path):
+    """Test validate foreign key constraints is safe on sqlite."""
     engine = _engine(tmp_path)
     create_missing_tables(engine)
 
@@ -68,6 +72,7 @@ def test_validate_foreign_key_constraints_is_safe_on_sqlite(tmp_path):
 
 
 def test_disable_foreign_keys_cli_fails_gracefully_for_sqlite(monkeypatch):
+    """Test disable foreign keys cli fails gracefully for sqlite."""
     def fake_load_environment(dotenv: str) -> None:
         return None
 
@@ -100,6 +105,7 @@ def test_disable_foreign_keys_cli_fails_gracefully_for_sqlite(monkeypatch):
 
 
 def test_manage_foreign_key_triggers_strict_does_not_enable_on_validation_failure(monkeypatch):
+    """Test manage foreign key triggers strict does not enable on validation failure."""
     statements: list[str] = []
 
     class _FakeConnection:
@@ -169,6 +175,7 @@ def test_manage_foreign_key_triggers_strict_does_not_enable_on_validation_failur
 
 
 def test_manage_foreign_key_triggers_strict_enables_when_validation_passes(monkeypatch):
+    """Test manage foreign key triggers strict enables when validation passes."""
     statements: list[str] = []
 
     class _FakeConnection:
@@ -220,6 +227,7 @@ def test_manage_foreign_key_triggers_strict_enables_when_validation_passes(monke
 
 
 def test_enable_foreign_keys_strict_cli_invokes_strict_management(monkeypatch):
+    """Test enable foreign keys strict cli invokes strict management."""
     calls: dict[str, object] = {}
 
     def fake_load_environment(dotenv: str) -> None:
@@ -280,6 +288,7 @@ def test_enable_foreign_keys_strict_cli_invokes_strict_management(monkeypatch):
 
 
 def test_validate_foreign_key_constraints_reports_failures(monkeypatch):
+    """Test validate foreign key constraints reports failures."""
     class _FakeConnection:
         def __enter__(self):
             return self
@@ -340,6 +349,7 @@ def test_validate_foreign_key_constraints_reports_failures(monkeypatch):
 
 
 def test_foreign_keys_validate_cli_invokes_validation(monkeypatch):
+    """Test foreign keys validate cli invokes validation."""
     calls: dict[str, object] = {}
 
     def fake_load_environment(dotenv: str) -> None:

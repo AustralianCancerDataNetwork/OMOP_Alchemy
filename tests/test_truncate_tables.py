@@ -13,6 +13,7 @@ truncate_tables_module = importlib.import_module("omop_alchemy.maintenance.trunc
 
 
 def test_truncate_tables_requires_postgresql(tmp_path):
+    """Test truncate tables requires postgresql."""
     engine = sa.create_engine(f"sqlite:///{tmp_path / 'truncate.db'}", future=True)
 
     with pytest.raises(RuntimeError) as exc_info:
@@ -22,6 +23,7 @@ def test_truncate_tables_requires_postgresql(tmp_path):
 
 
 def test_truncate_tables_reports_blocking_foreign_key_references(monkeypatch, tmp_path):
+    """Test truncate tables reports blocking foreign key references."""
     engine = sa.create_engine(f"sqlite:///{tmp_path / 'truncate_fk.db'}", future=True)
     create_missing_tables(engine, vocabulary_included=True)
 
@@ -37,6 +39,7 @@ def test_truncate_tables_reports_blocking_foreign_key_references(monkeypatch, tm
 
 
 def test_truncate_tables_cli_requires_confirmation():
+    """Test truncate tables cli requires confirmation."""
     result = runner.invoke(app, ["truncate-tables", "--scope", "clinical"])
 
     assert result.exit_code == 1
@@ -44,6 +47,7 @@ def test_truncate_tables_cli_requires_confirmation():
 
 
 def test_truncate_tables_cli_invokes_management(monkeypatch):
+    """Test truncate tables cli invokes management."""
     calls: dict[str, object] = {}
 
     def fake_load_environment(dotenv: str) -> None:

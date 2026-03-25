@@ -28,6 +28,7 @@ def _fresh_engine(tmp_path):
 
 
 def test_collect_index_targets_excludes_vocabulary_by_default(tmp_path):
+    """Test collect index targets excludes vocabulary by default."""
     engine = _fresh_engine(tmp_path)
     targets = {
         (target.table_name, target.index_name)
@@ -39,6 +40,7 @@ def test_collect_index_targets_excludes_vocabulary_by_default(tmp_path):
 
 
 def test_collect_index_targets_can_include_vocabulary(tmp_path):
+    """Test collect index targets can include vocabulary."""
     engine = _fresh_engine(tmp_path)
     targets = {
         (target.table_name, target.index_name)
@@ -49,6 +51,7 @@ def test_collect_index_targets_can_include_vocabulary(tmp_path):
 
 
 def test_orm_index_metadata_carries_cluster_configuration():
+    """Test orm index metadata carries cluster configuration."""
     tables = {
         table.table_name: table
         for table in collect_maintenance_tables()
@@ -66,6 +69,7 @@ def test_orm_index_metadata_carries_cluster_configuration():
 
 
 def test_manage_indexes_disable_and_enable_on_sqlite(tmp_path):
+    """Test manage indexes disable and enable on sqlite."""
     engine = _fresh_engine(tmp_path)
 
     inspector = sa.inspect(engine)
@@ -112,6 +116,7 @@ def test_manage_indexes_disable_and_enable_on_sqlite(tmp_path):
 
 
 def test_disable_indexes_cli_invokes_management(monkeypatch):
+    """Test disable indexes cli invokes management."""
     calls: dict[str, object] = {}
 
     def fake_load_environment(dotenv: str) -> None:

@@ -4,10 +4,12 @@ from omop_alchemy.maintenance.create_tables import collect_missing_tables, creat
 
 
 def _engine(tmp_path):
+    """Create an isolated SQLite engine for table-creation tests."""
     return sa.create_engine(f"sqlite:///{tmp_path / 'create_tables.db'}", future=True)
 
 
 def test_collect_missing_tables_on_empty_database(tmp_path):
+    """An empty database reports core clinical and vocabulary tables as missing."""
     engine = _engine(tmp_path)
     missing = collect_missing_tables(engine)
 
@@ -17,6 +19,7 @@ def test_collect_missing_tables_on_empty_database(tmp_path):
 
 
 def test_create_missing_tables_reports_blocked_tables_when_vocabulary_is_missing(tmp_path):
+    """Non-vocabulary creation reports blocked tables when required vocab tables are excluded."""
     engine = _engine(tmp_path)
     results = create_missing_tables(engine, vocabulary_included=False)
 
@@ -32,6 +35,7 @@ def test_create_missing_tables_reports_blocked_tables_when_vocabulary_is_missing
 
 
 def test_create_missing_tables_can_recreate_non_vocabulary_tables_when_dependencies_exist(tmp_path):
+    """Previously dropped non-vocabulary tables can be recreated when dependencies are present."""
     engine = _engine(tmp_path)
     create_missing_tables(engine, vocabulary_included=True)
 
@@ -47,6 +51,7 @@ def test_create_missing_tables_can_recreate_non_vocabulary_tables_when_dependenc
 
 
 def test_create_missing_tables_can_create_vocabulary(tmp_path):
+    """Including vocabulary creates both clinical and vocabulary tables."""
     engine = _engine(tmp_path)
     create_missing_tables(engine, vocabulary_included=True)
 

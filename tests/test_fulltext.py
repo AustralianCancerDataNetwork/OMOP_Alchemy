@@ -75,6 +75,7 @@ class _FakeEngine:
 
 
 def test_register_and_unregister_optional_fulltext_columns_toggle_metadata():
+    """Register/unregister helpers toggle optional tsvector metadata columns."""
     unregister_optional_fulltext_columns()
     assert CONCEPT_NAME_TSVECTOR_COLUMN not in Concept.__table__.c
     assert CONCEPT_SYNONYM_NAME_TSVECTOR_COLUMN not in Concept_Synonym.__table__.c
@@ -89,6 +90,7 @@ def test_register_and_unregister_optional_fulltext_columns_toggle_metadata():
 
 
 def test_concept_name_tsvector_expression_prefers_registered_column():
+    """Expression helper falls back to computed SQL unless the stored column is registered."""
     unregister_optional_fulltext_columns()
     fallback = concept_name_tsvector_expression()
     assert "to_tsvector" in str(fallback)
@@ -102,6 +104,7 @@ def test_concept_name_tsvector_expression_prefers_registered_column():
 
 
 def test_install_fulltext_columns_builds_postgresql_ddl_and_registers_metadata():
+    """Install emits expected PostgreSQL DDL and registers optional metadata columns."""
     unregister_optional_fulltext_columns()
     engine = _FakeEngine()
 
@@ -128,6 +131,7 @@ def test_install_fulltext_columns_builds_postgresql_ddl_and_registers_metadata()
 
 
 def test_populate_fulltext_columns_issues_update_with_regconfig_and_row_counts():
+    """Populate issues parameterized UPDATE statements and reports row counts."""
     unregister_optional_fulltext_columns()
     engine = _FakeEngine(rowcount=11)
 
@@ -147,6 +151,7 @@ def test_populate_fulltext_columns_issues_update_with_regconfig_and_row_counts()
 
 
 def test_drop_fulltext_columns_drops_schema_objects_and_unregisters_metadata():
+    """Drop removes fulltext schema objects and unregisters optional metadata columns."""
     register_optional_fulltext_columns()
     engine = _FakeEngine()
 
@@ -176,6 +181,7 @@ def test_drop_fulltext_columns_drops_schema_objects_and_unregisters_metadata():
     ],
 )
 def test_fulltext_management_requires_postgresql(tmp_path, fn_name):
+    """Fulltext management APIs reject non-PostgreSQL engines."""
     engine = sa.create_engine(f"sqlite:///{tmp_path / 'fulltext.db'}", future=True)
     fn = {
         "install_fulltext_columns": install_fulltext_columns,
@@ -190,6 +196,7 @@ def test_fulltext_management_requires_postgresql(tmp_path, fn_name):
 
 
 def test_fulltext_install_cli_passes_options(monkeypatch):
+    """CLI forwards install options to the fulltext handler implementation."""
     calls: dict[str, object] = {}
 
     def fake_build_engine(*, dotenv: str | None, engine_schema: str | None):

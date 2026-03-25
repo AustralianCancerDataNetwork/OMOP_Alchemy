@@ -11,10 +11,12 @@ runner = CliRunner()
 
 
 def _engine(tmp_path):
+    """Create an isolated SQLite engine for analyze-table tests."""
     return sa.create_engine(f"sqlite:///{tmp_path / 'analyze.db'}", future=True)
 
 
 def test_analyze_tables_runs_on_sqlite(tmp_path):
+    """Analyze applies successfully on SQLite for selected OMOP tables."""
     engine = _engine(tmp_path)
     create_missing_tables(engine, vocabulary_included=True)
 
@@ -31,6 +33,7 @@ def test_analyze_tables_runs_on_sqlite(tmp_path):
 
 
 def test_analyze_tables_rejects_vacuum_on_sqlite(tmp_path):
+    """VACUUM ANALYZE is rejected on SQLite with a clear runtime error."""
     engine = _engine(tmp_path)
     create_missing_tables(engine, vocabulary_included=True)
 
@@ -41,6 +44,7 @@ def test_analyze_tables_rejects_vacuum_on_sqlite(tmp_path):
 
 
 def test_analyze_tables_cli_invokes_management(monkeypatch):
+    """CLI forwards selection and dry-run flags to analyze_tables."""
     calls: dict[str, object] = {}
 
     def fake_load_environment(dotenv: str) -> None:
