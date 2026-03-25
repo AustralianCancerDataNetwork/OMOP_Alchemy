@@ -179,7 +179,7 @@ Examples:
 ```bash
 omop-maint doctor
 omop-maint doctor --deep
-omop-maint doctor --vocabulary-included
+omop-maint doctor --vocab
 ```
 
 Notes:
@@ -200,13 +200,13 @@ Examples:
 
 ```bash
 omop-maint data-summary
-omop-maint data-summary --vocabulary-included
+omop-maint data-summary --vocab
 omop-maint data-summary --include-missing
 ```
 
 Useful options:
 
-- `--vocabulary-included`: include vocabulary tables
+- `--vocab`: include vocabulary tables
 - `--include-missing`: also show ORM-managed tables that do not currently exist
 
 Gotcha:
@@ -231,7 +231,7 @@ Examples:
 
 ```bash
 omop-maint reconcile-schema
-omop-maint reconcile-schema --vocabulary-included
+omop-maint reconcile-schema --vocab
 ```
 
 This command is inspect-only. It does not modify the target database.
@@ -255,7 +255,7 @@ Examples:
 ```bash
 omop-maint create-missing-tables --dry-run
 omop-maint create-missing-tables
-omop-maint create-missing-tables --no-vocabulary-included
+omop-maint create-missing-tables --no-vocab
 ```
 
 Notes:
@@ -271,7 +271,7 @@ Important gotchas:
   table at a time, so dependency ordering is handled much more safely than before
 - this still assumes the referenced external schema objects already exist; unresolved
   dependencies outside the selected ORM-managed set are reported as blocked
-- `--no-vocabulary-included` is not suitable for bootstrapping a fresh clinical schema
+- `--no-vocab` is not suitable for bootstrapping a fresh clinical schema
   from nothing, because many clinical tables depend on vocabulary tables such as
   `concept`
 - a brand new PostgreSQL database is still an alpha workflow and should be verified
@@ -363,7 +363,7 @@ Examples:
 ```bash
 omop-maint reset-sequences --dry-run
 omop-maint reset-sequences
-omop-maint reset-sequences --vocabulary-included
+omop-maint reset-sequences --vocab
 ```
 
 Notes:
@@ -420,7 +420,7 @@ Validate relationships without enabling anything:
 
 ```bash
 omop-maint foreign-keys validate
-omop-maint foreign-keys validate --vocabulary-included
+omop-maint foreign-keys validate --vocab
 ```
 
 Important gotchas:
@@ -479,7 +479,7 @@ Examples:
 omop-maint indexes disable --dry-run
 omop-maint indexes disable
 omop-maint indexes enable
-omop-maint indexes enable --vocabulary-included
+omop-maint indexes enable --vocab
 ```
 
 Notes:

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import logging
 import typer
+from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn, TextColumn, TimeElapsedColumn
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -13,7 +15,7 @@ from omop_alchemy.cdm.handlers.fulltext import (
 
 from .analyze_tables import analyze_tables
 from .backup import BackupFormat, RestoreFormat, create_database_backup, restore_database_backup
-from .backend_support import POSTGRESQL_ONLY_HELP
+from ..backend_support import POSTGRESQL_ONLY_HELP
 from .create_tables import create_missing_tables
 from .data_summary import collect_data_summary
 from .defaults import (
@@ -33,7 +35,7 @@ from .doctor import collect_doctor_report
 from .help import install_help_customizations
 from .info import collect_maintenance_info
 from .indexes import IndexAction, manage_indexes
-from .load_vocab import load_vocab_source
+from .load_vocab import VocabularyLoadProgress, load_vocab_source
 from .reconcile import reconcile_schema
 from .reset_sequences import reset_model_sequences
 from .tables import TableScope
@@ -116,6 +118,47 @@ app.add_typer(config_app, name="config")
 app.add_typer(foreign_keys_app, name="foreign-keys")
 app.add_typer(indexes_app, name="indexes")
 app.add_typer(fulltext_app, name="fulltext")
+
+_CLI_LOGGING_CONFIGURED = False
+
+
+def _configure_cli_logging() -> None:
+    global _CLI_LOGGING_CONFIGURED
+    if _CLI_LOGGING_CONFIGURED:
+        return
+
+    mode = (load_connection_defaults().logging or "file").strip().lower()
+    if mode not in {"file", "console", "off"}:
+        mode = "file"
+
+    if mode == "off":
+        _CLI_LOGGING_CONFIGURED = True
+        return
+
+    formatter = logging.Formatter(
+        "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
+    )
+
+    if mode == "file":
+        log_path = defaults_path().parent / "logging" / "omop-maint.log"
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        handler: logging.Handler = logging.FileHandler(log_path, encoding="utf-8")
+    else:
+        handler = logging.StreamHandler()
+
+    handler.setFormatter(formatter)
+
+    root_logger = logging.getLogger()
+    root_logger.addHandler(handler)
+    if root_logger.level in {logging.NOTSET, logging.WARNING, logging.ERROR, logging.CRITICAL}:
+        root_logger.setLevel(logging.INFO)
+
+    _CLI_LOGGING_CONFIGURED = True
+
+
+@app.callback()
+def app_callback() -> None:
+    _configure_cli_logging()
 
 
 def main() -> None:
@@ -260,7 +303,7 @@ def info_command(
     dotenv: str | None = typer.Option(None, help="Optional dotenv file to load."),
     engine_schema: str | None = typer.Option(None, help="Engine schema selector."),
     db_schema: str | None = typer.Option(None, help="Database schema override."),
-    vocabulary_included: bool = typer.Option(True, "--vocabulary-included/--no-vocabulary-included"),
+    vocabulary_included: bool = typer.Option(True, "--vocab/--no-vocab"),
 ) -> None:
     connection_defaults = _resolve_connection_context(
         dotenv=dotenv,
@@ -302,7 +345,7 @@ def doctor_command(
     dotenv: str | None = typer.Option(None, help="Optional dotenv file to load."),
     engine_schema: str | None = typer.Option(None, help="Engine schema selector."),
     db_schema: str | None = typer.Option(None, help="Database schema override."),
-    vocabulary_included: bool = typer.Option(False, "--vocabulary-included/--no-vocabulary-included"),
+    vocabulary_included: bool = typer.Option(False, "--vocab/--no-vocab"),
     deep: bool = typer.Option(False, "--deep", help="Include heavier checks such as PostgreSQL foreign key validation."),
 ) -> None:
     connection_defaults = _resolve_connection_context(
@@ -442,7 +485,7 @@ def reconcile_schema_command(
     dotenv: str | None = typer.Option(None, help="Optional dotenv file to load."),
     engine_schema: str | None = typer.Option(None, help="Engine schema selector."),
     db_schema: str | None = typer.Option(None, help="Database schema override."),
-    vocabulary_included: bool = typer.Option(False, "--vocabulary-included/--no-vocabulary-included"),
+    vocabulary_included: bool = typer.Option(False, "--vocab/--no-vocab"),
 ) -> None:
     connection_defaults = _resolve_connection_context(
         dotenv=dotenv,
@@ -484,7 +527,7 @@ def reset_sequences_command(
     dotenv: str | None = typer.Option(None, help="Optional dotenv file to load."),
     engine_schema: str | None = typer.Option(None, help="Engine schema selector."),
     db_schema: str | None = typer.Option(None, help="Database schema override."),
-    vocabulary_included: bool = typer.Option(False, "--vocabulary-included/--no-vocabulary-included"),
+    vocabulary_included: bool = typer.Option(False, "--vocab/--no-vocab"),
     dry_run: bool = typer.Option(False, "--dry-run"),
 ) -> None:
     connection_defaults = _resolve_connection_context(
@@ -527,7 +570,7 @@ def data_summary_command(
     dotenv: str | None = typer.Option(None, help="Optional dotenv file to load."),
     engine_schema: str | None = typer.Option(None, help="Engine schema selector."),
     db_schema: str | None = typer.Option(None, help="Database schema override."),
-    vocabulary_included: bool = typer.Option(False, "--vocabulary-included/--no-vocabulary-included"),
+    vocabulary_included: bool = typer.Option(False, "--vocab/--no-vocab"),
     include_missing: bool = typer.Option(False, "--include-missing"),
 ) -> None:
     connection_defaults = _resolve_connection_context(
@@ -636,7 +679,7 @@ def create_missing_tables_command(
     dotenv: str | None = typer.Option(None, help="Optional dotenv file to load."),
     engine_schema: str | None = typer.Option(None, help="Engine schema selector."),
     db_schema: str | None = typer.Option(None, help="Database schema override."),
-    vocabulary_included: bool = typer.Option(True, "--vocabulary-included/--no-vocabulary-included"),
+    vocabulary_included: bool = typer.Option(True, "--vocab/--no-vocab"),
     dry_run: bool = typer.Option(False, "--dry-run"),
 ) -> None:
     connection_defaults = _resolve_connection_context(
@@ -782,9 +825,8 @@ def load_vocab_source_command(
         "upsert",
         help="CSV merge strategy passed to the ORM loader. Defaults to non-destructive `upsert`; use `replace` to overwrite matching primary keys.",
     ),
-    chunksize: int = typer.Option(
-        100_000,
-        min=1,
+    chunksize: int | None = typer.Option(
+        None,
         help="Chunk size for fallback ORM CSV loading to reduce memory usage on large Athena files.",
     ),
     dry_run: bool = typer.Option(False, "--dry-run"),
@@ -820,14 +862,62 @@ def load_vocab_source_command(
             dotenv=connection_defaults.dotenv,
             engine_schema=connection_defaults.engine_schema,
         )
-        with console.status("Loading Athena vocabulary source via ORM staged CSV loader..."):
-            report = load_vocab_source(
-                engine,
-                source_path=connection_defaults.athena_source,
-                db_schema=connection_defaults.db_schema,
-                dry_run=dry_run,
-                merge_strategy=merge_strategy,
-                chunksize=chunksize,
+
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[bold cyan]{task.description}"),
+            BarColumn(bar_width=None),
+            TaskProgressColumn(),
+            TimeElapsedColumn(),
+            console=console,
+            transient=False,
+        ) as progress:
+            task_id = progress.add_task(
+                "Preparing Athena vocabulary load...",
+                total=100.0,
+                completed=0.0,
+            )
+            completed_tables: list[str] = []
+
+            def _update_progress(event: VocabularyLoadProgress) -> None:
+                progress.update(
+                    task_id,
+                    completed=event.percent,
+                    description=event.detail,
+                )
+                if event.phase == "commit-complete" and event.table_name is not None:
+                    completed_tables.append(event.table_name)
+                    progress.console.print(
+                        (
+                            f"[green]loaded[/green] "
+                            f"[bold]{event.table_name}[/bold] "
+                            f"({len(completed_tables)}/{event.table_count})"
+                        )
+                    )
+
+            if chunksize is None:
+                report = load_vocab_source(
+                    engine,
+                    source_path=connection_defaults.athena_source,
+                    db_schema=connection_defaults.db_schema,
+                    dry_run=dry_run,
+                    merge_strategy=merge_strategy,
+                    progress_callback=_update_progress,
+                )
+            else:
+                report = load_vocab_source(
+                    engine,
+                    source_path=connection_defaults.athena_source,
+                    db_schema=connection_defaults.db_schema,
+                    dry_run=dry_run,
+                    merge_strategy=merge_strategy,
+                    chunksize=chunksize,
+                    progress_callback=_update_progress,
+                )
+            progress.update(
+                task_id,
+                completed=100.0,
+                description="Athena vocabulary load complete",
             )
         console.print(render_vocab_load_results(report.results))
         console.print(render_vocab_load_summary(report, dry_run=dry_run))
@@ -893,7 +983,7 @@ def disable_foreign_keys_command(
     dotenv: str | None = typer.Option(None, help="Optional dotenv file to load."),
     engine_schema: str | None = typer.Option(None, help="Engine schema selector."),
     db_schema: str | None = typer.Option(None, help="Database schema override."),
-    vocabulary_included: bool = typer.Option(False, "--vocabulary-included/--no-vocabulary-included"),
+    vocabulary_included: bool = typer.Option(False, "--vocab/--no-vocab"),
     dry_run: bool = typer.Option(False, "--dry-run"),
 ) -> None:
     _foreign_key_command(
@@ -912,7 +1002,7 @@ def enable_foreign_keys_command(
     dotenv: str | None = typer.Option(None, help="Optional dotenv file to load."),
     engine_schema: str | None = typer.Option(None, help="Engine schema selector."),
     db_schema: str | None = typer.Option(None, help="Database schema override."),
-    vocabulary_included: bool = typer.Option(False, "--vocabulary-included/--no-vocabulary-included"),
+    vocabulary_included: bool = typer.Option(False, "--vocab/--no-vocab"),
     strict: bool = typer.Option(False, "--strict", help="Validate all selected foreign key relationships before enabling trigger enforcement."),
     dry_run: bool = typer.Option(False, "--dry-run"),
 ) -> None:
@@ -932,7 +1022,7 @@ def foreign_key_status_command(
     dotenv: str | None = typer.Option(None, help="Optional dotenv file to load."),
     engine_schema: str | None = typer.Option(None, help="Engine schema selector."),
     db_schema: str | None = typer.Option(None, help="Database schema override."),
-    vocabulary_included: bool = typer.Option(False, "--vocabulary-included/--no-vocabulary-included"),
+    vocabulary_included: bool = typer.Option(False, "--vocab/--no-vocab"),
 ) -> None:
     connection_defaults = _resolve_connection_context(
         dotenv=dotenv,
@@ -973,7 +1063,7 @@ def foreign_key_validate_command(
     dotenv: str | None = typer.Option(None, help="Optional dotenv file to load."),
     engine_schema: str | None = typer.Option(None, help="Engine schema selector."),
     db_schema: str | None = typer.Option(None, help="Database schema override."),
-    vocabulary_included: bool = typer.Option(False, "--vocabulary-included/--no-vocabulary-included"),
+    vocabulary_included: bool = typer.Option(False, "--vocab/--no-vocab"),
 ) -> None:
     connection_defaults = _resolve_connection_context(
         dotenv=dotenv,
@@ -1055,7 +1145,7 @@ def disable_indexes_command(
     dotenv: str | None = typer.Option(None, help="Optional dotenv file to load."),
     engine_schema: str | None = typer.Option(None, help="Engine schema selector."),
     db_schema: str | None = typer.Option(None, help="Database schema override."),
-    vocabulary_included: bool = typer.Option(False, "--vocabulary-included/--no-vocabulary-included"),
+    vocabulary_included: bool = typer.Option(False, "--vocab/--no-vocab"),
     dry_run: bool = typer.Option(False, "--dry-run"),
 ) -> None:
     _index_command(
@@ -1073,7 +1163,7 @@ def enable_indexes_command(
     dotenv: str | None = typer.Option(None, help="Optional dotenv file to load."),
     engine_schema: str | None = typer.Option(None, help="Engine schema selector."),
     db_schema: str | None = typer.Option(None, help="Database schema override."),
-    vocabulary_included: bool = typer.Option(False, "--vocabulary-included/--no-vocabulary-included"),
+    vocabulary_included: bool = typer.Option(False, "--vocab/--no-vocab"),
     dry_run: bool = typer.Option(False, "--dry-run"),
 ) -> None:
     _index_command(
