@@ -18,17 +18,6 @@ class BackupFormat(StrEnum):
     PLAIN = "plain"
 
 
-class RestoreFormat(StrEnum):
-    AUTO = "auto"
-    CUSTOM = "custom"
-    PLAIN = "plain"
-
-
-FORMAT_FLAGS = {
-    BackupFormat.CUSTOM: "custom",
-    BackupFormat.PLAIN: "plain",
-}
-
 FORMAT_SUFFIXES = {
     BackupFormat.CUSTOM: ".dump",
     BackupFormat.PLAIN: ".sql",
@@ -147,7 +136,7 @@ def _build_pg_dump_command(
     command = [
         tool_path,
         "--format",
-        FORMAT_FLAGS[format],
+        format.value,
         "--file",
         str(output_path),
         "--dbname",
@@ -167,21 +156,8 @@ def _build_pg_dump_command(
     return command, env, database_name
 
 
-def _resolve_restore_format(
-    input_path: Path,
-    requested_format: RestoreFormat,
-) -> BackupFormat:
-    if requested_format is RestoreFormat.CUSTOM:
-        return BackupFormat.CUSTOM
-    if requested_format is RestoreFormat.PLAIN:
-        return BackupFormat.PLAIN
-    if input_path.suffix.lower() == ".sql":
-        return BackupFormat.PLAIN
-    return BackupFormat.CUSTOM
-
-
 def _restore_tool_path(format: BackupFormat) -> str:
-    if format is BackupFormat.CUSTOM:
+    if format == BackupFormat.CUSTOM:
         return _pg_restore_path()
     return _psql_path()
 
@@ -200,7 +176,7 @@ def _build_restore_command(
         raise RuntimeError("Database restore requires a database name in the configured engine URL.")
     connection_uri = _libpq_connection_uri(url)
 
-    if format is BackupFormat.CUSTOM:
+    if format == BackupFormat.CUSTOM:
         command = [
             tool_path,
             "--dbname",
@@ -291,7 +267,7 @@ def restore_database_backup(
     engine: sa.Engine,
     *,
     input_path: str | Path,
-    format: RestoreFormat = RestoreFormat.AUTO,
+    format: BackupFormat,
     db_schema: str | None = None,
     dry_run: bool = False,
 ) -> DatabaseRestoreResult:
@@ -300,12 +276,11 @@ def restore_database_backup(
     if not resolved_input_path.exists():
         raise RuntimeError(f"Backup artifact not found: {resolved_input_path}")
 
-    resolved_format = _resolve_restore_format(resolved_input_path, format)
-    tool_path = _restore_tool_path(resolved_format)
+    tool_path = _restore_tool_path(format)
     command, env, database_name = _build_restore_command(
         engine=engine,
         input_path=resolved_input_path,
-        format=resolved_format,
+        format=format,
         db_schema=db_schema,
         tool_path=tool_path,
     )
@@ -328,7 +303,7 @@ def restore_database_backup(
 
     return DatabaseRestoreResult(
         input_path=str(resolved_input_path),
-        format=resolved_format,
+        format=format,
         status="planned" if dry_run else "applied",
         detail=(
             "Database restore would be executed using PostgreSQL client tools."

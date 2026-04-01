@@ -2,7 +2,6 @@ from .backup import (
     BackupFormat,
     DatabaseBackupResult,
     DatabaseRestoreResult,
-    RestoreFormat,
     create_database_backup,
     restore_database_backup,
 )
@@ -97,7 +96,6 @@ __all__ = [
     "VocabularyLoadReport",
     "VocabularyLoadResult",
     "ReconciliationIssue",
-    "RestoreFormat",
     "SchemaReconciliationReport",
     "SequenceResetResult",
     "SequenceTarget",

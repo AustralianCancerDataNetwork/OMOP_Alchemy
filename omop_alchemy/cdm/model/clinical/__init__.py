@@ -6,7 +6,7 @@ from .drug_exposure import Drug_Exposure
 from .procedure_occurrence import Procedure_Occurrence
 from .device_exposure import Device_Exposure
 from .death import Death
-from .specimin import Specimen
+from .specimen import Specimen
 
 __all__ = [
     "Condition_Occurrence", 

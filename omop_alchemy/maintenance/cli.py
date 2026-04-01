@@ -14,7 +14,7 @@ from omop_alchemy.cdm.handlers.fulltext import (
 )
 
 from .analyze_tables import analyze_tables
-from .backup import BackupFormat, RestoreFormat, create_database_backup, restore_database_backup
+from .backup import BackupFormat, create_database_backup, restore_database_backup
 from ..backend_support import POSTGRESQL_ONLY_HELP
 from .create_tables import create_missing_tables
 from .data_summary import collect_data_summary
@@ -441,7 +441,7 @@ def restore_database_command(
     dotenv: str | None = typer.Option(None, help="Optional dotenv file to load."),
     engine_schema: str | None = typer.Option(None, help="Engine schema selector."),
     db_schema: str | None = typer.Option(None, help="Optional schema-limited restore for custom-format dumps."),
-    format: RestoreFormat = typer.Option(RestoreFormat.AUTO, help="Restore format. Defaults to auto-detect from the input file."),
+    format: BackupFormat = typer.Option(..., help="Restore format. Required: choose `custom` or `plain`."),
     dry_run: bool = typer.Option(False, "--dry-run"),
 ) -> None:
     connection_defaults = _resolve_connection_context(

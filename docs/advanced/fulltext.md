@@ -53,6 +53,27 @@ SELECT 'a fat cat sat on a mat and ate a fat rat'::tsvector;
 ---
 ```
 
+## Quick Activation
+
+To enable the optional full-text sidecars in a PostgreSQL environment:
+
+```bash
+omop-maint fulltext install
+omop-maint fulltext populate
+```
+
+If your running Python process should use the stored sidecar columns through ORM
+metadata, register them once at startup:
+
+```python
+from omop_alchemy.cdm.handlers import register_optional_fulltext_columns
+
+register_optional_fulltext_columns()
+```
+
+That is enough to activate the feature. The rest of this page explains when to use it
+and how to operate it safely.
+
 ## When To Use It
 
 Use the optional full-text feature when:
