@@ -11,9 +11,8 @@ networks:
 
 services:
   pgadmin:
-    profiles: [ "default"]
+    profiles: [ "pgadmin"]
     image: dpage/pgadmin4:latest
-    container_name: pgadmin
     restart: unless-stopped
     networks:
       - cava-network
@@ -25,11 +24,26 @@ services:
       - pgadmin-data:/var/lib/pgadmin
     ports:
       - "5050:80"
-
-  cava-database:
-    profiles: [ "default", "jupyter"]
+  python:
+    build: ./python
+    restart: unless-stopped
+    networks:
+      - cava-network
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      ENGINE_CDM: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ..:/workspace:rw
+    command: tail -f /dev/null
+  postgres:
     build: ./postgres
-    container_name: cava-database
     networks:
       - cava-network
     environment:
@@ -41,21 +55,24 @@ services:
     restart: unless-stopped
     volumes:
       - ./data:/home/data:rw
-      - postgres-data:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql
+      - ./custom.conf:/etc/postgresql/custom.conf
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
       retries: 10
-    ports:
-      - 5432:5432
+    command:
+      - postgres
+      - -c
+      - include_if_exists=/etc/postgresql/custom.conf
   cava-jupyter-notebook:
     profiles: [ "jupyter"]
     build: ./jupyter
     restart: unless-stopped
-    container_name: cava-jupyter-notebook
     depends_on:
-      - cava-database
+      postgres:
+        condition: service_healthy
     networks:
       - cava-network
     environment:
@@ -65,7 +82,6 @@ services:
       - .env
     volumes:
       - ./work:/home/jovyan/work:rw
-      - ${PYTHON_BIND_MOUNT}:/app/data
     command:
       - jupyter-lab
       - --ip=*

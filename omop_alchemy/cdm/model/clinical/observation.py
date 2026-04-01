@@ -9,16 +9,25 @@ from orm_loader.helpers import Base
 from omop_alchemy.cdm.base import (
     CDMTableBase,
     cdm_table,
-    ValueMixin
+    ValueMixin,
+    merge_table_args,
+    omop_index,
 )
 
 @cdm_table
 class Observation(Base, CDMTableBase, ValueMixin):
     __tablename__ = "observation"
+    __table_args__ = merge_table_args(
+        ValueMixin.__table_args__,
+        omop_index(__tablename__, "person_id", cluster=True),
+        omop_index(__tablename__, "observation_concept_id"),
+        omop_index(__tablename__, "visit_occurrence_id"),
+        omop_index(__tablename__, "obs_event_field_concept_id"),
+    )
 
     observation_id: so.Mapped[int] = so.mapped_column(primary_key=True)
-    person_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey("person.person_id"), nullable=False, index=True)
-    observation_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey("concept.concept_id"), nullable=False, index=True)
+    person_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey("person.person_id"), nullable=False)
+    observation_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey("concept.concept_id"), nullable=False)
     observation_date: so.Mapped[date] = so.mapped_column(nullable=False)
     observation_datetime: so.Mapped[Optional[datetime]]
     observation_type_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey("concept.concept_id"), nullable=False)
@@ -36,7 +45,7 @@ class Observation(Base, CDMTableBase, ValueMixin):
     qualifier_source_value: so.Mapped[Optional[str]]
     value_source_value: so.Mapped[Optional[str]]
     observation_event_id: so.Mapped[Optional[int]]
-    obs_event_field_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey("concept.concept_id"), index=True)
+    obs_event_field_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey("concept.concept_id"))
 
     @hybrid_property
     def modifier_of_event_id(self) -> Optional[int]:

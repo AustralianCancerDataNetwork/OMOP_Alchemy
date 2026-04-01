@@ -1,9 +1,9 @@
 
 from __future__ import annotations
 import sqlalchemy.orm as so
-import sqlalchemy as sa
 from typing import Type, Any
-from sqlalchemy.ext.declarative import declared_attr
+from orm_loader.helpers import Base, get_model_by_tablename
+import sqlalchemy as sa
 
 class ReferenceContext:
 
@@ -16,13 +16,13 @@ class ReferenceContext:
     into reference tables (Domain, Vocabulary, ConceptClass, etc.)
     with explicit join conditions.
 
-    
     These relationships are:
 
     - `viewonly=True`
     - explicitly joined
-    - resolved lazily using `selectin`
+    - loaded using `selectin` (batched eager loading)
     - defined outside the core table
+    - deterministic projections of foreign keys
 
     They are intended for:
 

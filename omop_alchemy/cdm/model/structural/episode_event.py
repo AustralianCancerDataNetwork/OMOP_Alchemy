@@ -1,14 +1,16 @@
 import sqlalchemy as sa
 import sqlalchemy.orm as so
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Type, cast
 from functools import cached_property
-from orm_loader.helpers import Base, get_model_by_tablename
+from orm_loader.helpers import Base, get_model_by_tablename # type: ignore
 from omop_alchemy.cdm.base import (
     cdm_table,
     CDMTableBase, 
     ReferenceContext,
     DomainValidationMixin,
     ExpectedDomain,
+    merge_table_args,
+    omop_index,
 )
 
 if TYPE_CHECKING:
@@ -18,6 +20,10 @@ if TYPE_CHECKING:
 @cdm_table
 class Episode_Event(CDMTableBase, Base):
     __tablename__ = "episode_event"
+    __table_args__ = merge_table_args(
+        omop_index(__tablename__, "episode_id", cluster=True),
+        omop_index(__tablename__, "episode_event_field_concept_id"),
+    )
 
     episode_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey("episode.episode_id"),nullable=False,primary_key=True)
     event_id: so.Mapped[int] = so.mapped_column(nullable=False,primary_key=True)
@@ -53,7 +59,7 @@ class Episode_EventView(Episode_Event, Episode_EventContext, DomainValidationMix
         return None
 
     @cached_property
-    def resolved_event(self):
+    def resolved_event(self) -> Any | None:
         """
         Resolve EVENT_ID to concrete OMOP row.
         Cached per-instance.
@@ -63,7 +69,7 @@ class Episode_EventView(Episode_Event, Episode_EventContext, DomainValidationMix
         if session is None or table_name is None:
             return None
 
-        cls = get_model_by_tablename(table_name)
+        cls = cast(Type[Any] | None, get_model_by_tablename(table_name))
         if cls is not None:
             return session.get(cls, self.event_id) # type: ignore
         return None

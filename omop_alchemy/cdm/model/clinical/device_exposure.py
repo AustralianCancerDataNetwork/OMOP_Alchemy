@@ -1,6 +1,6 @@
 import sqlalchemy as sa
 import sqlalchemy.orm as so
-from typing import Optional, TYPE_CHECKING
+from typing import Optional
 from datetime import date, datetime
 
 from orm_loader.helpers import Base
@@ -13,12 +13,10 @@ from omop_alchemy.cdm.base import (
     required_concept_fk,
     optional_concept_fk,
     optional_int,
-    ModifierTargetMixin
+    ModifierTargetMixin,
+    merge_table_args,
+    omop_index,
 )
-
-if TYPE_CHECKING:
-    from ..vocabulary import Concept
-    from ..health_system import Visit_Occurrence
 
 @cdm_table
 class Device_Exposure(
@@ -30,6 +28,11 @@ class Device_Exposure(
     Base,
 ):
     __tablename__ = "device_exposure"
+    __table_args__ = merge_table_args(
+        omop_index(__tablename__, "person_id", cluster=True),
+        omop_index(__tablename__, "device_concept_id"),
+        omop_index(__tablename__, "visit_occurrence_id"),
+    )
 
     device_exposure_id: so.Mapped[int] = so.mapped_column(primary_key=True)
     
@@ -49,5 +52,3 @@ class Device_Exposure(
     quantity: so.Mapped[Optional[int]] = optional_int()
     device_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50))
     unit_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50))
-
-

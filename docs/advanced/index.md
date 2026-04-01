@@ -22,4 +22,5 @@ the immutability and interpretability of the underlying CDM tables.
 ## Backend & Performance Notes
 
 - [Backend Compatibility](backends.md)
+- [PostgreSQL Full-Text Search](fulltext.md)
 - [Query Patterns](query_patterns.md)

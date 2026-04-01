@@ -2,7 +2,7 @@ import sqlalchemy as sa
 import sqlalchemy.orm as so
 from typing import Optional
 
-def required_concept_fk(*, index: bool = True):
+def required_concept_fk(*, index: bool = False):
     """
     *required_concept_fk*
 
@@ -17,6 +17,7 @@ def required_concept_fk(*, index: bool = True):
     - Unknown allowed (concept_id = 0)
     - Matches CDM Field-Level spec
     - foreign key to `concept.concept_id`
+    - indexing is opt-in when explicitly requested
 
     """
     return so.mapped_column(

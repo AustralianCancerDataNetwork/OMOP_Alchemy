@@ -7,12 +7,16 @@ from orm_loader.helpers import Base
 from omop_alchemy.cdm.base import (
     cdm_table,
     CDMTableBase,
-    required_concept_fk,
+    merge_table_args,
+    omop_index,
 )
 
 @cdm_table
 class CDM_Source(CDMTableBase, Base):
     __tablename__ = "cdm_source"
+    __table_args__ = merge_table_args(
+        omop_index(__tablename__, "cdm_version_concept_id")
+    )
 
     cdm_source_name: so.Mapped[str] = so.mapped_column(sa.String(255), nullable=False, primary_key=True)
     cdm_source_abbreviation: so.Mapped[str] = so.mapped_column(sa.String(25), nullable=False)
@@ -26,7 +30,7 @@ class CDM_Source(CDMTableBase, Base):
     cdm_release_date: so.Mapped[date] = so.mapped_column(sa.Date, nullable=False)
 
     cdm_version: so.Mapped[Optional[str]] = so.mapped_column(sa.String(10), nullable=True)
-    cdm_version_concept_id: so.Mapped[int] = required_concept_fk()
+    cdm_version_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey("concept.concept_id"), nullable=False)
 
     vocabulary_version: so.Mapped[str] = so.mapped_column(sa.String(20), nullable=False)
 

@@ -2,6 +2,14 @@ from typing import Type, TypeVar
 from .cdm_table_base import CDMTableBase
 
 T = TypeVar("T", bound=type)
+MODEL_MODULE_PREFIX = "omop_alchemy.cdm.model."
+
+def _infer_table_category(cls: type) -> str | None:
+    model_module = cls.__module__
+    if not model_module.startswith(MODEL_MODULE_PREFIX):
+        return None
+    suffix = model_module.removeprefix(MODEL_MODULE_PREFIX)
+    return suffix.split(".", 1)[0]
 
 def cdm_table(cls: T) -> T:
     """
@@ -27,5 +35,7 @@ def cdm_table(cls: T) -> T:
 
     # Explicitly mark as concrete
     cls.__abstract__ = False
+    cls.__omop_is_cdm_table__ = True
+    cls.__omop_table_category__ = _infer_table_category(cls)
 
     return cls

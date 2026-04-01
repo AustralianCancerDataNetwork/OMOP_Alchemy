@@ -3,11 +3,16 @@ import sqlalchemy.orm as so
 from typing import Optional
 from datetime import date
 from orm_loader.helpers import Base
-from omop_alchemy.cdm.base import ReferenceTable, cdm_table, CDMTableBase, DatedEvent
+from omop_alchemy.cdm.base import (
+    ReferenceTable,
+    cdm_table,
+    CDMTableBase,
+    merge_table_args,
+    omop_index,
+)
 
 @cdm_table
 class Drug_Strength(
-    DatedEvent,
     CDMTableBase,
     ReferenceTable,
     Base,
@@ -19,6 +24,10 @@ class Drug_Strength(
     and quantitative properties.
     """
     __tablename__ = "drug_strength"
+    __table_args__ = merge_table_args(
+        omop_index(__tablename__, "drug_concept_id", cluster=True),
+        omop_index(__tablename__, "ingredient_concept_id"),
+    )
 
     drug_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey("concept.concept_id"),primary_key=True)
     ingredient_concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey("concept.concept_id"),primary_key=True)

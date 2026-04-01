@@ -2,6 +2,7 @@ from omop_alchemy.cdm.model.structural import EpisodeView, Episode_Event
 import sqlalchemy as sa
 
 def test_episode_view_expected_domains():
+    """Test episode view expected domains."""
     cls = EpisodeView
 
     assert "episode_concept_id" in cls.__expected_domains__
@@ -12,6 +13,7 @@ def test_episode_view_expected_domains():
 
 
 def test_episode_reference_context(session):
+    """Test episode reference context."""
     ep = session.query(EpisodeView).first()
     assert ep is not None
 
@@ -22,6 +24,7 @@ def test_episode_reference_context(session):
 
 
 def test_episode_has_episode_events(session):
+    """Test episode has episode events."""
     ep = (
         session.query(EpisodeView)
         .filter(EpisodeView.episode_events.any())
@@ -33,6 +36,7 @@ def test_episode_has_episode_events(session):
 
 
 def test_episode_event_resolves_target(session):
+    """Test episode event resolves target."""
     ep = (
         session.query(EpisodeView)
         .filter(EpisodeView.episode_events.any())
@@ -61,6 +65,7 @@ def test_episode_event_resolves_target(session):
 
 
 def test_episode_view_events_property(session):
+    """Test episode view events property."""
     ep = (
         session.query(EpisodeView)
         .filter(EpisodeView.episode_events.any())
@@ -82,6 +87,7 @@ def test_episode_view_events_property(session):
 
 
 def test_episode_parent_relationship(session):
+    """Test episode parent relationship."""
     child = (
         session.query(EpisodeView)
         .filter(EpisodeView.episode_parent_id.isnot(None))
@@ -94,6 +100,7 @@ def test_episode_parent_relationship(session):
 
 
 def test_episode_date_bounds(session):
+    """Test episode date bounds."""
     ep = session.query(EpisodeView).first()
 
     if ep.episode_end_date:

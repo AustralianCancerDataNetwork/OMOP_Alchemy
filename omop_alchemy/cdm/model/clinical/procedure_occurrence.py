@@ -15,6 +15,8 @@ from omop_alchemy.cdm.base import (
     ReferenceContext,
     DomainValidationMixin,
     ExpectedDomain,
+    merge_table_args,
+    omop_index,
 )
 if TYPE_CHECKING:
     from ..vocabulary import Concept
@@ -24,6 +26,11 @@ if TYPE_CHECKING:
 @cdm_table
 class Procedure_Occurrence(CDMTableBase, Base, PersonScoped, HealthSystemContext):
     __tablename__ = "procedure_occurrence"
+    __table_args__ = merge_table_args(
+        omop_index(__tablename__, "person_id", cluster=True),
+        omop_index(__tablename__, "procedure_concept_id"),
+        omop_index(__tablename__, "visit_occurrence_id")
+    )
     procedure_occurrence_id: so.Mapped[int] = so.mapped_column(primary_key=True)
     procedure_concept_id: so.Mapped[int] = required_concept_fk()
     procedure_date: so.Mapped[date] = so.mapped_column(sa.Date, nullable=False)

@@ -3,7 +3,6 @@ import sqlalchemy.orm as so
 from sqlalchemy.ext.declarative import declared_attr
 from typing import Optional, TYPE_CHECKING, List
 from datetime import date
-from sqlalchemy.ext.declarative import declared_attr
 from orm_loader.helpers import Base 
 from omop_alchemy.cdm.base import (
     cdm_table,
@@ -15,20 +14,30 @@ from omop_alchemy.cdm.base import (
     ReferenceContext,
     DomainValidationMixin,
     ExpectedDomain,
+    merge_table_args,
+    omop_index,
 )
 
 if TYPE_CHECKING:
     from ..vocabulary import Concept
-    from ..clinical import Condition_Occurrence, Person
-    from .episode_event import Episode_Event, Episode_EventView
+    from ..clinical import Person
+    from .episode_event import Episode_EventView
     from ...base.typing import HasEpisodeId
 
 @cdm_table
 class Episode(CDMTableBase, Base, PersonScoped):
     __tablename__ = "episode"
+    __table_args__ = merge_table_args(
+        omop_index(__tablename__, "person_id", cluster=True),
+        omop_index(__tablename__, "episode_concept_id"),
+        # following indices are not specified in the cdm but are likely to be useful for query performance
+        omop_index(__tablename__, "episode_object_concept_id"),
+        omop_index(__tablename__, "episode_type_concept_id"),
+        omop_index(__tablename__, "episode_parent_id"),
+    )
 
     episode_id: so.Mapped[int] = so.mapped_column(primary_key=True)
-    episode_parent_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey("episode.episode_id"),nullable=True,index=True)
+    episode_parent_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey("episode.episode_id"), nullable=True)
 
     episode_start_date: so.Mapped[date] = so.mapped_column(sa.Date, nullable=False)
     episode_start_datetime: so.Mapped[Optional[date]] = so.mapped_column(sa.DateTime, nullable=True)
@@ -51,7 +60,7 @@ class EpisodeContext(ReferenceContext):
     episode_concept: so.Mapped["Concept"] = ReferenceContext._reference_relationship(target="Concept",local_fk="episode_concept_id",remote_pk="concept_id")  # type: ignore[assignment]
     episode_object_concept: so.Mapped["Concept"] = ReferenceContext._reference_relationship(target="Concept",local_fk="episode_object_concept_id",remote_pk="concept_id")  # type: ignore[assignment]
     episode_type_concept: so.Mapped["Concept"] = ReferenceContext._reference_relationship(target="Concept",local_fk="episode_type_concept_id",remote_pk="concept_id")  # type: ignore[assignment]
-    parent_episode: so.Mapped[Optional["Episode"]] = ReferenceContext._reference_relationship(target="Episode",local_fk="episode_parent_id",remote_pk="episode_id")  # type: ignore[assignment]
+    #parent_episode: so.Mapped[Optional["Episode"]] = ReferenceContext._reference_relationship(target="Episode",local_fk="episode_parent_id",remote_pk="episode_id")  # type: ignore[assignment]
     
     @declared_attr
     def episode_events(cls: type['HasEpisodeId']) -> so.Mapped[List["Episode_EventView"]]:
@@ -61,7 +70,17 @@ class EpisodeContext(ReferenceContext):
             viewonly=True,
             lazy="selectin",
         )
-
+    @declared_attr
+    def parent_episode(cls) -> so.Mapped[Optional["Episode"]]:
+        return so.relationship(
+            "Episode",
+            primaryjoin=lambda: Episode.episode_parent_id == so.remote(Episode.episode_id),
+            foreign_keys=lambda: [Episode.episode_parent_id],
+            remote_side=lambda: [Episode.episode_id],
+            viewonly=True,
+            lazy="selectin",
+            uselist=False,
+        )
 
 class EpisodeView(Episode, EpisodeContext, DomainValidationMixin):
     """
@@ -90,7 +109,7 @@ class EpisodeView(Episode, EpisodeContext, DomainValidationMixin):
         if not self.episode_events:
             return []
 
-        resolved = []
+        resolved: list[object] = []
         for ee in self.episode_events:
             target = ee.resolved_event
             if target is not None:

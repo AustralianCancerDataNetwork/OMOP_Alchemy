@@ -5,20 +5,14 @@ from orm_loader.helpers import Base
 from omop_alchemy.cdm.base import (
     CDMTableBase,
     cdm_table, 
-    required_concept_fk,
+    merge_table_args,
+    omop_index,
 )
 
 @cdm_table
 class Fact_Relationship(CDMTableBase, Base):
     __tablename__ = "fact_relationship"
-
-    domain_concept_id_1: so.Mapped[int] = required_concept_fk()
-    fact_id_1: so.Mapped[int] = so.mapped_column(sa.Integer,nullable=False)
-    domain_concept_id_2: so.Mapped[int] = required_concept_fk()
-    fact_id_2: so.Mapped[int] = so.mapped_column(sa.Integer,nullable=False)
-    relationship_concept_id: so.Mapped[int] = required_concept_fk()
-
-    __table_args__ = (
+    __table_args__ = merge_table_args(
         sa.PrimaryKeyConstraint(
             "domain_concept_id_1",
             "fact_id_1",
@@ -26,6 +20,27 @@ class Fact_Relationship(CDMTableBase, Base):
             "fact_id_2",
             "relationship_concept_id",
         ),
+        omop_index(__tablename__, "domain_concept_id_1"),
+        omop_index(__tablename__, "domain_concept_id_2"),
+        omop_index(__tablename__, "relationship_concept_id"),
+    )
+
+    domain_concept_id_1: so.Mapped[int] = so.mapped_column(
+        sa.ForeignKey("concept.concept_id"),
+        primary_key=True,
+        nullable=False,
+    )
+    fact_id_1: so.Mapped[int] = so.mapped_column(sa.Integer,nullable=False)
+    domain_concept_id_2: so.Mapped[int] = so.mapped_column(
+        sa.ForeignKey("concept.concept_id"),
+        primary_key=True,
+        nullable=False,
+    )
+    fact_id_2: so.Mapped[int] = so.mapped_column(sa.Integer,nullable=False)
+    relationship_concept_id: so.Mapped[int] = so.mapped_column(
+        sa.ForeignKey("concept.concept_id"),
+        primary_key=True,
+        nullable=False,
     )
 
     def __repr__(self) -> str:

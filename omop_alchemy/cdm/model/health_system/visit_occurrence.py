@@ -15,6 +15,8 @@ from omop_alchemy.cdm.base import (
     optional_concept_fk,    
     DomainValidationMixin,
     ExpectedDomain,
+    merge_table_args,
+    omop_index,
 
 )
 if TYPE_CHECKING:
@@ -22,35 +24,38 @@ if TYPE_CHECKING:
     from ..health_system.care_site import Care_Site
 
 from ..clinical.procedure_occurrence import Procedure_Occurrence
-from ..vocabulary.concept import Concept
 from ..health_system.provider import Provider
 
 
 @cdm_table
 class Visit_Occurrence(CDMTableBase, Base):
     __tablename__ = "visit_occurrence"
+    __table_args__ = merge_table_args(
+        omop_index(__tablename__, "person_id", cluster=True),
+        omop_index(__tablename__, "visit_concept_id"),
+    )
 
     visit_occurrence_id: so.Mapped[int] = so.mapped_column(primary_key=True)
-    person_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey("person.person_id"),nullable=False,index=True)
+    person_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey("person.person_id"), nullable=False)
     
-    visit_concept_id: so.Mapped[int] = required_concept_fk(index=True)
+    visit_concept_id: so.Mapped[int] = required_concept_fk()
     visit_start_date: so.Mapped[date] = so.mapped_column(sa.Date, nullable=False)
     visit_start_datetime: so.Mapped[Optional[date]] = so.mapped_column(sa.DateTime, nullable=True)
     visit_end_date: so.Mapped[date] = so.mapped_column(sa.Date, nullable=False)
     visit_end_datetime: so.Mapped[Optional[date]] = so.mapped_column(sa.DateTime, nullable=True)
-    visit_type_concept_id: so.Mapped[int] = required_concept_fk(index=True)
+    visit_type_concept_id: so.Mapped[int] = required_concept_fk()
 
-    provider_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey("provider.provider_id"),nullable=True,index=True)
-    care_site_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey("care_site.care_site_id"),nullable=True,index=True)
+    provider_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey("provider.provider_id"), nullable=True)
+    care_site_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey("care_site.care_site_id"), nullable=True)
 
     visit_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50), nullable=True)
-    visit_source_concept_id: so.Mapped[Optional[int]] = optional_concept_fk(index=True)
-    admitted_from_concept_id: so.Mapped[Optional[int]] = optional_concept_fk(index=True)
+    visit_source_concept_id: so.Mapped[Optional[int]] = optional_concept_fk()
+    admitted_from_concept_id: so.Mapped[Optional[int]] = optional_concept_fk()
     admitted_from_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50), nullable=True)
-    discharged_to_concept_id: so.Mapped[Optional[int]] = optional_concept_fk(index=True)
+    discharged_to_concept_id: so.Mapped[Optional[int]] = optional_concept_fk()
     discharged_to_source_value: so.Mapped[Optional[str]] = so.mapped_column(sa.String(50), nullable=True)
 
-    preceding_visit_occurrence_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey("visit_occurrence.visit_occurrence_id"),nullable=True,index=True)
+    preceding_visit_occurrence_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey("visit_occurrence.visit_occurrence_id"), nullable=True)
 
     def __repr__(self) -> str:
         return f"<VisitOccurrence {self.visit_occurrence_id}>"
@@ -95,13 +100,11 @@ class VisitView(Visit_Occurrence, VisitContext, DomainValidationMixin):
 
     @property
     def all_providers(self) -> set["Provider"]:
-        providers = set()
+        providers: set[Provider] = set()
         providers.update(getattr(self, "procedure_providers", []) or [])
         providers.update(getattr(self, "observation_providers", []) or [])
-        if self.provider is not None:
-            providers.add(self.provider)
+        providers.add(self.provider)
         return providers
-    
 
     @hybrid_method
     def has_provider_specialty(self, specialty_concept_id: int) -> bool: 
