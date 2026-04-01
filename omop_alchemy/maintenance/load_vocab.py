@@ -22,7 +22,7 @@ from omop_alchemy.cdm.model.vocabulary import (
     Vocabulary,
 )
 
-from ..backend_support import POSTGRESQL_DIALECT, require_backend
+from ..backend_support import Dialect, require_backend
 from .reset_sequences import reset_model_sequences
 from .tables import TableCategory, schema_adjusted_metadata, select_maintenance_tables
 
@@ -187,7 +187,7 @@ def _ensure_supported_backend(engine: sa.Engine) -> None:
     require_backend(
         engine,
         feature="Vocabulary source loading",
-        supported_dialects=("sqlite", POSTGRESQL_DIALECT),
+        supported_dialects=(Dialect.SQLITE, Dialect.POSTGRESQL),
     )
 
 
@@ -256,7 +256,7 @@ def _configure_loader_connection(
     if db_schema is None:
         return
 
-    if connection.dialect.name != POSTGRESQL_DIALECT:
+    if connection.dialect.name != Dialect.POSTGRESQL:
         raise RuntimeError(
             "Vocabulary source loading with `--db-schema` is only supported on PostgreSQL. "
             "SQLite uses the default database namespace."
@@ -495,7 +495,7 @@ def load_vocab_source(
 
     results.extend(missing_optional_results)
 
-    if not dry_run and engine.dialect.name == POSTGRESQL_DIALECT:
+    if not dry_run and engine.dialect.name == Dialect.POSTGRESQL:
         sequence_results = reset_model_sequences(
             engine,
             db_schema=db_schema,

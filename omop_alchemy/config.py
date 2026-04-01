@@ -21,7 +21,8 @@ def load_environment(dotenv: str = '') -> None:
     Explicitly load environment variables for the application.
     Safe: does not log sensitive values.
     """
-    if load_dotenv(dotenv) or load_dotenv():
+    # Dotenv values should take precedence over inherited shell env vars.
+    if load_dotenv(dotenv, override=True) or load_dotenv(override=True):
         logger.info("Environment variables loaded from .env file")
     else:
         logger.debug("No .env file loaded")

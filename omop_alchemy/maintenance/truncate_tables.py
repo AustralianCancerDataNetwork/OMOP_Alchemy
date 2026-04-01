@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 import sqlalchemy as sa
 
-from ..backend_support import POSTGRESQL_DIALECT, require_backend
+from ..backend_support import Dialect, require_backend
 from .tables import (
     TableCategory,
     TableScope,
@@ -79,7 +79,7 @@ def truncate_tables(
     require_backend(
         engine,
         feature="Table truncation",
-        supported_dialects=(POSTGRESQL_DIALECT,),
+        supported_dialects=(Dialect.POSTGRESQL,),
     )
 
     selected_tables = resolve_maintenance_tables(

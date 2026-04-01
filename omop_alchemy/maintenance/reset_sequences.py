@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 import sqlalchemy as sa
 
-from ..backend_support import POSTGRESQL_DIALECT, require_backend
+from ..backend_support import Dialect, require_backend
 from .tables import TableCategory, qualified_table_name, select_omop_tables
 
 
@@ -54,7 +54,7 @@ def _ensure_postgresql_supported(engine: sa.Engine) -> None:
     require_backend(
         engine,
         feature="Sequence reset",
-        supported_dialects=(POSTGRESQL_DIALECT,),
+        supported_dialects=(Dialect.POSTGRESQL,),
     )
 
 

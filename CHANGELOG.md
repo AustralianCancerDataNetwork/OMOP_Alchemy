@@ -1,12 +1,3 @@
-## 0.5.15
-- refine PostgreSQL full-text sidecar support under `cdm.handlers.fulltext`
-- add `omop-maint fulltext install`, `populate`, and `drop` commands
-- document manual refresh expectations for sidecar `tsvector` columns
-
-## 0.5.14
-- upversion `orm-loader` dependency floor to `0.3.23` for generated-column-safe staged merges
-- keep Athena vocabulary loading on tab-delimited input and improve load failure reporting
-
 ## 0.2.0
 - Initial public release
 - SQLAlchemy 2.0 typed OMOP CDM models
@@ -79,7 +70,7 @@
 ## 0.5.12
 - created visit_occurrence view object to handle 'visits where a provider of specialty [x] was seen' (whether through visit provider, procedure provider, obs provider relationships)
 
-## 0.5.13
+## 0.6.0
 - added PostgreSQL sequence reset utility for OMOP tables
 - default reset scope excludes vocabulary-backed tables unless explicitly requested
 - centralised maintenance table categories and reusable table selection helpers for future admin tasks
@@ -89,3 +80,9 @@
 - added create-missing-tables maintenance command for schema bootstrap from ORM metadata
 - added metadata-driven index disable/enable maintenance commands for bulk-load workflows
 - optional tsvector handling
+- upversion `orm-loader` dependency floor to `0.3.23` for generated-column-safe staged merges
+- keep Athena vocabulary loading on tab-delimited input and improve load failure reporting
+- refine PostgreSQL full-text sidecar support under `cdm.handlers.fulltext`
+- add `omop-maint fulltext install`, `populate`, and `drop` commands
+- document manual refresh expectations for sidecar `tsvector` columns
+

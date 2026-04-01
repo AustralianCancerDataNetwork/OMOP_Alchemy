@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from omop_alchemy import create_engine_with_dependencies, get_engine_name, load_environment
 
-from ..backend_support import POSTGRESQL_DIALECT
+from ..backend_support import Dialect
 from .foreign_keys import (
     ForeignKeyStatusResult,
     ForeignKeyValidationReport,
@@ -100,7 +100,7 @@ def _build_recommendations(
             )
         )
 
-    if info.backend == POSTGRESQL_DIALECT and info.pg_dump_path is None:
+    if info.backend == Dialect.POSTGRESQL and info.pg_dump_path is None:
         recommendations.append(
             DoctorRecommendation(
                 status="warning",
@@ -110,7 +110,7 @@ def _build_recommendations(
         )
 
     if (
-        info.backend == POSTGRESQL_DIALECT
+        info.backend == Dialect.POSTGRESQL
         and info.pg_restore_path is None
         and info.psql_path is None
     ):
@@ -211,7 +211,7 @@ def collect_doctor_report(
                     )
                 )
 
-            if info.backend == POSTGRESQL_DIALECT:
+            if info.backend == Dialect.POSTGRESQL:
                 foreign_key_status = tuple(
                     collect_foreign_key_trigger_status(
                         engine,
@@ -307,7 +307,7 @@ def collect_doctor_report(
             )
         )
 
-    if info.backend == POSTGRESQL_DIALECT:
+    if info.backend == Dialect.POSTGRESQL:
         backup_tools_ready = info.pg_dump_path is not None and (
             info.pg_restore_path is not None or info.psql_path is not None
         )

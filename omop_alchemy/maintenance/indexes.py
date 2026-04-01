@@ -7,7 +7,7 @@ import sqlalchemy as sa
 
 from omop_alchemy.cdm.base.indexing import OMOP_CLUSTER_INDEX_INFO_KEY
 
-from ..backend_support import POSTGRESQL_DIALECT, backend_label, supports_backend
+from ..backend_support import Dialect, backend_label, supports_backend
 from .tables import (
     MaintenanceTable,
     TableCategory,
@@ -147,7 +147,7 @@ def manage_indexes(
     metadata_indexes = _schema_metadata_indexes(selected_tables, db_schema)
     clustering_supported = supports_backend(
         engine,
-        supported_dialects=(POSTGRESQL_DIALECT,),
+        supported_dialects=(Dialect.POSTGRESQL,),
     )
 
     results: list[IndexManagementResult] = []

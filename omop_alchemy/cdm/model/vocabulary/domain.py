@@ -6,15 +6,14 @@ from omop_alchemy.cdm.base import (
     cdm_table,
     CDMTableBase,
     merge_table_args,
-    omop_primary_key_index_name,
-    omop_table_options,
+    omop_index
 )
 
 @cdm_table
 class Domain(Base, ReferenceTable, CDMTableBase):
     __tablename__ = "domain"
     __table_args__ = merge_table_args(
-        omop_table_options(cluster_on=omop_primary_key_index_name("domain")),
+        omop_index(__tablename__, "domain_id", cluster=True),
     )
     domain_id: so.Mapped[str] = so.mapped_column(sa.String(20), primary_key=True)
     domain_name: so.Mapped[str] = so.mapped_column(sa.String(255), nullable=False)

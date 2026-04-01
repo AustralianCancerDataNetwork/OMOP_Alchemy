@@ -5,7 +5,7 @@ from enum import StrEnum
 
 import sqlalchemy as sa
 
-from ..backend_support import POSTGRESQL_DIALECT, require_backend
+from ..backend_support import Dialect, require_backend
 from .tables import (
     MaintenanceTable,
     TableCategory,
@@ -88,7 +88,7 @@ def _ensure_postgresql_supported(
     require_backend(
         engine,
         feature=feature,
-        supported_dialects=(POSTGRESQL_DIALECT,),
+        supported_dialects=(Dialect.POSTGRESQL,),
     )
 
 

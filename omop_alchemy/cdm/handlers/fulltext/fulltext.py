@@ -12,7 +12,7 @@ from sqlalchemy.sql import ColumnElement, ColumnExpressionArgument, func
 from ...model.vocabulary.concept import Concept
 from ...model.vocabulary.concept_synonym import Concept_Synonym
 
-from ....backend_support import POSTGRESQL_DIALECT
+from ....backend_support import Dialect
 
 
 @dataclass(frozen=True)
@@ -60,14 +60,14 @@ CONCEPT_SYNONYM_NAME_TSVECTOR_COLUMN = "concept_synonym_name_tsvector"
 
 FULLTEXT_TARGETS = (
     FullTextTarget(
-        name="concept",
+        name=Concept.__tablename__,
         table=cast(sa.Table, Concept.__table__),
         source_column_name="concept_name",
         vector_column_name=CONCEPT_NAME_TSVECTOR_COLUMN,
         index_name="idx_gin_concept_name_tsvector",
     ),
     FullTextTarget(
-        name="concept_synonym",
+        name=Concept_Synonym.__tablename__,
         table=cast(sa.Table, Concept_Synonym.__table__),
         source_column_name="concept_synonym_name",
         vector_column_name=CONCEPT_SYNONYM_NAME_TSVECTOR_COLUMN,
@@ -171,7 +171,7 @@ def _qualified_table_name(table_name: str, db_schema: str | None) -> str:
 
 
 def _ensure_supported_backend(engine: Engine) -> None:
-    if engine.dialect.name == POSTGRESQL_DIALECT:
+    if engine.dialect.name == Dialect.POSTGRESQL:
         return
     raise RuntimeError(
         "PostgreSQL full-text vector column management is only supported for "

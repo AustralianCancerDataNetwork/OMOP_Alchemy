@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 import sqlalchemy as sa
 
-from ..backend_support import POSTGRESQL_DIALECT
+from ..backend_support import Dialect
 from .indexes import _cluster_target_name
 from .tables import MaintenanceTable, TableCategory, select_maintenance_tables
 
@@ -380,7 +380,7 @@ def reconcile_schema(
                         )
                     )
 
-            if engine.dialect.name == POSTGRESQL_DIALECT:
+            if engine.dialect.name == Dialect.POSTGRESQL:
                 expected_cluster = _cluster_target_name(maintenance_table)
                 actual_cluster = _actual_cluster_index_name(
                     connection,

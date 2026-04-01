@@ -6,15 +6,14 @@ from omop_alchemy.cdm.base import (
     cdm_table,
     CDMTableBase,
     merge_table_args,
-    omop_primary_key_index_name,
-    omop_table_options,
+    omop_index,
 )
 
 @cdm_table
 class Concept_Class(Base, ReferenceTable, CDMTableBase):
     __tablename__ = "concept_class"
     __table_args__ = merge_table_args(
-        omop_table_options(cluster_on=omop_primary_key_index_name("concept_class")),
+        omop_index(__tablename__, "concept_class_id", cluster=True)
     )
     concept_class_id: so.Mapped[str] = so.mapped_column(sa.String(20), primary_key=True)
     concept_class_name: so.Mapped[str] = so.mapped_column(sa.String(255), nullable=False)

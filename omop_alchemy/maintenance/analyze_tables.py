@@ -4,15 +4,13 @@ from dataclasses import dataclass
 
 import sqlalchemy as sa
 
-from ..backend_support import POSTGRESQL_DIALECT, require_backend
+from ..backend_support import Dialect, require_backend
 from .tables import (
     TableCategory,
     TableScope,
     qualified_table_name,
     resolve_maintenance_tables,
 )
-
-SQLITE_DIALECT = "sqlite"
 
 
 @dataclass(frozen=True)
@@ -41,10 +39,10 @@ def analyze_tables(
     require_backend(
         engine,
         feature="Table analysis",
-        supported_dialects=(POSTGRESQL_DIALECT, SQLITE_DIALECT),
+        supported_dialects=(Dialect.POSTGRESQL, Dialect.SQLITE),
     )
 
-    if vacuum and engine.dialect.name != POSTGRESQL_DIALECT:
+    if vacuum and engine.dialect.name != Dialect.POSTGRESQL:
         raise RuntimeError(
             "VACUUM ANALYZE is only supported for PostgreSQL engines. "
             f"Current dialect: '{engine.dialect.name}'."

@@ -10,7 +10,7 @@ import subprocess
 
 import sqlalchemy as sa
 
-from ..backend_support import POSTGRESQL_DIALECT, require_backend
+from ..backend_support import Dialect, require_backend
 
 
 class BackupFormat(StrEnum):
@@ -65,7 +65,7 @@ def _ensure_backup_supported(engine: sa.Engine) -> None:
     require_backend(
         engine,
         feature="Database backup",
-        supported_dialects=(POSTGRESQL_DIALECT,),
+        supported_dialects=(Dialect.POSTGRESQL,),
     )
 
 
@@ -73,7 +73,7 @@ def _ensure_restore_supported(engine: sa.Engine) -> None:
     require_backend(
         engine,
         feature="Database restore",
-        supported_dialects=(POSTGRESQL_DIALECT,),
+        supported_dialects=(Dialect.POSTGRESQL,),
     )
 
 

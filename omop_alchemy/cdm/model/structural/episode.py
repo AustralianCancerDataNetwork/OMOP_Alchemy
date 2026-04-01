@@ -74,8 +74,8 @@ class EpisodeContext(ReferenceContext):
     def parent_episode(cls) -> so.Mapped[Optional["Episode"]]:
         return so.relationship(
             "Episode",
-            primaryjoin=lambda: cls.episode_parent_id == so.remote(Episode.episode_id),
-            foreign_keys=lambda: [cls.episode_parent_id],
+            primaryjoin=lambda: Episode.episode_parent_id == so.remote(Episode.episode_id),
+            foreign_keys=lambda: [Episode.episode_parent_id],
             remote_side=lambda: [Episode.episode_id],
             viewonly=True,
             lazy="selectin",
