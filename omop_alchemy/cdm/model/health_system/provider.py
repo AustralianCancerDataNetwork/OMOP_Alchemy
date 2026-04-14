@@ -5,6 +5,7 @@ from orm_loader.helpers import Base
 from omop_alchemy.cdm.base import (
     cdm_table,
     CDMTableBase,
+    HealthSystemSchemaMixin,
     optional_concept_fk,
     merge_table_args,
     omop_index,
@@ -13,7 +14,7 @@ from omop_alchemy.cdm.base import (
 )
 
 @cdm_table
-class Provider(CDMTableBase, Base):
+class Provider(HealthSystemSchemaMixin, CDMTableBase, Base):
     __tablename__ = "provider"
     __table_args__ = merge_table_args(
         omop_index(__tablename__, "specialty_concept_id"),

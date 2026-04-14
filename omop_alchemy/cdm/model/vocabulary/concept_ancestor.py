@@ -5,12 +5,13 @@ from omop_alchemy.cdm.base import (
     ReferenceTable,
     cdm_table,
     CDMTableBase,
+    VocabularySchemaMixin,
     merge_table_args,
     omop_index,
 )
 
 @cdm_table
-class Concept_Ancestor(Base, ReferenceTable, CDMTableBase):
+class Concept_Ancestor(VocabularySchemaMixin, Base, ReferenceTable, CDMTableBase):
     __tablename__ = "concept_ancestor"
     __table_args__ = merge_table_args(
         omop_index(__tablename__, "ancestor_concept_id", cluster=True),

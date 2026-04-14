@@ -5,12 +5,13 @@ from orm_loader.helpers import Base
 from omop_alchemy.cdm.base import (
     CDMTableBase,
     cdm_table, 
+    StructuralSchemaMixin,
     merge_table_args,
     omop_index,
 )
 
 @cdm_table
-class Fact_Relationship(CDMTableBase, Base):
+class Fact_Relationship(StructuralSchemaMixin, CDMTableBase, Base):
     __tablename__ = "fact_relationship"
     __table_args__ = merge_table_args(
         sa.PrimaryKeyConstraint(

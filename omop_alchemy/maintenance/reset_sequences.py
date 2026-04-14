@@ -5,7 +5,11 @@ from dataclasses import dataclass
 import sqlalchemy as sa
 
 from ..backend_support import Dialect, require_backend
-from .tables import TableCategory, qualified_table_name, select_omop_tables
+from .tables import (
+    TableCategory,
+    qualified_table_name,
+    select_omop_tables,
+)
 
 
 @dataclass(frozen=True)
@@ -14,6 +18,7 @@ class SequenceTarget:
     category: TableCategory
     model_name: str
     model_module: str
+    schema_name: str | None
     pk_column_name: str
 
 
@@ -46,6 +51,7 @@ def collect_sequence_targets(
                 category=table.category,
                 model_name=table.model_name,
                 model_module=table.model_module,
+                schema_name=table.table.schema,
                 pk_column_name=pk_column_name,
             )
         )
@@ -73,7 +79,10 @@ def reset_model_sequences(
 
     with engine.begin() as connection:
         for target in targets:
-            if not inspector.has_table(target.table_name, schema=db_schema):
+            if not inspector.has_table(
+                target.table_name,
+                schema=db_schema if db_schema is not None else target.schema_name,
+            ):
                 continue
 
             fully_qualified_table_name = qualified_table_name(target.table_name, db_schema)

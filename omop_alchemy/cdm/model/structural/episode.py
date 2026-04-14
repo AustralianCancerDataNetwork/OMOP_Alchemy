@@ -7,6 +7,7 @@ from orm_loader.helpers import Base
 from omop_alchemy.cdm.base import (
     cdm_table,
     CDMTableBase, 
+    StructuralSchemaMixin,
     required_concept_fk,
     optional_concept_fk,
     PersonScoped,
@@ -25,7 +26,7 @@ if TYPE_CHECKING:
     from ...base.typing import HasEpisodeId
 
 @cdm_table
-class Episode(CDMTableBase, Base, PersonScoped):
+class Episode(StructuralSchemaMixin, CDMTableBase, Base, PersonScoped):
     __tablename__ = "episode"
     __table_args__ = merge_table_args(
         omop_index(__tablename__, "person_id", cluster=True),

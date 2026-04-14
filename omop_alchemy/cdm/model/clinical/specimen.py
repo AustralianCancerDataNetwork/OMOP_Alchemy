@@ -6,6 +6,7 @@ from orm_loader.helpers import Base
 from omop_alchemy.cdm.base import (
     CDMTableBase,
     cdm_table,
+    ClinicalSchemaMixin,
     required_concept_fk,
     optional_concept_fk,
     merge_table_args,
@@ -13,7 +14,7 @@ from omop_alchemy.cdm.base import (
 )
 
 @cdm_table
-class Specimen(CDMTableBase, Base):
+class Specimen(ClinicalSchemaMixin, CDMTableBase, Base):
     __tablename__ = "specimen"
     __table_args__ = merge_table_args(
         omop_index(__tablename__, "person_id", cluster=True),

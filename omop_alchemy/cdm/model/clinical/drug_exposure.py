@@ -10,6 +10,7 @@ from omop_alchemy.cdm.base import (
     ReferenceContext,
     CDMTableBase,
     cdm_table, 
+    ClinicalSchemaMixin,
     required_concept_fk,
     optional_concept_fk,
     optional_int,
@@ -24,6 +25,7 @@ if TYPE_CHECKING:
 
 @cdm_table
 class Drug_Exposure(
+    ClinicalSchemaMixin,
     PersonScoped,
     CDMTableBase,
     FactTable,

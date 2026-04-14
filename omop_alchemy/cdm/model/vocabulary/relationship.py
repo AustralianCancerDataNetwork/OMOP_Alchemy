@@ -5,12 +5,13 @@ from omop_alchemy.cdm.base import (
     ReferenceTable,
     cdm_table,
     CDMTableBase,
+    VocabularySchemaMixin,
     merge_table_args,
     omop_index
 )
 
 @cdm_table
-class Relationship(Base, ReferenceTable, CDMTableBase):
+class Relationship(VocabularySchemaMixin, Base, ReferenceTable, CDMTableBase):
     __tablename__ = "relationship"
     __table_args__ = merge_table_args(
         omop_index(__tablename__, "relationship_id", cluster=True),

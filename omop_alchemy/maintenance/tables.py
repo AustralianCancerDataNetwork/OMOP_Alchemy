@@ -71,6 +71,13 @@ def qualified_table_name(table_name: str, db_schema: str | None) -> str:
     return table_name
 
 
+def maintenance_table_schema(
+    table: MaintenanceTable,
+    db_schema: str | None,
+) -> str | None:
+    return db_schema if db_schema is not None else table.table.schema
+
+
 def categories_for_scope(scope: TableScope) -> tuple[TableCategory, ...]:
     if scope is TableScope.ALL:
         return tuple(TableCategory)
@@ -241,7 +248,10 @@ def existing_maintenance_tables(
             vocabulary_included=vocabulary_included,
             require_single_integer_primary_key=require_single_integer_primary_key,
         )
-        if inspector.has_table(table.table_name, schema=db_schema)
+        if inspector.has_table(
+            table.table_name,
+            schema=maintenance_table_schema(table, db_schema),
+        )
     ]
 
 
@@ -254,7 +264,10 @@ def missing_maintenance_tables(
     return [
         table
         for table in select_omop_tables(vocabulary_included=vocabulary_included)
-        if not inspector.has_table(table.table_name, schema=db_schema)
+        if not inspector.has_table(
+            table.table_name,
+            schema=maintenance_table_schema(table, db_schema),
+        )
     ]
 
 
@@ -263,16 +276,36 @@ def schema_adjusted_metadata(
     *,
     db_schema: str | None,
 ) -> tuple[sa.MetaData, dict[str, sa.Table]]:
+    tables = list(tables)
     metadata = sa.MetaData()
     adjusted_tables: dict[str, sa.Table] = {}
 
+    resolved_schemas = {
+        maintenance_table.table_name: maintenance_table_schema(maintenance_table, db_schema)
+        for maintenance_table in tables
+    }
+
+    def referred_schema_fn(
+        _source_table: sa.Table,
+        to_schema: str | None,
+        constraint: sa.ForeignKeyConstraint,
+        referred_schema: str | None,
+    ) -> str | None:
+        referred_table_name = next(iter(constraint.elements)).column.table.name
+        return resolved_schemas.get(referred_table_name, to_schema or referred_schema)
+
     for maintenance_table in tables:
-        adjusted_tables[maintenance_table.table_name] = maintenance_table.table.to_metadata(
-            metadata,
-            schema=db_schema,
-            referred_schema_fn=(
-                lambda _table, to_schema, _constraint, _referred_schema: to_schema
-            ),
-        )
+        schema_name = resolved_schemas[maintenance_table.table_name]
+        if schema_name is None:
+            adjusted_tables[maintenance_table.table_name] = maintenance_table.table.to_metadata(
+                metadata,
+                referred_schema_fn=referred_schema_fn,
+            )
+        else:
+            adjusted_tables[maintenance_table.table_name] = maintenance_table.table.to_metadata(
+                metadata,
+                schema=schema_name,
+                referred_schema_fn=referred_schema_fn,
+            )
 
     return metadata, adjusted_tables

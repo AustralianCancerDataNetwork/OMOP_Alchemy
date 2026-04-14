@@ -5,10 +5,11 @@ from orm_loader.helpers import Base
 from omop_alchemy.cdm.base import (
     cdm_table,
     CDMTableBase,
+    DerivedSchemaMixin,
 )
 
 @cdm_table
-class Cohort(CDMTableBase, Base):
+class Cohort(DerivedSchemaMixin, CDMTableBase, Base):
     __tablename__ = "cohort"
 
     cohort_definition_id: so.Mapped[int] = so.mapped_column(primary_key=True)

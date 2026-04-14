@@ -10,6 +10,7 @@ from omop_alchemy.cdm.base import (
     FactTable, 
     CDMTableBase,
     cdm_table, 
+    ClinicalSchemaMixin,
     required_concept_fk,
     optional_concept_fk,
     optional_int,
@@ -20,6 +21,7 @@ from omop_alchemy.cdm.base import (
 
 @cdm_table
 class Device_Exposure(
+    ClinicalSchemaMixin,
     PersonScoped,
     CDMTableBase,
     FactTable,

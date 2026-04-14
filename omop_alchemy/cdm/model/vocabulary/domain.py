@@ -5,12 +5,13 @@ from omop_alchemy.cdm.base import (
     ReferenceTable,
     cdm_table,
     CDMTableBase,
+    VocabularySchemaMixin,
     merge_table_args,
     omop_index
 )
 
 @cdm_table
-class Domain(Base, ReferenceTable, CDMTableBase):
+class Domain(VocabularySchemaMixin, Base, ReferenceTable, CDMTableBase):
     __tablename__ = "domain"
     __table_args__ = merge_table_args(
         omop_index(__tablename__, "domain_id", cluster=True),
