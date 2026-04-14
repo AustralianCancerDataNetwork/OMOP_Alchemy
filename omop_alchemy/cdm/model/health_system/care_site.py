@@ -6,6 +6,7 @@ from orm_loader.helpers import Base
 from omop_alchemy.cdm.base import (
     cdm_table,
     CDMTableBase,
+    HealthSystemSchemaMixin,
     optional_concept_fk,
     merge_table_args,
     omop_index,
@@ -14,7 +15,7 @@ from omop_alchemy.cdm.base import (
 )
 
 @cdm_table
-class Care_Site(CDMTableBase, Base):
+class Care_Site(HealthSystemSchemaMixin, CDMTableBase, Base):
     __tablename__ = "care_site"
     __table_args__ = merge_table_args(
         omop_index(__tablename__, "place_of_service_concept_id"),

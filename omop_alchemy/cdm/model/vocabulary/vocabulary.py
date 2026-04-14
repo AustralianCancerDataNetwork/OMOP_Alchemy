@@ -19,12 +19,13 @@ from omop_alchemy.cdm.base import (
     ReferenceTable,
     cdm_table,
     CDMTableBase,
+    VocabularySchemaMixin,
     merge_table_args,
     omop_index
 )
 
 @cdm_table
-class Vocabulary(Base, ReferenceTable, CDMTableBase):
+class Vocabulary(VocabularySchemaMixin, Base, ReferenceTable, CDMTableBase):
     __tablename__ = "vocabulary"
     __table_args__ = merge_table_args(
         omop_index(__tablename__, "vocabulary_id", cluster=True),

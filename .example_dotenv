@@ -1,2 +1,10 @@
 ENGINE=sqlite://///your/database/url/goes/here/test.db
 SOURCE_PATH=/where/do/you/keep/unzipped/athena_source/files/
+OMOP_CLINICAL_SCHEMA=omop
+OMOP_HEALTH_SYSTEM_SCHEMA=omop
+OMOP_HEALTH_ECONOMIC_SCHEMA=omop
+OMOP_STRUCTURAL_SCHEMA=omop
+OMOP_UNSTRUCTURED_SCHEMA=omop
+OMOP_METADATA_SCHEMA=omop
+OMOP_VOCABULARY_SCHEMA=vocabulary
+OMOP_DERIVED_SCHEMA=results

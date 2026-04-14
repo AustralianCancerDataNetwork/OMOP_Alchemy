@@ -8,6 +8,7 @@ from ..backend_support import Dialect, require_backend
 from .tables import (
     TableCategory,
     TableScope,
+    maintenance_table_schema,
     qualified_table_name,
     resolve_maintenance_tables,
 )
@@ -64,7 +65,10 @@ def analyze_tables(
 
     with connection_factory as connection:
         for maintenance_table in selected_tables:
-            if not inspector.has_table(maintenance_table.table_name, schema=db_schema):
+            if not inspector.has_table(
+                maintenance_table.table_name,
+                schema=maintenance_table_schema(maintenance_table, db_schema),
+            ):
                 results.append(
                     AnalyzeTableResult(
                         table_name=maintenance_table.table_name,

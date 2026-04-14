@@ -11,6 +11,7 @@ from orm_loader.helpers import Base
 from omop_alchemy.cdm.base import (
     cdm_table,
     CDMTableBase, 
+    ClinicalSchemaMixin,
     required_concept_fk,
     optional_concept_fk,
     required_int,
@@ -31,7 +32,7 @@ from .death import Death
 from ..derived import Observation_Period
 
 @cdm_table
-class Person(CDMTableBase,Base,HealthSystemContext):
+class Person(ClinicalSchemaMixin, CDMTableBase,Base,HealthSystemContext):
     __tablename__ = "person"
     __table_args__ = merge_table_args(
         omop_index(__tablename__, "gender_concept_id"),

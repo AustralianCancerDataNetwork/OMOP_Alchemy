@@ -16,6 +16,7 @@ from omop_alchemy.cdm.base import (
     cdm_table,
     CDMTableBase,
     ReferenceContext,
+    VocabularySchemaMixin,
     merge_table_args,
     omop_index,
     omop_primary_key_index_name,
@@ -24,6 +25,7 @@ from omop_alchemy.cdm.base import (
 
 @cdm_table
 class Concept(
+    VocabularySchemaMixin,
     ReferenceTable,
     CDMTableBase,
     Base

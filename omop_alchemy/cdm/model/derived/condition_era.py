@@ -6,13 +6,14 @@ from orm_loader.helpers import Base
 from omop_alchemy.cdm.base import (
     cdm_table,
     CDMTableBase,
+    DerivedSchemaMixin,
     required_concept_fk,
     merge_table_args,
     omop_index,
 )
 
 @cdm_table
-class Condition_Era(CDMTableBase, Base):
+class Condition_Era(DerivedSchemaMixin, CDMTableBase, Base):
     __tablename__ = "condition_era"
     __table_args__ = merge_table_args(
         omop_index(__tablename__, "person_id", cluster=True),

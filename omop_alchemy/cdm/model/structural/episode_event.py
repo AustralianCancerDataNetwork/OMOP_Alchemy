@@ -6,6 +6,7 @@ from orm_loader.helpers import Base, get_model_by_tablename # type: ignore
 from omop_alchemy.cdm.base import (
     cdm_table,
     CDMTableBase, 
+    StructuralSchemaMixin,
     ReferenceContext,
     DomainValidationMixin,
     ExpectedDomain,
@@ -18,7 +19,7 @@ if TYPE_CHECKING:
     from .episode import Episode
 
 @cdm_table
-class Episode_Event(CDMTableBase, Base):
+class Episode_Event(StructuralSchemaMixin, CDMTableBase, Base):
     __tablename__ = "episode_event"
     __table_args__ = merge_table_args(
         omop_index(__tablename__, "episode_id", cluster=True),

@@ -10,6 +10,7 @@ from orm_loader.helpers import Base
 from omop_alchemy.cdm.base import (
     cdm_table,
     CDMTableBase,
+    HealthSystemSchemaMixin,
     ReferenceContext,
     required_concept_fk,
     optional_concept_fk,    
@@ -28,7 +29,7 @@ from ..health_system.provider import Provider
 
 
 @cdm_table
-class Visit_Occurrence(CDMTableBase, Base):
+class Visit_Occurrence(HealthSystemSchemaMixin, CDMTableBase, Base):
     __tablename__ = "visit_occurrence"
     __table_args__ = merge_table_args(
         omop_index(__tablename__, "person_id", cluster=True),
