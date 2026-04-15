@@ -96,6 +96,7 @@ class ConceptFilter(BaseConceptFilter):
     domains: Optional[Tuple[str, ...]] = field(default=None)
     vocabularies: Optional[Tuple[str, ...]] = field(default=None)
     require_standard: bool = False
+    limit: Optional[int] = None
 
     def apply(self, query: Select) -> Select:
         """
@@ -124,4 +125,4 @@ class ConceptFilter(BaseConceptFilter):
             # Filters for 'S' (Standard) or 'C' (Classification)
             query = query.where(Concept.standard_concept.in_(["S", "C"]))
 
-        return query
+        return query.limit(self.limit)
