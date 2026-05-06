@@ -86,3 +86,6 @@
 - add `omop-maint fulltext install`, `populate`, and `drop` commands
 - document manual refresh expectations for sidecar `tsvector` columns
 
+## 0.6.1
+- upversion orm-loader
+- set minimum versions per dependabot (dev and required deps)

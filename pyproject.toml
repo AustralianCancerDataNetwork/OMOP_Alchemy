@@ -1,6 +1,6 @@
 [project]
 name = "omop-alchemy"
-version = "0.6.0"
+version = "0.6.1"
 description = "SQLAlchemy-based models, validation, and utilities for the OHDSI OMOP Common Data Model"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -19,7 +19,6 @@ keywords = [
   "real-world-evidence"
 ]
 
-
 classifiers = [
   "Development Status :: 4 - Beta",
   "Intended Audience :: Science/Research",
@@ -34,10 +33,10 @@ dependencies = [
   "sqlalchemy>=2.0.45",
   "pandas>=2.0",
   "pyyaml>=6.0",
-  "python-dotenv>=1.0",
+  "python-dotenv>=1.2.2",
   "typer>=0.12",
   "rich>=13.0",
-  "orm-loader>=0.3.25",
+  "orm-loader>=0.3.27",
 ]
 
 [project.optional-dependencies]
@@ -48,7 +47,8 @@ postgres = [
 
 dev = [
   "ipython>=8.0",
-  "pytest>=7.0",
+  "requests>=2.33.0",
+  "pytest>=9.0.3",
   "pytest-cov>=4.0",
   "mypy>=1.8",
   "ruff>=0.4",

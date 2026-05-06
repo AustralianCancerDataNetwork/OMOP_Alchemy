@@ -63,3 +63,5 @@ logging/
 *.log
 .devcontainer/
 .vscode/
+_temp/
+temp/
