@@ -862,7 +862,7 @@ wheels = [
 
 [[package]]
 name = "omop-alchemy"
-version = "0.6.1"
+version = "0.6.2"
 source = { editable = "." }
 dependencies = [
     { name = "orm-loader" },
@@ -905,7 +905,7 @@ requires-dist = [
     { name = "mkdocstrings-python", marker = "extra == 'dev'", specifier = ">=2.0.1" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.8" },
     { name = "myst-parser", marker = "extra == 'docs'" },
-    { name = "orm-loader", specifier = ">=0.3.27" },
+    { name = "orm-loader", specifier = ">=0.3.27,<4.0" },
     { name = "pandas", specifier = ">=2.0" },
     { name = "psycopg", extras = ["binary"], marker = "extra == 'postgres'", specifier = ">=3.2" },
     { name = "psycopg2-binary", marker = "extra == 'postgres'", specifier = ">=2.9" },

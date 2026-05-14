@@ -1,6 +1,6 @@
 [project]
 name = "omop-alchemy"
-version = "0.6.1"
+version = "0.6.2"
 description = "SQLAlchemy-based models, validation, and utilities for the OHDSI OMOP Common Data Model"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -36,7 +36,7 @@ dependencies = [
   "python-dotenv>=1.2.2",
   "typer>=0.12",
   "rich>=13.0",
-  "orm-loader>=0.3.27",
+  "orm-loader>=0.3.27,<0.4.0",
 ]
 
 [project.optional-dependencies]
