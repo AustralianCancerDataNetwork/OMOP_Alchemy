@@ -73,6 +73,18 @@ This project is currently beta.
 
 The API is stabilising, but some modules may change as real-world use cases expand. Feedback and issues are welcome.
 
+## Publishing Plain SQL DDL
+
+If a recipient site cannot run Python, generate a plain SQL artifact from the ORM
+metadata ahead of time and distribute that file instead:
+
+```bash
+omop-maint export-ddl --dialect postgresql --db-schema cdm --output-path ./dist/omop_cdm_postgresql.sql
+```
+
+That keeps Python on the publishing side only; downstream sites can apply the
+resulting `.sql` with their usual database tooling.
+
 ### Some additional background
 
 This work builds on earlier research and tooling presented at the 2023 OHDSI APAC Symposium

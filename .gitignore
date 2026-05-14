@@ -65,3 +65,4 @@ logging/
 .vscode/
 _temp/
 temp/
+*.dump

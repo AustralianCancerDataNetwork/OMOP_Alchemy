@@ -31,6 +31,7 @@ from .foreign_keys import (
     manage_foreign_key_triggers,
     validate_foreign_key_constraints,
 )
+from .export_ddl import DDLDialect, export_ddl
 from .doctor import collect_doctor_report
 from .help import install_help_customizations
 from .info import collect_maintenance_info
@@ -54,6 +55,8 @@ from .ui import (
     render_doctor_checks,
     render_doctor_recommendations,
     render_doctor_summary,
+    render_ddl_export_result,
+    render_ddl_export_summary,
     render_error,
     render_foreign_key_note,
     render_foreign_key_results,
@@ -710,6 +713,62 @@ def create_missing_tables_command(
             )
         console.print(render_table_creation_results(results))
         console.print(render_table_creation_summary(results, dry_run=dry_run))
+    except Exception as exc:
+        _handle_cli_error(exc)
+
+
+@app.command(
+    "export-ddl",
+    help="Compile ORM-managed OMOP metadata into a distributable plain SQL DDL script.",
+)
+def export_ddl_command(
+    output_path: str | None = typer.Option(
+        None,
+        help="Output SQL file path. Defaults to ./omop_cdm_<dialect>.sql.",
+    ),
+    dialect: DDLDialect = typer.Option(
+        DDLDialect.POSTGRESQL,
+        "--dialect",
+        case_sensitive=False,
+        help="Target SQL dialect for rendered DDL.",
+    ),
+    db_schema: str | None = typer.Option(None, help="Database schema to qualify in rendered DDL."),
+    vocabulary_included: bool = typer.Option(True, "--vocab/--no-vocab"),
+    indexes_included: bool = typer.Option(True, "--indexes/--no-indexes"),
+    schema_statement_included: bool = typer.Option(
+        True,
+        "--create-schema/--no-create-schema",
+        help="Include a CREATE SCHEMA statement when --db-schema is set.",
+    ),
+    if_not_exists: bool = typer.Option(
+        True,
+        "--if-not-exists/--no-if-not-exists",
+        help="Render idempotent CREATE statements when supported by the target dialect.",
+    ),
+) -> None:
+    resolved_output_path = output_path or f"./omop_cdm_{dialect.value}.sql"
+    console.print(
+        render_command_header(
+            command_name="export-ddl",
+            engine_schema="offline metadata",
+            db_schema=db_schema,
+            vocabulary_included=vocabulary_included,
+            mode_label="write",
+        )
+    )
+    try:
+        with console.status("Compiling ORM metadata into distributable SQL DDL..."):
+            result = export_ddl(
+                output_path=resolved_output_path,
+                dialect=dialect,
+                db_schema=db_schema,
+                vocabulary_included=vocabulary_included,
+                indexes_included=indexes_included,
+                schema_statement_included=schema_statement_included,
+                if_not_exists=if_not_exists,
+            )
+        console.print(render_ddl_export_result(result))
+        console.print(render_ddl_export_summary(result))
     except Exception as exc:
         _handle_cli_error(exc)
 

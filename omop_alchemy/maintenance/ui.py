@@ -18,6 +18,7 @@ from .create_tables import TableCreationResult
 from .data_summary import TableSummaryResult
 from .defaults import ConnectionDefaults
 from .doctor import DoctorCheck, DoctorRecommendation, DoctorReport
+from .export_ddl import DDLExportResult
 from .foreign_keys import (
     ForeignKeyAction,
     ForeignKeyManagementResult,
@@ -262,6 +263,42 @@ def render_backup_summary(result: DatabaseBackupResult, *, dry_run: bool) -> Pan
         "Backup planned; no dump file was created." if dry_run else "Backup completed; artifact is ready for restore.",
     )
     return Panel.fit(grid, title="[bold]Summary[/bold]", border_style="cyan" if dry_run else "green")
+
+
+def render_ddl_export_result(result: DDLExportResult) -> Panel:
+    grid = Table.grid(padding=(0, 2))
+    grid.add_column(style="bold cyan")
+    grid.add_column()
+    grid.add_row("Status", _status_text(result.status))
+    grid.add_row("Dialect", backend_label(result.dialect.value))
+    grid.add_row("Schema", result.db_schema or "default")
+    grid.add_row("Output", result.output_path)
+    grid.add_row("Vocabulary", _bool_label(result.vocabulary_included))
+    grid.add_row("Indexes", _bool_label(result.indexes_included))
+    grid.add_row("Create schema", _bool_label(result.schema_statement_included))
+    grid.add_row("Tables", str(result.table_count))
+    if result.indexes_included:
+        grid.add_row("Indexes emitted", str(result.index_count))
+    grid.add_row("Statements", str(result.statement_count))
+    grid.add_row("Detail", result.detail)
+    return Panel.fit(
+        grid,
+        title="[bold]DDL Export[/bold]",
+        border_style="green",
+    )
+
+
+def render_ddl_export_summary(result: DDLExportResult) -> Panel:
+    grid = Table.grid(padding=(0, 2))
+    grid.add_column(style="bold cyan")
+    grid.add_column()
+    grid.add_row("Artifact", result.output_path)
+    grid.add_row("Dialect", backend_label(result.dialect.value))
+    grid.add_row(
+        "Summary",
+        "Distribute this SQL file to recipient sites and run it with their native database tooling.",
+    )
+    return Panel.fit(grid, title="[bold]Summary[/bold]", border_style="green")
 
 
 def render_restore_result(result: DatabaseRestoreResult) -> Panel:

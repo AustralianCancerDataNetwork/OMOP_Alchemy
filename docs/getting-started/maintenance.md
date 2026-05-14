@@ -65,7 +65,7 @@ Resolution order:
 
 | Area | Commands |
 | --- | --- |
-| Backend-agnostic | `info`, `doctor`, `data-summary`, `reconcile-schema`, `create-missing-tables`, `indexes`, `load-vocab-source`, `analyze-tables` (PostgreSQL/SQLite) |
+| Backend-agnostic | `info`, `doctor`, `data-summary`, `reconcile-schema`, `create-missing-tables`, `export-ddl`, `indexes`, `load-vocab-source`, `analyze-tables` (PostgreSQL/SQLite) |
 | PostgreSQL-only | `backup-database`, `restore-database`, `fulltext`, `reset-sequences`, `truncate-tables`, `foreign-keys` |
 
 If a PostgreSQL-only command runs on an unsupported backend, the CLI returns a short
@@ -82,6 +82,7 @@ user-facing error.
 | `data-summary` | Show managed tables and row counts | `--vocab`, `--include-missing` | All |
 | `reconcile-schema` | Inspect drift between ORM and live schema | `--vocab` | All |
 | `create-missing-tables` | Create absent ORM-managed tables | `--dry-run`, `--no-vocab` | All |
+| `export-ddl` | Render ORM metadata as distributable SQL | `--dialect`, `--db-schema`, `--output-path` | All |
 | `load-vocab-source` | Load Athena vocab CSVs | `--athena-source`, `--dry-run`, `--merge-strategy` | PostgreSQL, SQLite |
 | `truncate-tables` | Truncate selected tables | `--scope` or `--table`, `--yes`, `--cascade`, `--restart-identities` | PostgreSQL |
 | `reset-sequences` | Reset owned PK sequences to `MAX(pk) + 1` | `--dry-run`, `--vocab` | PostgreSQL |
@@ -110,7 +111,12 @@ omop-maint doctor --deep
 omop-maint reconcile-schema
 omop-maint create-missing-tables --dry-run
 omop-maint create-missing-tables
+omop-maint export-ddl --dialect postgresql --db-schema cdm --output-path ./dist/omop_cdm_postgresql.sql
 ```
+
+`export-ddl` is intended for sharing and distribution: generate the SQL once in an
+environment that can run Python, then send the resulting `.sql` artifact to sites
+that only allow native database tooling.
 
 ### Vocabulary
 
