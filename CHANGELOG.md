@@ -89,3 +89,6 @@
 ## 0.6.1
 - upversion orm-loader
 - set minimum versions per dependabot (dev and required deps)
+
+## 0.6.2
+- setting maximum version for orm-loader to allow for breaking changes
