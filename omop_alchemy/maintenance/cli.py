@@ -826,8 +826,8 @@ def load_vocab_source_command(
         help="CSV merge strategy passed to the ORM loader. Defaults to non-destructive `upsert`; use `replace` to overwrite matching primary keys.",
     ),
     chunksize: int | None = typer.Option(
-        None,
-        help="Chunk size for fallback ORM CSV loading to reduce memory usage on large Athena files.",
+        100_000,
+        help="Chunk size for fallback ORM CSV loading. Defaults to 100 000 rows; pass 0 to disable chunking.",
     ),
     dry_run: bool = typer.Option(False, "--dry-run"),
 ) -> None:
@@ -895,25 +895,15 @@ def load_vocab_source_command(
                         )
                     )
 
-            if chunksize is None:
-                report = load_vocab_source(
-                    engine,
-                    source_path=connection_defaults.athena_source,
-                    db_schema=connection_defaults.db_schema,
-                    dry_run=dry_run,
-                    merge_strategy=merge_strategy,
-                    progress_callback=_update_progress,
-                )
-            else:
-                report = load_vocab_source(
-                    engine,
-                    source_path=connection_defaults.athena_source,
-                    db_schema=connection_defaults.db_schema,
-                    dry_run=dry_run,
-                    merge_strategy=merge_strategy,
-                    chunksize=chunksize,
-                    progress_callback=_update_progress,
-                )
+            report = load_vocab_source(
+                engine,
+                source_path=connection_defaults.athena_source,
+                db_schema=connection_defaults.db_schema,
+                dry_run=dry_run,
+                merge_strategy=merge_strategy,
+                chunksize=chunksize or None,
+                progress_callback=_update_progress,
+            )
             progress.update(
                 task_id,
                 completed=100.0,

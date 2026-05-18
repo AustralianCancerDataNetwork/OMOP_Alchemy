@@ -150,7 +150,7 @@ def _load_vocab_model_csv(
     model: VocabularyModel,
     csv_path: Path,
     merge_strategy: str,
-    quote_mode: str = "csv",
+    quote_mode: str = "auto",
     chunksize: int | None = None,
 ) -> int:
     load_kwargs: dict[str, object] = {
@@ -271,7 +271,7 @@ def load_vocab_source(
     db_schema: str | None = None,
     dry_run: bool = False,
     merge_strategy: str = "replace",
-    chunksize: int | None = None,
+    chunksize: int | None = 100_000,
     progress_callback: VocabularyLoadProgressCallback | None = None,
 ) -> VocabularyLoadReport:
     _ensure_supported_backend(engine)
@@ -396,7 +396,7 @@ def load_vocab_source(
                             row_count=None,
                             csv_path=str(csv_path),
                             required=required,
-                            detail="Athena CSV would be loaded via staged ORM CSV loader using tab-delimited input and literal quote mode",
+                            detail="Athena CSV would be loaded via staged ORM CSV loader using tab-delimited input and auto-detected quote mode",
                         )
                     )
                     continue
@@ -405,7 +405,7 @@ def load_vocab_source(
                     "model": model,
                     "csv_path": csv_path,
                     "merge_strategy": merge_strategy,
-                    "quote_mode": "literal",
+                    "quote_mode": "auto",
                 }
                 if chunksize is not None:
                     loader_kwargs["chunksize"] = chunksize
@@ -465,7 +465,7 @@ def load_vocab_source(
                         row_count=row_count,
                         csv_path=str(csv_path),
                         required=required,
-                        detail="Athena CSV loaded via staged ORM CSV loader using tab-delimited input and literal quote mode",
+                        detail="Athena CSV loaded via staged ORM CSV loader using tab-delimited input and auto-detected quote mode",
                     )
                 )
             if not dry_run:
