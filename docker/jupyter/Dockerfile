@@ -2,26 +2,25 @@ FROM quay.io/jupyter/minimal-notebook:python-3.13
 
 USER root
 
-# Force uv install location
-ENV HOME=/root
-ENV PATH="/root/.local/bin:${PATH}"
+ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
+    UV_CACHE_DIR=/tmp/uv-cache \
+    VIRTUAL_ENV=/opt/venv \
+    PATH="/opt/venv/bin:/usr/local/bin:${PATH}"
 
-# Install uv
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
-# Create uv venv
-RUN uv venv /opt/venv
-ENV VIRTUAL_ENV=/opt/venv
-ENV PATH="/opt/venv/bin:${PATH}"
+WORKDIR /opt/omop-alchemy
 
-# Install Python deps
-RUN uv pip install omop-alchemy psycopg2-binary pip omop-graph
-RUN /opt/venv/bin/python -m pip install ipykernel && \
-    /opt/venv/bin/python -m ipykernel install \
+COPY LICENSE README.md pyproject.toml uv.lock ./
+COPY omop_alchemy ./omop_alchemy
+
+RUN uv sync --frozen --extra postgres \
+ && /opt/venv/bin/python -m pip install ipykernel \
+ && /opt/venv/bin/python -m ipykernel install \
         --name uv-venv \
-        --display-name "Python (uv venv)"
-# Switch back to notebook user
+        --display-name "Python (uv venv)" \
+ && chown -R jovyan:users /opt/omop-alchemy /opt/venv
+
 USER jovyan
 ENV HOME=/home/jovyan
-COPY ./.env /home/jovyan/work/.env
 WORKDIR /home/jovyan/work

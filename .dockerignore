@@ -1,0 +1,14 @@
+.git
+.github
+.pytest_cache
+.venv
+.vscode
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+*.egg-info
+_temp
+docker/data
+notebooks
+tests

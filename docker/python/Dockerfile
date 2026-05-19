@@ -1,47 +1,46 @@
-# ---- Stage 1: postgres tools ----
-FROM postgres:18 AS pgtools
+FROM python:3.13-slim
 
-# ---- Stage 2: python ----
-FROM python:3.13
+ARG INSTALL_DEV=false
 
 ENV PYTHONPYCACHEPREFIX=/tmp/pycache \
     PYTHONUNBUFFERED=1 \
-    UV_PROJECT_ENVIRONMENT=/home/vscode/.venv \
-    UV_CACHE_DIR=/home/vscode/.cache/uv \
-    PATH="/usr/local/bin:/home/vscode/.venv/bin:$PATH" \
+    UV_PROJECT_ENVIRONMENT=/opt/venv \
+    UV_CACHE_DIR=/tmp/uv-cache \
+    VIRTUAL_ENV=/opt/venv \
+    PATH="/opt/venv/bin:/usr/local/bin:$PATH" \
     LANG=C.UTF-8 \
     LC_ALL=C.UTF-8
 
-# system deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    git \
-    curl \
     bash \
     bash-completion \
+    curl \
+    git \
     less \
+    postgresql-client \
     vim \
  && rm -rf /var/lib/apt/lists/*
 
-# copy binaries from pgtools stage
-COPY --from=pgtools /usr/lib/postgresql /usr/lib/postgresql
-COPY --from=pgtools /usr/lib/aarch64-linux-gnu/libpq* /usr/lib/aarch64-linux-gnu/
-
-RUN ln -s /usr/lib/postgresql/18/bin/psql /usr/local/bin/psql \
- && ln -s /usr/lib/postgresql/18/bin/pg_dump /usr/local/bin/pg_dump \
- && ln -s /usr/lib/postgresql/18/bin/pg_restore /usr/local/bin/pg_restore
-     
-# ---- uv install ----
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
-# ---- User setup ----
-RUN useradd -m -s /bin/bash vscode
+RUN useradd -m -s /bin/bash omop
+
+WORKDIR /opt/omop-alchemy
+
+COPY LICENSE README.md pyproject.toml uv.lock ./
+COPY omop_alchemy ./omop_alchemy
+
+RUN if [ "$INSTALL_DEV" = "true" ]; then \
+        uv sync --frozen --extra postgres --extra dev; \
+    else \
+        uv sync --frozen --extra postgres; \
+    fi \
+ && chown -R omop:omop /opt/omop-alchemy /opt/venv
+
+RUN printf '\nif [ -f /opt/venv/bin/activate ] && [ -z "$VIRTUAL_ENV" ]; then\n  . /opt/venv/bin/activate\nfi\n' >> /home/omop/.bashrc \
+ && chown omop:omop /home/omop/.bashrc
 
 WORKDIR /workspace
-
-# ---- Auto-activate venv ----
-RUN printf '\nif [ -f /home/vscode/.venv/bin/activate ] && [ -z "$VIRTUAL_ENV" ]; then\n  . /home/vscode/.venv/bin/activate\nfi\n' >> /home/vscode/.bashrc \
- && chown vscode:vscode /home/vscode/.bashrc
-
-USER vscode
+USER omop
 
 CMD ["sleep", "infinity"]
