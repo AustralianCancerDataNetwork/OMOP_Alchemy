@@ -829,6 +829,11 @@ def load_vocab_source_command(
         100_000,
         help="Chunk size for fallback ORM CSV loading. Defaults to 100 000 rows; pass 0 to disable chunking.",
     ),
+    initial_load: bool = typer.Option(
+        False,
+        "--initial-load",
+        help="Assume target vocabulary tables are empty and use the first-load fast path for a fresh Athena vocabulary load.",
+    ),
     dry_run: bool = typer.Option(False, "--dry-run"),
 ) -> None:
     connection_defaults = _resolve_connection_context(
@@ -853,6 +858,14 @@ def load_vocab_source_command(
                 "No Athena vocabulary source path is configured. "
                 "Set it with `omop-alchemy config set-overrides --athena-source <path>` "
                 "or pass `--athena-source`."
+            )
+        )
+        raise typer.Exit(code=1)
+
+    if initial_load and merge_strategy != "replace":
+        console.print(
+            render_error(
+                "`--initial-load` cannot be combined with `--merge-strategy` values other than `replace`."
             )
         )
         raise typer.Exit(code=1)
@@ -901,6 +914,7 @@ def load_vocab_source_command(
                 db_schema=connection_defaults.db_schema,
                 dry_run=dry_run,
                 merge_strategy=merge_strategy,
+                initial_load=initial_load,
                 chunksize=None if chunksize == 0 else chunksize,
                 progress_callback=_update_progress,
             )

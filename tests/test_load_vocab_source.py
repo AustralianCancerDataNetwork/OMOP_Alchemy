@@ -169,6 +169,7 @@ def test_load_vocab_source_cli_uses_saved_athena_source(monkeypatch):
         db_schema: str | None = None,
         dry_run: bool = False,
         merge_strategy: str = "replace",
+        initial_load: bool = False,
         chunksize: int | None = None,
         progress_callback=None,
     ):
@@ -179,6 +180,7 @@ def test_load_vocab_source_cli_uses_saved_athena_source(monkeypatch):
         calls["db_schema"] = db_schema
         calls["dry_run"] = dry_run
         calls["merge_strategy"] = merge_strategy
+        calls["initial_load"] = initial_load
         return VocabularyLoadReport(
             source_path=str(source_path),
             backend="sqlite",
@@ -241,8 +243,98 @@ def test_load_vocab_source_cli_uses_saved_athena_source(monkeypatch):
         assert calls["engine"] == "ENGINE"
         assert calls["source_path"] == expected_source_path
         assert calls["merge_strategy"] == "replace"
+        assert calls["initial_load"] is False
         assert "load-vocab-source" in result.stdout
         assert "concept" in result.stdout
+
+
+def test_load_vocab_source_cli_initial_load_uses_first_load_fast_path(monkeypatch):
+    """CLI --initial-load forwards the fresh-load intent to load_vocab_source()."""
+    calls: dict[str, object] = {}
+
+    def fake_build_engine(*, dotenv: str | None, engine_schema: str | None):
+        return "ENGINE"
+
+    def fake_load_vocab_source(
+        engine: object,
+        *,
+        source_path: str | Path,
+        db_schema: str | None = None,
+        dry_run: bool = False,
+        merge_strategy: str = "replace",
+        initial_load: bool = False,
+        chunksize: int | None = None,
+        progress_callback=None,
+    ):
+        from omop_alchemy.maintenance.load_vocab import VocabularyLoadReport, VocabularyLoadResult
+
+        calls["engine"] = engine
+        calls["merge_strategy"] = merge_strategy
+        calls["initial_load"] = initial_load
+        effective_merge_strategy = "insert_if_empty" if initial_load else merge_strategy
+        return VocabularyLoadReport(
+            source_path=str(source_path),
+            backend="sqlite",
+            db_schema=db_schema,
+            merge_strategy=effective_merge_strategy,
+            created_table_count=0,
+            sequence_reset_count=0,
+            results=(
+                VocabularyLoadResult(
+                    table_name="concept",
+                    status="planned",
+                    row_count=None,
+                    csv_path=str(Path(source_path) / "CONCEPT.csv"),
+                    required=True,
+                    detail="Athena CSV would be loaded via staged ORM CSV loader",
+                ),
+            ),
+        )
+
+    monkeypatch.setattr(
+        "omop_alchemy.maintenance.cli._build_engine",
+        fake_build_engine,
+    )
+    monkeypatch.setattr(
+        "omop_alchemy.maintenance.cli.load_vocab_source",
+        fake_load_vocab_source,
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "load-vocab-source",
+            "--athena-source",
+            str(_athena_source_path()),
+            "--initial-load",
+            "--dry-run",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert calls["engine"] == "ENGINE"
+    assert calls["merge_strategy"] == "replace"
+    assert calls["initial_load"] is True
+
+
+def test_load_vocab_source_cli_rejects_initial_load_with_non_replace_strategy():
+    """CLI should reject combining --initial-load with a conflicting merge strategy."""
+    result = runner.invoke(
+        app,
+        [
+            "load-vocab-source",
+            "--athena-source",
+            str(_athena_source_path()),
+            "--initial-load",
+            "--merge-strategy",
+            "upsert",
+            "--dry-run",
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "--initial-load" in result.stdout
+    assert "replace" in result.stdout
 
 
 def test_load_vocab_model_csv_passes_quote_mode(monkeypatch, tmp_path):
@@ -323,6 +415,51 @@ def test_load_vocab_source_loads_smallest_files_first(monkeypatch, tmp_path):
     load_vocab_source(engine, source_path=source_path)
 
     assert loaded_order[:3] == ["domain", "concept_class", "vocabulary"]
+
+
+def test_load_vocab_source_initial_load_maps_to_insert_if_empty(monkeypatch, tmp_path):
+    """initial_load=True maps the vocab loader onto orm-loader's insert-if-empty path."""
+    engine = sa.create_engine(f"sqlite:///{tmp_path / 'load_vocab_source_initial_load.db'}", future=True)
+    source_path = _build_required_athena_source(tmp_path)
+
+    received_merge_strategies: list[str] = []
+
+    def fake_load_vocab_model_csv(
+        session,
+        *,
+        model,
+        csv_path,
+        merge_strategy,
+        quote_mode="auto",
+        chunksize=None,
+    ) -> int:
+        received_merge_strategies.append(merge_strategy)
+        return 1
+
+    monkeypatch.setattr(
+        "omop_alchemy.maintenance.load_vocab._load_vocab_model_csv",
+        fake_load_vocab_model_csv,
+    )
+
+    report = load_vocab_source(engine, source_path=source_path, initial_load=True)
+
+    assert report.merge_strategy == "insert_if_empty"
+    assert received_merge_strategies
+    assert all(strategy == "insert_if_empty" for strategy in received_merge_strategies)
+
+
+def test_load_vocab_source_rejects_initial_load_with_non_replace_strategy(tmp_path):
+    """initial_load=True cannot be combined with a conflicting merge strategy."""
+    engine = sa.create_engine(f"sqlite:///{tmp_path / 'load_vocab_source_initial_load_error.db'}", future=True)
+    source_path = _build_required_athena_source(tmp_path)
+
+    with pytest.raises(ValueError, match="initial_load=True"):
+        load_vocab_source(
+            engine,
+            source_path=source_path,
+            initial_load=True,
+            merge_strategy="upsert",
+        )
 
 
 def test_load_vocab_source_reports_weighted_progress(monkeypatch, tmp_path):

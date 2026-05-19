@@ -75,6 +75,16 @@ def test_end_to_end_vocab_load_on_postgres(pg_session, pg_engine):
 
 
 @pytest.mark.postgres
+def test_initial_load_uses_insert_if_empty_on_postgres(pg_session, pg_engine):
+    """initial_load=True uses the empty-target insert fast path on a fresh Postgres load."""
+    report = load_vocab_source(pg_engine, source_path=_FIXTURE_SOURCE, initial_load=True)
+
+    assert report.merge_strategy == "insert_if_empty"
+    count = pg_session.execute(sa.text("SELECT COUNT(*) FROM concept")).scalar()
+    assert count == 7
+
+
+@pytest.mark.postgres
 def test_quote_mode_auto_regression_on_postgres(pg_session, pg_engine, tmp_path):
     """
     quote_mode='auto' strips RFC-4180 double-quotes via PostgreSQL COPY.

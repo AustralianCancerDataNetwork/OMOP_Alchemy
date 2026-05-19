@@ -271,10 +271,18 @@ def load_vocab_source(
     db_schema: str | None = None,
     dry_run: bool = False,
     merge_strategy: str = "replace",
+    initial_load: bool = False,
     chunksize: int | None = 100_000,
     progress_callback: VocabularyLoadProgressCallback | None = None,
 ) -> VocabularyLoadReport:
     _ensure_supported_backend(engine)
+
+    if initial_load and merge_strategy != "replace":
+        raise ValueError(
+            "initial_load=True cannot be combined with merge_strategy values other than 'replace'"
+        )
+
+    effective_merge_strategy = "insert_if_empty" if initial_load else merge_strategy
 
     resolved_source_path = Path(source_path).expanduser().resolve()
     if not resolved_source_path.exists() or not resolved_source_path.is_dir():
@@ -405,7 +413,7 @@ def load_vocab_source(
                 loader_kwargs: dict[str, object] = {
                     "model": model,
                     "csv_path": csv_path,
-                    "merge_strategy": merge_strategy,
+                    "merge_strategy": effective_merge_strategy,
                     "quote_mode": "auto",
                 }
                 if chunksize is not None:
@@ -488,7 +496,7 @@ def load_vocab_source(
             raise VocabularyLoadError(
                 "Athena vocabulary load failed for "
                 f"table `{current_model_name or 'unknown'}` from `{current_csv_path or '-'}` "
-                f"using merge strategy `{merge_strategy}` on backend `{engine.dialect.name}`. "
+                f"using merge strategy `{effective_merge_strategy}` on backend `{engine.dialect.name}`. "
                 f"Underlying error: {exc.__class__.__name__}: {exc}"
             ) from exc
         finally:
@@ -512,7 +520,7 @@ def load_vocab_source(
         source_path=str(resolved_source_path),
         backend=engine.dialect.name,
         db_schema=db_schema,
-        merge_strategy=merge_strategy,
+        merge_strategy=effective_merge_strategy,
         created_table_count=created_table_count,
         sequence_reset_count=sequence_reset_count,
         results=tuple(results),
