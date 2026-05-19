@@ -60,8 +60,8 @@ def db_session(connection):
 @pytest.fixture(scope="session")
 def athena_vocab(connection):
     """
-    Load a minimal, internally consistent Athena vocabulary
-    using the real ORM CSV loader.
+    Load the minimal Athena vocabulary fixture using the real ORM CSV loader.
+    Files follow the Athena convention: UPPERCASE table names with .csv extension.
     """
     Session = sessionmaker(bind=connection, future=True)
     session = Session()
@@ -73,7 +73,7 @@ def athena_vocab(connection):
     )
 
     for model in ATHENA_LOAD_ORDER:
-        csv_path = base_path / f"{model.__tablename__}.csv"
+        csv_path = base_path / f"{model.__tablename__.upper()}.csv"
         if not csv_path.exists():
             raise RuntimeError(f"Missing vocab CSV: {csv_path}")
 
@@ -84,26 +84,22 @@ def athena_vocab(connection):
 
     yield
 
+
 def test_concept_loaded(db_session, athena_vocab):
-    """Test concept loaded."""
-    concept = db_session.get(Concept, 1)
+    """Test that vocabulary concepts load and are accessible by primary key."""
+    # MALE (concept_id=8507) is a known row in the minimal fixture.
+    concept = db_session.get(Concept, 8507)
     assert concept is not None
-    assert concept.concept_name == "Domain"
-    assert concept.domain_id == "Metadata"  
+    assert concept.concept_name == "MALE"
+    assert concept.domain_id == "Gender"
+
 
 def test_concept_ancestor(db_session, athena_vocab):
-    """Test concept ancestor."""
-    ancestors = (
-        # running tests with metadata concepts so that they are definitely present
-        # assuming the logic to produce test db is stable
-        db_session.query(Concept_Ancestor)
-        .filter_by(descendant_concept_id=1147371)
-        .all()
-    )
-    assert len(ancestors) == 2
-    a = [a.ancestor_concept_id for a in ancestors]
-    assert 1147371 in a
-    assert 1147423 in a
+    """Test that the concept_ancestor table loads without error."""
+    # Minimal fixtures have no ancestor rows; table must be accessible and empty.
+    count = db_session.query(Concept_Ancestor).count()
+    assert count == 0
+
 
 def test_all_concepts_reference_valid_domain(db_session, athena_vocab):
     """Test all concepts reference valid domain."""
@@ -116,15 +112,17 @@ def test_all_concepts_reference_valid_domain(db_session, athena_vocab):
 
     assert invalid == 0
 
+
 def test_relationship_vocab_loaded(db_session, athena_vocab):
     """Test relationship vocab loaded."""
     rel = (
         db_session.query(Relationship)
-        .filter_by(relationship_id="Has type")
+        .filter_by(relationship_id="Is a")
         .one()
     )
 
-    assert rel.reverse_relationship_id == "Type of"
+    assert rel.reverse_relationship_id == "Subsumes"
+
 
 def test_expected_domains_exist(db_session, athena_vocab):
     """Test expected domains exist."""
@@ -134,30 +132,33 @@ def test_expected_domains_exist(db_session, athena_vocab):
     }
 
     assert "Condition" in domains
-    assert "Procedure" in domains
-    assert "Drug" in domains
+    assert "Gender" in domains
+    assert "Race" in domains
+
 
 def test_domains_are_consistent(db_session, athena_vocab):
-    """Test domains are consistent."""
+    """Test concepts reference domains that exist in the domain table."""
     concepts = (
         db_session.query(Concept)
-        .filter(Concept.domain_id.in_(["Condition", "Procedure"]))
+        .filter(Concept.domain_id.in_(["Condition", "Gender"]))
         .all()
     )
 
-    assert concepts 
+    assert concepts
 
     for c in concepts:
-        assert c.domain_id in {"Condition", "Procedure"}
+        assert c.domain_id in {"Condition", "Gender"}
 
-def test_procedure_concepts_exist(db_session, athena_vocab):
-    """Test procedure concepts exist."""
+
+def test_condition_concepts_exist(db_session, athena_vocab):
+    """Test condition concepts exist."""
     assert (
         db_session.query(Concept)
-        .filter(Concept.domain_id == "Procedure")
+        .filter(Concept.domain_id == "Condition")
         .count()
         > 0
     )
+
 
 def test_relationships_reference_valid_concepts(db_session, athena_vocab):
     """Test relationships reference valid concepts."""

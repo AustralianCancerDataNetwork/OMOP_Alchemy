@@ -361,6 +361,7 @@ def load_vocab_source(
             for table_index, item in enumerate(load_items, start=1):
                 model = item.model
                 csv_path = item.csv_path
+                required = item.required
                 current_model_name = model.__tablename__
                 current_csv_path = str(csv_path)
                 if dry_run:

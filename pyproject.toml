@@ -36,7 +36,7 @@ dependencies = [
   "python-dotenv>=1.2.2",
   "typer>=0.12",
   "rich>=13.0",
-  "orm-loader>=0.3.27,<0.4.0",
+  "orm-loader>=0.4.0",
 ]
 
 [project.optional-dependencies]
@@ -74,6 +74,11 @@ omop-alchemy = "omop_alchemy.maintenance.cli:main"
 [build-system]
 requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+markers = [
+    "postgres: marks tests that require a running PostgreSQL instance (deselect with '-m not postgres')",
+]
 
 [tool.setuptools]
 include-package-data = true

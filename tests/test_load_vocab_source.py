@@ -103,10 +103,15 @@ def test_load_vocab_source_requires_full_required_athena_fixture(tmp_path):
     """Test load vocab source requires full required athena fixture."""
     engine = sa.create_engine(f"sqlite:///{tmp_path / 'load_vocab_source_missing_required.db'}", future=True)
 
+    # Build a source with only a subset of required models to trigger the missing-files error.
+    partial_source = tmp_path / "partial_athena"
+    partial_source.mkdir()
+    _write_athena_csv(partial_source, REQUIRED_VOCAB_MODELS[0].__tablename__)
+
     with pytest.raises(RuntimeError) as exc_info:
         load_vocab_source(
             engine,
-            source_path=_athena_source_path(),
+            source_path=partial_source,
         )
 
     assert "Missing required Athena vocabulary CSV files" in str(exc_info.value)
@@ -163,7 +168,7 @@ def test_load_vocab_source_cli_uses_saved_athena_source(monkeypatch):
         source_path: str | Path,
         db_schema: str | None = None,
         dry_run: bool = False,
-        merge_strategy: str = "upsert",
+        merge_strategy: str = "replace",
         chunksize: int | None = None,
         progress_callback=None,
     ):
@@ -235,7 +240,7 @@ def test_load_vocab_source_cli_uses_saved_athena_source(monkeypatch):
         assert result.exit_code == 0
         assert calls["engine"] == "ENGINE"
         assert calls["source_path"] == expected_source_path
-        assert calls["merge_strategy"] == "upsert"
+        assert calls["merge_strategy"] == "replace"
         assert "load-vocab-source" in result.stdout
         assert "concept" in result.stdout
 

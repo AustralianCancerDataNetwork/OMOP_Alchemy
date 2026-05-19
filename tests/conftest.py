@@ -1,3 +1,4 @@
+import time
 from datetime import date
 from pathlib import Path
 
@@ -6,6 +7,8 @@ import sqlalchemy as sa
 from orm_loader.helpers import bootstrap
 import sqlalchemy.orm as so
 from sqlalchemy.orm import Session, sessionmaker
+
+_PG_URL = "postgresql+psycopg://test:test@localhost:55432/test_db"
 
 from omop_alchemy.maintenance.load_vocab import _load_vocab_model_csv
 from omop_alchemy.cdm.model.clinical import Condition_Occurrence, Person
@@ -52,7 +55,7 @@ def _load_fixture_vocabulary(engine: sa.Engine) -> None:
                     model=model,
                     csv_path=csv_path,
                     merge_strategy="upsert",
-                    quote_mode="literal",
+                    quote_mode="auto",
                 )
                 session.commit()
             connection.commit()
@@ -198,6 +201,59 @@ def engine(tmp_path_factory: pytest.TempPathFactory):
         yield engine
     finally:
         engine.dispose()
+
+
+@pytest.fixture(scope="session")
+def pg_engine():
+    """
+    Session-scoped engine connecting to a local PostgreSQL container.
+
+    Start the container with:
+        docker compose -f tests/docker-compose.yaml up -d
+
+    The fixture retries for up to 20 seconds to allow the container to become ready.
+    """
+    engine = sa.create_engine(_PG_URL, future=True)
+    for attempt in range(20):
+        try:
+            with engine.connect() as conn:
+                conn.execute(sa.text("SELECT 1"))
+            break
+        except Exception:
+            if attempt == 19:
+                engine.dispose()
+                pytest.fail(
+                    "PostgreSQL container not available after 20 attempts. "
+                    "Run: docker compose -f tests/docker-compose.yaml up -d"
+                )
+            time.sleep(1)
+    try:
+        yield engine
+    finally:
+        engine.dispose()
+
+
+@pytest.fixture
+def pg_session(pg_engine):
+    """
+    Function-scoped PostgreSQL session with a clean schema for each test.
+
+    Drops and recreates the public schema before each test to ensure full isolation.
+    """
+    with pg_engine.connect() as conn:
+        conn.execute(sa.text("DROP SCHEMA public CASCADE"))
+        conn.execute(sa.text("CREATE SCHEMA public"))
+        conn.commit()
+
+    bootstrap(pg_engine, create=True)
+
+    SessionLocal = sessionmaker(bind=pg_engine, future=True, expire_on_commit=False)
+    session = SessionLocal()
+    try:
+        yield session
+    finally:
+        session.rollback()
+        session.close()
 
 
 @pytest.fixture(scope="function")

@@ -1,0 +1,3 @@
+relationship_id	relationship_name	is_hierarchical	defines_ancestry	reverse_relationship_id	relationship_concept_id
+Is a	Is a	1	1	Subsumes	0
+Subsumes	Subsumes	1	0	Is a	0
