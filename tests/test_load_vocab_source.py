@@ -481,8 +481,8 @@ def test_load_vocab_source_cli_surfaces_database_error_detail(monkeypatch):
     assert "value too long for type character varying(255)" in result.stdout
 
 
-def test_load_vocab_source_uses_csv_not_literal_quote_mode(monkeypatch, tmp_path):
-    """Regression: Athena load must use csv quote mode so that quoted concept_name
+def test_load_vocab_source_uses_auto_not_literal_quote_mode(monkeypatch, tmp_path):
+    """Regression: Athena load must use auto quote mode so that quoted concept_name
     values are not padded with surrounding double-quote characters, which would
     cause 'value too long for type character varying(255)' on CONCEPT.csv."""
     engine = sa.create_engine(f"sqlite:///{tmp_path / 'quote_mode_regression.db'}", future=True)

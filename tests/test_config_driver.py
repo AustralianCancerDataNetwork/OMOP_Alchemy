@@ -97,11 +97,6 @@ def test_create_engine_raises_runtime_for_missing_postgres_driver(monkeypatch):
     """When psycopg is missing, create_engine_with_dependencies raises RuntimeError with install hint."""
     import sqlalchemy as sa
 
-    def fake_create_engine(url, **kwargs):
-        raise ModuleNotFoundError.__new__(
-            ModuleNotFoundError,
-        )
-
     exc = _make_module_not_found("psycopg")
 
     def raising_create_engine(url, **kwargs):
