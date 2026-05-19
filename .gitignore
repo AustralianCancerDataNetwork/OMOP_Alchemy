@@ -67,3 +67,4 @@ _temp/
 temp/
 *.dump
 *.bak
+notebooks/
