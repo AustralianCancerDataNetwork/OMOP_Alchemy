@@ -1,6 +1,6 @@
 [project]
 name = "omop-alchemy"
-version = "0.6.2"
+version = "0.6.3"
 description = "SQLAlchemy-based models, validation, and utilities for the OHDSI OMOP Common Data Model"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -42,7 +42,6 @@ dependencies = [
 [project.optional-dependencies]
 postgres = [
   "psycopg[binary]>=3.2",
-  "psycopg2-binary>=2.9",
 ]
 
 dev = [
@@ -69,7 +68,7 @@ Repository = "https://github.com/AustralianCancerDataNetwork/OMOP_Alchemy"
 Issues = "https://github.com/AustralianCancerDataNetwork/OMOP_Alchemy/issues"
 
 [project.scripts]
-omop-maint = "omop_alchemy.maintenance.cli:main"
+omop-alchemy = "omop_alchemy.maintenance.cli:main"
 
 
 [build-system]

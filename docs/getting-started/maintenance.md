@@ -11,7 +11,7 @@ database.
 ## Entrypoint
 
 ```bash
-omop-maint --help
+omop-alchemy --help
 python -m omop_alchemy.maintenance.cli --help
 ```
 
@@ -33,27 +33,27 @@ Common flags used by many commands:
 
 !!! info "Defaults file discovery"
 
-  Project-local defaults are stored in `.omop-maint.toml`.
+  Project-local defaults are stored in `.omop-alchemy.toml`.
   
   - the CLI looks for the nearest ancestor directory containing `pyproject.toml`
-    and uses `<that-directory>/.omop-maint.toml`
-  - if no ancestor project marker is found, it falls back to `./.omop-maint.toml`
+    and uses `<that-directory>/.omop-alchemy.toml`
+  - if no ancestor project marker is found, it falls back to `./.omop-alchemy.toml`
     in the current working directory
   - to force a fixed path, set `OMOP_MAINT_DEFAULTS_FILE`
-  - running `omop-maint` from outside your intended project tree may use a different
+  - running `omop-alchemy` from outside your intended project tree may use a different
     defaults file than expected
 
 ```bash
-omop-maint config show
-omop-maint config set-overrides --dotenv .env --engine-schema cdm --db-schema public --athena-source ./athena_source
-omop-maint config clear-overrides
-omop-maint config clear-overrides --db-schema
+omop-alchemy config show
+omop-alchemy config set-overrides --dotenv .env --engine-schema cdm --db-schema public --athena-source ./athena_source
+omop-alchemy config clear-overrides
+omop-alchemy config clear-overrides --db-schema
 ```
 
 Resolution order:
 
 1. explicit CLI flag
-2. saved `.omop-maint.toml` default
+2. saved `.omop-alchemy.toml` default
 3. command fallback
 
 `engine_schema` selects the configured engine URL (`ENGINE_<SCHEMA>` or `ENGINE`).
@@ -99,49 +99,49 @@ user-facing error.
 ### Inspect
 
 ```bash
-omop-maint info
-omop-maint doctor
-omop-maint doctor --deep
+omop-alchemy info
+omop-alchemy doctor
+omop-alchemy doctor --deep
 ```
 
 ### Schema
 
 ```bash
-omop-maint reconcile-schema
-omop-maint create-missing-tables --dry-run
-omop-maint create-missing-tables
+omop-alchemy reconcile-schema
+omop-alchemy create-missing-tables --dry-run
+omop-alchemy create-missing-tables
 ```
 
 ### Vocabulary
 
 ```bash
-omop-maint load-vocab-source
-omop-maint load-vocab-source --athena-source ./athena_source --dry-run
+omop-alchemy load-vocab-source
+omop-alchemy load-vocab-source --athena-source ./athena_source --dry-run
 ```
 
 ### Bulk reload helpers
 
 ```bash
-omop-maint foreign-keys disable
-omop-maint indexes disable
-omop-maint truncate-tables --scope clinical --restart-identities --yes
+omop-alchemy foreign-keys disable
+omop-alchemy indexes disable
+omop-alchemy truncate-tables --scope clinical --restart-identities --yes
 ```
 
 After ETL:
 
 ```bash
-omop-maint reset-sequences
-omop-maint indexes enable
-omop-maint foreign-keys enable --strict
-omop-maint analyze-tables --scope clinical
+omop-alchemy reset-sequences
+omop-alchemy indexes enable
+omop-alchemy foreign-keys enable --strict
+omop-alchemy analyze-tables --scope clinical
 ```
 
 ### Full-text sidecars
 
 ```bash
-omop-maint fulltext install
-omop-maint fulltext populate
-omop-maint fulltext drop
+omop-alchemy fulltext install
+omop-alchemy fulltext populate
+omop-alchemy fulltext drop
 ```
 
 For query-side usage and optional ORM metadata registration, see
@@ -150,8 +150,8 @@ For query-side usage and optional ORM metadata registration, see
 ### Backup and restore
 
 ```bash
-omop-maint backup-database --engine-schema source --output-path ./cdm.dump
-omop-maint restore-database ./cdm.dump --format custom --engine-schema target
+omop-alchemy backup-database --engine-schema source --output-path ./cdm.dump
+omop-alchemy restore-database ./cdm.dump --format custom --engine-schema target
 ```
 
 ---
@@ -176,8 +176,8 @@ omop-maint restore-database ./cdm.dump --format custom --engine-schema target
 ## Help
 
 ```bash
-omop-maint --help
-omop-maint doctor --help
-omop-maint fulltext --help
-omop-maint config --help
+omop-alchemy --help
+omop-alchemy doctor --help
+omop-alchemy fulltext --help
+omop-alchemy config --help
 ```

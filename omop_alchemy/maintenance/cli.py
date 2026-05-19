@@ -140,7 +140,7 @@ def _configure_cli_logging() -> None:
     )
 
     if mode == "file":
-        log_path = defaults_path().parent / "logging" / "omop-maint.log"
+        log_path = defaults_path().parent / "logging" / "omop-alchemy.log"
         log_path.parent.mkdir(parents=True, exist_ok=True)
         handler: logging.Handler = logging.FileHandler(log_path, encoding="utf-8")
     else:
@@ -822,8 +822,8 @@ def load_vocab_source_command(
     engine_schema: str | None = typer.Option(None, help="Engine schema selector."),
     db_schema: str | None = typer.Option(None, help="Database schema override. PostgreSQL only; uses search_path for ORM CSV loading."),
     merge_strategy: str = typer.Option(
-        "upsert",
-        help="CSV merge strategy passed to the ORM loader. Defaults to non-destructive `upsert`; use `replace` to overwrite matching primary keys.",
+        "replace",
+        help="CSV merge strategy passed to the ORM loader. Defaults to `replace` to keep the database in sync with the Athena source; use `upsert` for incremental updates.",
     ),
     chunksize: int | None = typer.Option(
         100_000,
@@ -851,7 +851,7 @@ def load_vocab_source_command(
         console.print(
             render_error(
                 "No Athena vocabulary source path is configured. "
-                "Set it with `omop-maint config set-overrides --athena-source <path>` "
+                "Set it with `omop-alchemy config set-overrides --athena-source <path>` "
                 "or pass `--athena-source`."
             )
         )
@@ -901,7 +901,7 @@ def load_vocab_source_command(
                 db_schema=connection_defaults.db_schema,
                 dry_run=dry_run,
                 merge_strategy=merge_strategy,
-                chunksize=chunksize or None,
+                chunksize=None if chunksize == 0 else chunksize,
                 progress_callback=_update_progress,
             )
             progress.update(

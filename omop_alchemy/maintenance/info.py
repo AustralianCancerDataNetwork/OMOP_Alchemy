@@ -315,7 +315,7 @@ def collect_maintenance_info(
     managed_tables = select_maintenance_tables(
         exclude_categories=(() if vocabulary_included else (TableCategory.VOCABULARY,))
     )
-    cli_path = shutil.which("omop-maint")
+    cli_path = shutil.which("omop-alchemy")
     dotenv_exists = None if dotenv is None else os.path.exists(dotenv)
 
     engine_name: str | None = None

@@ -180,14 +180,14 @@ At the database level:
 Typical maintenance workflow:
 
 ```bash
-omop-maint fulltext install
-omop-maint fulltext populate
+omop-alchemy fulltext install
+omop-alchemy fulltext populate
 ```
 
 If you later reload vocabulary data, rerun:
 
 ```bash
-omop-maint fulltext populate
+omop-alchemy fulltext populate
 ```
 
 For the full design and query patterns, see:

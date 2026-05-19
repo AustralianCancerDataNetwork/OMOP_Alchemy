@@ -58,8 +58,8 @@ SELECT 'a fat cat sat on a mat and ate a fat rat'::tsvector;
 To enable the optional full-text sidecars in a PostgreSQL environment:
 
 ```bash
-omop-maint fulltext install
-omop-maint fulltext populate
+omop-alchemy fulltext install
+omop-alchemy fulltext populate
 ```
 
 If your running Python process should use the stored sidecar columns through ORM
@@ -164,28 +164,28 @@ This is the mode you want when:
 The maintenance CLI manages the full-text sidecars through:
 
 ```bash
-omop-maint fulltext install
-omop-maint fulltext populate
-omop-maint fulltext drop
+omop-alchemy fulltext install
+omop-alchemy fulltext populate
+omop-alchemy fulltext drop
 ```
 
 Typical workflow:
 
 ```bash
-omop-maint fulltext install
-omop-maint fulltext populate
+omop-alchemy fulltext install
+omop-alchemy fulltext populate
 ```
 
 If you later reload or update vocabulary data, refresh the stored vectors with:
 
 ```bash
-omop-maint fulltext populate
+omop-alchemy fulltext populate
 ```
 
 If you want to remove the feature completely:
 
 ```bash
-omop-maint fulltext drop
+omop-alchemy fulltext drop
 ```
 
 ---
@@ -280,7 +280,7 @@ drop lifecycle is only meaningful on PostgreSQL.
 ## Operational Gotchas
 
 - treat the sidecar columns as **derived search state**, not source-of-truth data
-- if you bulk-load new vocabulary rows, rerun `omop-maint fulltext populate`
+- if you bulk-load new vocabulary rows, rerun `omop-alchemy fulltext populate`
 - if you use `reconcile-schema`, the sidecar columns and indexes are intentional
   database additions outside the core OMOP schema
 - GIN indexes can be expensive to build on large vocabularies, so plan that as a real
