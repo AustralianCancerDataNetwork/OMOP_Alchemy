@@ -18,7 +18,7 @@ port **55432**.
 
 ```bash
 # Start
-docker compose -f tests/docker-compose.yaml up -d
+docker compose -f tests/example-docker-compose.yaml up -d
 
 # Run (this will run all tests)
 uv run --extra dev --extra postgres pytest -m "postgres or not postgres" -v

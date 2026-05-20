@@ -262,7 +262,8 @@ def _configure_loader_connection(
             "SQLite uses the default database namespace."
         )
 
-    connection.exec_driver_sql(f"SET search_path TO {db_schema}")
+    quoted_schema = '"' + db_schema.replace('"', '""') + '"'
+    connection.exec_driver_sql(f"SET search_path TO {quoted_schema}")
 
 def load_vocab_source(
     engine: sa.Engine,

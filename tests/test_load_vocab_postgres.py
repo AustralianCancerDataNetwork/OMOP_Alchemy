@@ -23,6 +23,13 @@ from omop_alchemy.maintenance.load_vocab import (
 _FIXTURE_SOURCE = Path(__file__).parent / "fixtures" / "athena_source"
 
 
+def _copy_fixture_source(base_dir: Path) -> Path:
+    """Copy the shared Athena fixture set into an isolated per-test source dir."""
+    source_path = base_dir / "athena_source"
+    shutil.copytree(_FIXTURE_SOURCE, source_path)
+    return source_path
+
+
 def _make_concept_source(
     base_dir: Path,
     *,
@@ -62,9 +69,10 @@ def _make_concept_source(
 # ---------------------------------------------------------------------------
 
 @pytest.mark.postgres
-def test_end_to_end_vocab_load_on_postgres(pg_session, pg_engine):
+def test_end_to_end_vocab_load_on_postgres(pg_session, pg_engine, tmp_path):
     """load_vocab_source() completes end-to-end on real Postgres via orm-loader>=0.4.0."""
-    report = load_vocab_source(pg_engine, source_path=_FIXTURE_SOURCE)
+    source_path = _copy_fixture_source(tmp_path)
+    report = load_vocab_source(pg_engine, source_path=source_path)
 
     assert report.merge_strategy == "replace"
     assert all(r.status == "loaded" for r in report.results if r.required)
@@ -75,9 +83,10 @@ def test_end_to_end_vocab_load_on_postgres(pg_session, pg_engine):
 
 
 @pytest.mark.postgres
-def test_initial_load_uses_insert_if_empty_on_postgres(pg_session, pg_engine):
+def test_initial_load_uses_insert_if_empty_on_postgres(pg_session, pg_engine, tmp_path):
     """initial_load=True uses the empty-target insert fast path on a fresh Postgres load."""
-    report = load_vocab_source(pg_engine, source_path=_FIXTURE_SOURCE, initial_load=True)
+    source_path = _copy_fixture_source(tmp_path)
+    report = load_vocab_source(pg_engine, source_path=source_path, initial_load=True)
 
     assert report.merge_strategy == "insert_if_empty"
     count = pg_session.execute(sa.text("SELECT COUNT(*) FROM concept")).scalar()
@@ -145,14 +154,15 @@ def test_quote_mode_auto_regression_on_postgres(pg_session, pg_engine, tmp_path)
 
 
 @pytest.mark.postgres
-def test_load_vocab_model_csv_on_postgres(pg_session):
+def test_load_vocab_model_csv_on_postgres(pg_session, tmp_path):
     """
     _load_vocab_model_csv loads data correctly on a real PostgreSQL session.
 
     orm-loader>=0.4.0 handles staging-table creation internally, so we test
     the end-to-end path: CSV → staging → concept table on real Postgres.
     """
-    csv_path = _FIXTURE_SOURCE / "CONCEPT.csv"
+    source_path = _copy_fixture_source(tmp_path)
+    csv_path = source_path / "CONCEPT.csv"
 
     row_count = _load_vocab_model_csv(
         pg_session,
@@ -212,10 +222,11 @@ def test_upsert_strategy_is_non_destructive(pg_session, pg_engine, tmp_path):
 
 
 @pytest.mark.postgres
-def test_chunksize_forwarded_to_loader(pg_session, pg_engine, monkeypatch):
+def test_chunksize_forwarded_to_loader(pg_session, pg_engine, monkeypatch, tmp_path):
     """chunksize is forwarded from load_vocab_source through to _load_vocab_model_csv."""
     from omop_alchemy.maintenance import load_vocab as _lv_module
 
+    source_path = _copy_fixture_source(tmp_path)
     received_chunksizes: list[int | None] = []
     original = _lv_module._load_vocab_model_csv
 
@@ -232,7 +243,7 @@ def test_chunksize_forwarded_to_loader(pg_session, pg_engine, monkeypatch):
 
     monkeypatch.setattr(_lv_module, "_load_vocab_model_csv", tracking_load)
 
-    load_vocab_source(pg_engine, source_path=_FIXTURE_SOURCE, chunksize=500)
+    load_vocab_source(pg_engine, source_path=source_path, chunksize=500)
 
     assert received_chunksizes, "Expected at least one table to be loaded"
     assert all(c == 500 for c in received_chunksizes), (
@@ -241,22 +252,24 @@ def test_chunksize_forwarded_to_loader(pg_session, pg_engine, monkeypatch):
 
 
 @pytest.mark.postgres
-def test_db_schema_search_path_on_postgres(pg_engine):
+def test_db_schema_search_path_on_postgres(pg_engine, tmp_path):
     """
     load_vocab_source with db_schema creates vocabulary tables in the requested
     PostgreSQL schema and loads data into them correctly.
     """
-    schema = "vocab_test"
+    schema = 'VocabTest'
+    source_path = _copy_fixture_source(tmp_path)
+    quoted_schema = '"' + schema.replace('"', '""') + '"'
 
     with pg_engine.connect() as conn:
-        conn.execute(sa.text(f"DROP SCHEMA IF EXISTS {schema} CASCADE"))
-        conn.execute(sa.text(f"CREATE SCHEMA {schema}"))
+        conn.execute(sa.text(f"DROP SCHEMA IF EXISTS {quoted_schema} CASCADE"))
+        conn.execute(sa.text(f"CREATE SCHEMA {quoted_schema}"))
         conn.commit()
 
     try:
         report = load_vocab_source(
             pg_engine,
-            source_path=_FIXTURE_SOURCE,
+            source_path=source_path,
             db_schema=schema,
         )
 
@@ -269,10 +282,10 @@ def test_db_schema_search_path_on_postgres(pg_engine):
 
         with pg_engine.connect() as conn:
             count = conn.execute(
-                sa.text(f"SELECT COUNT(*) FROM {schema}.concept")
+                sa.text(f"SELECT COUNT(*) FROM {quoted_schema}.concept")
             ).scalar()
         assert count == 7
     finally:
         with pg_engine.connect() as conn:
-            conn.execute(sa.text(f"DROP SCHEMA IF EXISTS {schema} CASCADE"))
+            conn.execute(sa.text(f"DROP SCHEMA IF EXISTS {quoted_schema} CASCADE"))
             conn.commit()

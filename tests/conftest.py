@@ -1,14 +1,12 @@
 import time
 from datetime import date
 from pathlib import Path
-
+import os
 import pytest
 import sqlalchemy as sa
 from orm_loader.helpers import bootstrap
 import sqlalchemy.orm as so
 from sqlalchemy.orm import Session, sessionmaker
-
-_PG_URL = "postgresql+psycopg://test:test@localhost:55432/test_db"
 
 from omop_alchemy.maintenance.load_vocab import _load_vocab_model_csv
 from omop_alchemy.cdm.model.clinical import Condition_Occurrence, Person
@@ -213,6 +211,9 @@ def pg_engine():
 
     The fixture retries for up to 20 seconds to allow the container to become ready.
     """
+    _PG_URL = os.getenv("ENGINE_CDM")
+    if not _PG_URL:
+        pytest.skip("No PostgreSQL engine configured. Set ENGINE_CDM environment variable.")
     engine = sa.create_engine(_PG_URL, future=True)
     for attempt in range(20):
         try:

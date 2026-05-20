@@ -1,3 +1,4 @@
+# Example docker-compose file for local testing purposes. 
 services:
   postgres:
     image: postgres:16
@@ -5,6 +6,7 @@ services:
       POSTGRES_USER: test
       POSTGRES_PASSWORD: test
       POSTGRES_DB: test_db
+      ENGINE_CDM: postgresql+psycopg://test:test@localhost:55432/test_db
     ports:
       - "55432:5432"
     healthcheck:
