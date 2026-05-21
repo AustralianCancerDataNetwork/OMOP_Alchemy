@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from typing import TYPE_CHECKING
 
 from rich import box
 from rich.console import Console, Group, RenderableType
@@ -10,29 +11,36 @@ from rich.text import Text
 
 from omop_alchemy.cdm.handlers.fulltext import FullTextResult
 
-from .analyze_tables import AnalyzeTableResult
-from .ascii import render_banner
-from .backup import DatabaseBackupResult, DatabaseRestoreResult
 from ..backend_support import backend_label
-from .create_tables import TableCreationResult
-from .data_summary import TableSummaryResult
-from .defaults import ConnectionDefaults
-from .doctor import DoctorCheck, DoctorRecommendation, DoctorReport
-from .foreign_keys import (
-    ForeignKeyAction,
-    ForeignKeyManagementResult,
-    ForeignKeyStatusResult,
-    ForeignKeyConstraintViolation,
-    ForeignKeyValidationReport,
-    ForeignKeyValidationResult,
-)
-from .info import CommandSupport, MaintenanceInfo
-from .indexes import IndexAction, IndexManagementResult
-from .load_vocab import VocabularyLoadReport, VocabularyLoadResult
-from .reconcile import ReconciliationIssue, SchemaReconciliationReport, TableReconciliationResult
-from .reset_sequences import SequenceResetResult
+from .ascii import render_banner
 from .tables import TableCategory
-from .truncate_tables import TruncateTableResult
+
+if TYPE_CHECKING:
+    from .cli_backup import DatabaseBackupResult, DatabaseRestoreResult
+    from .cli_config import ConnectionDefaults
+    from .cli_foreign_keys import (
+        ForeignKeyAction,
+        ForeignKeyConstraintViolation,
+        ForeignKeyManagementResult,
+        ForeignKeyStatusResult,
+        ForeignKeyValidationReport,
+        ForeignKeyValidationResult,
+    )
+    from .cli_indexes import IndexAction, IndexManagementResult
+    from .cli_schema import (
+        CommandSupport,
+        DoctorCheck,
+        DoctorRecommendation,
+        DoctorReport,
+        MaintenanceInfo,
+        ReconciliationIssue,
+        SchemaReconciliationReport,
+        TableCreationResult,
+        TableReconciliationResult,
+        TableSummaryResult,
+    )
+    from .cli_tables import AnalyzeTableResult, SequenceResetResult, TruncateTableResult
+    from .cli_vocab import VocabularyLoadReport, VocabularyLoadResult
 
 console = Console()
 
@@ -687,7 +695,7 @@ def render_foreign_key_summary(results: Iterable[ForeignKeyManagementResult], *,
 
 
 def render_foreign_key_note(action: ForeignKeyAction, *, strict: bool = False) -> Panel:
-    if action is ForeignKeyAction.DISABLE:
+    if action == "disable":
         body = (
             "PostgreSQL keeps the foreign key constraints defined in metadata. "
             "This command disables the internal RI triggers that enforce them."
@@ -898,7 +906,7 @@ def render_index_results(results: Iterable[IndexManagementResult]) -> Renderable
 def render_index_note(action: IndexAction) -> Panel:
     body = (
         "This command drops SQLAlchemy metadata-defined secondary indexes that currently exist in the database. Primary keys and constraints are not removed."
-        if action is IndexAction.DISABLE
+        if action == "disable"
         else "This command recreates SQLAlchemy metadata-defined secondary indexes that are currently missing from the database and applies PostgreSQL clustering declared in ORM metadata when the backend supports it."
     )
     return Panel.fit(body, title="[bold]Note[/bold]", border_style="yellow")

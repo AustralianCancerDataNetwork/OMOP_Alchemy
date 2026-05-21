@@ -7,7 +7,9 @@ from typing import Literal, TypeAlias, cast
 
 import sqlalchemy as sa
 import sqlalchemy.orm as so
+import typer
 from orm_loader.tables.typing import CSVTableProtocol
+from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn, TextColumn, TimeElapsedColumn
 
 from omop_alchemy.cdm.model.vocabulary import (
     Concept,
@@ -23,8 +25,18 @@ from omop_alchemy.cdm.model.vocabulary import (
 )
 
 from ..backend_support import Dialect, require_backend
-from .reset_sequences import reset_model_sequences
+from ._cli_utils import build_engine, handle_error, resolve_connection
+from .cli_foreign_keys import ForeignKeyAction, manage_foreign_key_triggers
+from .cli_indexes import IndexAction, manage_indexes
+from .cli_tables import reset_model_sequences
 from .tables import TableCategory, schema_adjusted_metadata, select_maintenance_tables
+from .ui import (
+    console,
+    render_command_header,
+    render_error,
+    render_vocab_load_results,
+    render_vocab_load_summary,
+)
 
 MergeStrategy: TypeAlias = Literal["replace", "upsert", "insert_if_empty"]
 
@@ -98,6 +110,7 @@ OPTIONAL_VOCAB_MODELS: tuple[VocabularyModel, ...] = cast(
     ),
 )
 
+
 class VocabularyLoadError(RuntimeError):
     """Raised when a single Athena vocabulary table load fails."""
 
@@ -154,10 +167,12 @@ def _load_vocab_model_csv(
     merge_strategy: MergeStrategy,
     quote_mode: str = "auto",
     chunksize: int | None = None,
+    index_strategy: str = "auto",
 ) -> int:
     load_kwargs: dict[str, object] = {
         "merge_strategy": merge_strategy,
         "quote_mode": quote_mode,
+        "index_strategy": index_strategy,
     }
     if chunksize is not None:
         load_kwargs["chunksize"] = chunksize
@@ -167,7 +182,7 @@ def _load_vocab_model_csv(
             model.load_csv(
                 session,
                 csv_path,
-                **load_kwargs, # type: ignore[arg-type]
+                **load_kwargs,  # type: ignore[arg-type]
             )
         )
     except Exception as exc:
@@ -180,7 +195,7 @@ def _load_vocab_model_csv(
             model.load_csv(
                 session,
                 csv_path,
-                **load_kwargs, # type: ignore[arg-type]
+                **load_kwargs,  # type: ignore[arg-type]
             )
         )
 
@@ -267,6 +282,7 @@ def _configure_loader_connection(
     quoted_schema = '"' + db_schema.replace('"', '""') + '"'
     connection.exec_driver_sql(f"SET search_path TO {quoted_schema}")
 
+
 def load_vocab_source(
     engine: sa.Engine,
     *,
@@ -275,6 +291,7 @@ def load_vocab_source(
     dry_run: bool = False,
     merge_strategy: MergeStrategy = "replace",
     chunksize: int | None = 100_000,
+    bulk_mode: bool = True,
     progress_callback: VocabularyLoadProgressCallback | None = None,
 ) -> VocabularyLoadReport:
     _ensure_supported_backend(engine)
@@ -344,6 +361,27 @@ def load_vocab_source(
         detail=f"Preparing Athena vocabulary load for {table_count} CSV file(s)",
     )
 
+    _use_bulk_mode = (
+        bulk_mode
+        and not dry_run
+        and engine.dialect.name == Dialect.POSTGRESQL
+    )
+    if _use_bulk_mode:
+        manage_foreign_key_triggers(
+            engine,
+            action=ForeignKeyAction.DISABLE,
+            vocabulary_included=True,
+            db_schema=db_schema,
+            dry_run=False,
+        )
+        manage_indexes(
+            engine,
+            action=IndexAction.DISABLE,
+            vocabulary_included=True,
+            db_schema=db_schema,
+            dry_run=False,
+        )
+
     with engine.connect() as connection:
         _configure_loader_connection(
             connection,
@@ -410,6 +448,7 @@ def load_vocab_source(
                     "csv_path": csv_path,
                     "merge_strategy": merge_strategy,
                     "quote_mode": "auto",
+                    "index_strategy": "keep" if _use_bulk_mode else "auto",
                 }
                 if chunksize is not None:
                     loader_kwargs["chunksize"] = chunksize
@@ -429,7 +468,7 @@ def load_vocab_source(
 
                 row_count = _load_vocab_model_csv(
                     session,
-                    **loader_kwargs, # type: ignore[arg-type]
+                    **loader_kwargs,  # type: ignore[arg-type]
                 )
 
                 completed_units += item.size_bytes * LOAD_PROGRESS_FRACTION
@@ -488,14 +527,36 @@ def load_vocab_source(
             session.rollback()
             if not dry_run:
                 connection.rollback()
+            recovery = (
+                " Indexes and FK triggers may still be disabled; run "
+                "'omop-alchemy indexes enable --vocab' and 'omop-alchemy foreign-keys enable' to recover."
+                if _use_bulk_mode else ""
+            )
             raise VocabularyLoadError(
                 "Athena vocabulary load failed for "
                 f"table `{current_model_name or 'unknown'}` from `{current_csv_path or '-'}` "
                 f"using merge strategy `{merge_strategy}` on backend `{engine.dialect.name}`. "
                 f"Underlying error: {exc.__class__.__name__}: {exc}"
+                + recovery
             ) from exc
         finally:
             session.close()
+
+    if _use_bulk_mode:
+        manage_indexes(
+            engine,
+            action=IndexAction.ENABLE,
+            vocabulary_included=True,
+            db_schema=db_schema,
+            dry_run=False,
+        )
+        manage_foreign_key_triggers(
+            engine,
+            action=ForeignKeyAction.ENABLE,
+            vocabulary_included=True,
+            db_schema=db_schema,
+            dry_run=False,
+        )
 
     results.extend(missing_optional_results)
 
@@ -520,3 +581,114 @@ def load_vocab_source(
         sequence_reset_count=sequence_reset_count,
         results=tuple(results),
     )
+
+
+app = typer.Typer(rich_markup_mode="rich")
+
+
+@app.command(
+    "load-vocab-source",
+    help="Load Athena vocabulary CSV files from a configured source path using the ORM staged CSV loader.",
+)
+def load_vocab_source_command(
+    athena_source: str | None = typer.Option(
+        None, help="Path to unzipped Athena vocabulary CSV files."
+    ),
+    dotenv: str | None = typer.Option(None, help="Optional dotenv file to load."),
+    engine_schema: str | None = typer.Option(None, help="Engine schema selector."),
+    db_schema: str | None = typer.Option(
+        None,
+        help="Database schema override. PostgreSQL only; uses search_path for ORM CSV loading.",
+    ),
+    merge_strategy: MergeStrategy = typer.Option(
+        "replace",
+        help=(
+            "CSV merge strategy. `replace` (default) keeps the DB in sync with the source. "
+            "`upsert` is incremental and non-destructive. "
+            "`insert_if_empty` is the fast path for a fresh empty target."
+        ),
+    ),
+    chunksize: int | None = typer.Option(
+        100_000,
+        help="Chunk size for fallback ORM CSV loading. Defaults to 100 000 rows; pass 0 to disable chunking.",
+    ),
+    bulk_mode: bool = typer.Option(
+        True,
+        "--bulk-mode/--no-bulk-mode",
+        help=(
+            "Disable FK triggers and drop indexes globally before loading, then rebuild after. "
+            "Much faster than per-table management for a full vocabulary reload. "
+            "PostgreSQL only; ignored on SQLite. "
+            "If the load fails mid-way, run `indexes enable --vocab` and `foreign-keys enable` to recover."
+        ),
+    ),
+    dry_run: bool = typer.Option(False, "--dry-run"),
+) -> None:
+    conn = resolve_connection(
+        dotenv=dotenv,
+        engine_schema=engine_schema,
+        db_schema=db_schema,
+        athena_source=athena_source,
+    )
+    console.print(
+        render_command_header(
+            command_name="load-vocab-source",
+            engine_schema=conn.engine_schema,
+            db_schema=conn.db_schema,
+            vocabulary_included=True,
+            mode_label="dry-run" if dry_run else "apply",
+        )
+    )
+
+    if conn.athena_source is None:
+        console.print(
+            render_error(
+                "No Athena vocabulary source path is configured. "
+                "Set it with `omop-alchemy config set-overrides --athena-source <path>` "
+                "or pass `--athena-source`."
+            )
+        )
+        raise typer.Exit(code=1)
+
+    try:
+        engine = build_engine(dotenv=conn.dotenv, engine_schema=conn.engine_schema)
+
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[bold cyan]{task.description}"),
+            BarColumn(bar_width=None),
+            TaskProgressColumn(),
+            TimeElapsedColumn(),
+            console=console,
+            transient=False,
+        ) as progress:
+            task_id = progress.add_task(
+                "Preparing Athena vocabulary load...", total=100.0, completed=0
+            )
+            completed_tables: list[str] = []
+
+            def _update_progress(event: VocabularyLoadProgress) -> None:
+                progress.update(task_id, completed=event.percent, description=event.detail)
+                if event.phase == "commit-complete" and event.table_name is not None:
+                    completed_tables.append(event.table_name)
+                    progress.console.print(
+                        f"[green]loaded[/green] [bold]{event.table_name}[/bold] "
+                        f"({len(completed_tables)}/{event.table_count})"
+                    )
+
+            report = load_vocab_source(
+                engine,
+                source_path=conn.athena_source,
+                db_schema=conn.db_schema,
+                dry_run=dry_run,
+                merge_strategy=merge_strategy,
+                chunksize=None if chunksize == 0 else chunksize,
+                bulk_mode=bulk_mode,
+                progress_callback=_update_progress,
+            )
+            progress.update(task_id, completed=100.0, description="Athena vocabulary load complete")
+
+        console.print(render_vocab_load_results(report.results))
+        console.print(render_vocab_load_summary(report, dry_run=dry_run))
+    except Exception as exc:
+        handle_error(exc)

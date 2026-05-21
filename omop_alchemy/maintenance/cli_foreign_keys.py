@@ -4,13 +4,27 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 import sqlalchemy as sa
+import typer
 
-from ..backend_support import Dialect, require_backend
+from ..backend_support import Dialect, POSTGRESQL_ONLY_HELP, require_backend
+from ._cli_utils import build_engine, handle_error, resolve_connection
 from .tables import (
     MaintenanceTable,
     TableCategory,
     existing_maintenance_tables,
     qualified_table_name,
+)
+from .ui import (
+    console,
+    render_command_header,
+    render_foreign_key_note,
+    render_foreign_key_results,
+    render_foreign_key_status_results,
+    render_foreign_key_status_summary,
+    render_foreign_key_summary,
+    render_foreign_key_validation_issues,
+    render_foreign_key_validation_results,
+    render_foreign_key_validation_summary,
 )
 
 
@@ -80,16 +94,10 @@ class ForeignKeyValidationResult:
 class ForeignKeyValidationReport:
     results: tuple[ForeignKeyValidationResult, ...]
     violations: tuple[ForeignKeyConstraintViolation, ...]
-def _ensure_postgresql_supported(
-    engine: sa.Engine,
-    *,
-    feature: str,
-) -> None:
-    require_backend(
-        engine,
-        feature=feature,
-        supported_dialects=(Dialect.POSTGRESQL,),
-    )
+
+
+def _ensure_postgresql_supported(engine: sa.Engine, *, feature: str) -> None:
+    require_backend(engine, feature=feature, supported_dialects=(Dialect.POSTGRESQL,))
 
 
 def _selected_existing_tables(
@@ -117,10 +125,7 @@ def collect_foreign_key_targets(
         db_schema=db_schema,
         vocabulary_included=vocabulary_included,
     )
-    selected_names = {
-        table.table_name
-        for table in selected_tables
-    }
+    selected_names = {table.table_name for table in selected_tables}
 
     incoming_counts = {name: 0 for name in selected_names}
     outgoing_counts = {name: 0 for name in selected_names}
@@ -240,9 +245,7 @@ def _collect_strict_validation_failures(
     }
 
 
-def _strict_failure_detail(
-    violations: list[ForeignKeyConstraintViolation],
-) -> str:
+def _strict_failure_detail(violations: list[ForeignKeyConstraintViolation]) -> str:
     constraint_summary = ", ".join(
         f"{violation.constraint_name} ({violation.violation_count})"
         for violation in violations[:3]
@@ -258,9 +261,7 @@ def _strict_failure_detail(
     )
 
 
-def _validation_failure_detail(
-    violations: list[ForeignKeyConstraintViolation],
-) -> str:
+def _validation_failure_detail(violations: list[ForeignKeyConstraintViolation]) -> str:
     constraint_summary = ", ".join(
         f"{violation.constraint_name} ({violation.violation_count})"
         for violation in violations[:3]
@@ -281,10 +282,7 @@ def validate_foreign_key_constraints(
     db_schema: str | None = None,
     vocabulary_included: bool = False,
 ) -> ForeignKeyValidationReport:
-    _ensure_postgresql_supported(
-        engine,
-        feature="Foreign key constraint validation",
-    )
+    _ensure_postgresql_supported(engine, feature="Foreign key constraint validation")
 
     targets = collect_foreign_key_targets(
         engine,
@@ -305,10 +303,7 @@ def validate_foreign_key_constraints(
     for target in targets:
         violations = validation_failures.get(target.table_name, [])
         violating_constraint_count = len(violations)
-        violating_row_count = sum(
-            violation.violation_count
-            for violation in violations
-        )
+        violating_row_count = sum(violation.violation_count for violation in violations)
         results.append(
             ForeignKeyValidationResult(
                 table_name=target.table_name,
@@ -330,10 +325,7 @@ def validate_foreign_key_constraints(
         all_violations.extend(violations)
 
     all_violations.sort(
-        key=lambda violation: (
-            violation.source_table_name,
-            violation.constraint_name,
-        )
+        key=lambda violation: (violation.source_table_name, violation.constraint_name)
     )
     return ForeignKeyValidationReport(
         results=tuple(results),
@@ -350,10 +342,7 @@ def manage_foreign_key_triggers(
     dry_run: bool = False,
     strict: bool = False,
 ) -> list[ForeignKeyManagementResult]:
-    _ensure_postgresql_supported(
-        engine,
-        feature="Foreign key trigger management",
-    )
+    _ensure_postgresql_supported(engine, feature="Foreign key trigger management")
 
     targets = collect_foreign_key_targets(
         engine,
@@ -435,10 +424,7 @@ def collect_foreign_key_trigger_status(
     db_schema: str | None = None,
     vocabulary_included: bool = False,
 ) -> list[ForeignKeyStatusResult]:
-    _ensure_postgresql_supported(
-        engine,
-        feature="Foreign key trigger status inspection",
-    )
+    _ensure_postgresql_supported(engine, feature="Foreign key trigger status inspection")
 
     targets = collect_foreign_key_targets(
         engine,
@@ -466,10 +452,7 @@ def collect_foreign_key_trigger_status(
         for target in targets:
             disabled_count, enabled_count = connection.execute(
                 query,
-                {
-                    "table_name": target.table_name,
-                    "db_schema": db_schema,
-                },
+                {"table_name": target.table_name, "db_schema": db_schema},
             ).one()
 
             results.append(
@@ -486,3 +469,161 @@ def collect_foreign_key_trigger_status(
             )
 
     return results
+
+
+# ---------------------------------------------------------------------------
+# CLI commands
+# ---------------------------------------------------------------------------
+
+app = typer.Typer(
+    help=f"Manage PostgreSQL RI trigger enforcement for OMOP tables. {POSTGRESQL_ONLY_HELP}",
+    rich_markup_mode="rich",
+)
+
+
+@app.command("disable")
+def disable_foreign_keys_command(
+    dotenv: str | None = typer.Option(None, help="Optional dotenv file to load."),
+    engine_schema: str | None = typer.Option(None, help="Engine schema selector."),
+    db_schema: str | None = typer.Option(None, help="Database schema override."),
+    vocabulary_included: bool = typer.Option(False, "--vocab/--no-vocab"),
+    dry_run: bool = typer.Option(False, "--dry-run"),
+) -> None:
+    conn = resolve_connection(dotenv=dotenv, engine_schema=engine_schema, db_schema=db_schema)
+    console.print(
+        render_command_header(
+            command_name="foreign-keys disable",
+            engine_schema=conn.engine_schema,
+            db_schema=conn.db_schema,
+            vocabulary_included=vocabulary_included,
+            mode_label="dry-run" if dry_run else "apply",
+        )
+    )
+    try:
+        engine = build_engine(dotenv=conn.dotenv, engine_schema=conn.engine_schema)
+        with console.status("Managing PostgreSQL foreign key trigger enforcement..."):
+            results = manage_foreign_key_triggers(
+                engine,
+                action=ForeignKeyAction.DISABLE,
+                db_schema=conn.db_schema,
+                vocabulary_included=vocabulary_included,
+                dry_run=dry_run,
+                strict=False,
+            )
+        console.print(render_foreign_key_results(results))
+        console.print(render_foreign_key_summary(results, dry_run=dry_run))
+        console.print(render_foreign_key_note(ForeignKeyAction.DISABLE, strict=False))
+    except Exception as exc:
+        handle_error(exc)
+
+
+@app.command("enable")
+def enable_foreign_keys_command(
+    dotenv: str | None = typer.Option(None, help="Optional dotenv file to load."),
+    engine_schema: str | None = typer.Option(None, help="Engine schema selector."),
+    db_schema: str | None = typer.Option(None, help="Database schema override."),
+    vocabulary_included: bool = typer.Option(False, "--vocab/--no-vocab"),
+    strict: bool = typer.Option(
+        False,
+        "--strict",
+        help="Validate all selected foreign key relationships before enabling trigger enforcement.",
+    ),
+    dry_run: bool = typer.Option(False, "--dry-run"),
+) -> None:
+    conn = resolve_connection(dotenv=dotenv, engine_schema=engine_schema, db_schema=db_schema)
+    console.print(
+        render_command_header(
+            command_name="foreign-keys enable --strict" if strict else "foreign-keys enable",
+            engine_schema=conn.engine_schema,
+            db_schema=conn.db_schema,
+            vocabulary_included=vocabulary_included,
+            mode_label="dry-run" if dry_run else "apply",
+        )
+    )
+    try:
+        engine = build_engine(dotenv=conn.dotenv, engine_schema=conn.engine_schema)
+        status_msg = (
+            "Validating and enabling PostgreSQL foreign key trigger enforcement..."
+            if strict
+            else "Managing PostgreSQL foreign key trigger enforcement..."
+        )
+        with console.status(status_msg):
+            results = manage_foreign_key_triggers(
+                engine,
+                action=ForeignKeyAction.ENABLE,
+                db_schema=conn.db_schema,
+                vocabulary_included=vocabulary_included,
+                dry_run=dry_run,
+                strict=strict,
+            )
+        console.print(render_foreign_key_results(results))
+        console.print(render_foreign_key_summary(results, dry_run=dry_run))
+        console.print(render_foreign_key_note(ForeignKeyAction.ENABLE, strict=strict))
+    except Exception as exc:
+        handle_error(exc)
+
+
+@app.command("status")
+def foreign_key_status_command(
+    dotenv: str | None = typer.Option(None, help="Optional dotenv file to load."),
+    engine_schema: str | None = typer.Option(None, help="Engine schema selector."),
+    db_schema: str | None = typer.Option(None, help="Database schema override."),
+    vocabulary_included: bool = typer.Option(False, "--vocab/--no-vocab"),
+) -> None:
+    conn = resolve_connection(dotenv=dotenv, engine_schema=engine_schema, db_schema=db_schema)
+    console.print(
+        render_command_header(
+            command_name="foreign-keys status",
+            engine_schema=conn.engine_schema,
+            db_schema=conn.db_schema,
+            vocabulary_included=vocabulary_included,
+            mode_label="inspect",
+        )
+    )
+    try:
+        engine = build_engine(dotenv=conn.dotenv, engine_schema=conn.engine_schema)
+        with console.status("Inspecting foreign key trigger status..."):
+            results = collect_foreign_key_trigger_status(
+                engine,
+                db_schema=conn.db_schema,
+                vocabulary_included=vocabulary_included,
+            )
+        console.print(render_foreign_key_status_results(results))
+        console.print(render_foreign_key_status_summary(results))
+    except Exception as exc:
+        handle_error(exc)
+
+
+@app.command(
+    "validate",
+    help="Validate selected foreign key relationships and report violating constraints.",
+)
+def foreign_key_validate_command(
+    dotenv: str | None = typer.Option(None, help="Optional dotenv file to load."),
+    engine_schema: str | None = typer.Option(None, help="Engine schema selector."),
+    db_schema: str | None = typer.Option(None, help="Database schema override."),
+    vocabulary_included: bool = typer.Option(False, "--vocab/--no-vocab"),
+) -> None:
+    conn = resolve_connection(dotenv=dotenv, engine_schema=engine_schema, db_schema=db_schema)
+    console.print(
+        render_command_header(
+            command_name="foreign-keys validate",
+            engine_schema=conn.engine_schema,
+            db_schema=conn.db_schema,
+            vocabulary_included=vocabulary_included,
+            mode_label="inspect",
+        )
+    )
+    try:
+        engine = build_engine(dotenv=conn.dotenv, engine_schema=conn.engine_schema)
+        with console.status("Validating selected foreign key relationships..."):
+            report = validate_foreign_key_constraints(
+                engine,
+                db_schema=conn.db_schema,
+                vocabulary_included=vocabulary_included,
+            )
+        console.print(render_foreign_key_validation_results(report.results))
+        console.print(render_foreign_key_validation_issues(report.violations))
+        console.print(render_foreign_key_validation_summary(report))
+    except Exception as exc:
+        handle_error(exc)

@@ -9,8 +9,18 @@ import shutil
 import subprocess
 
 import sqlalchemy as sa
+import typer
 
-from ..backend_support import Dialect, require_backend
+from ..backend_support import Dialect, POSTGRESQL_ONLY_HELP, require_backend
+from ._cli_utils import build_engine, handle_error, resolve_connection
+from .ui import (
+    console,
+    render_backup_result,
+    render_backup_summary,
+    render_command_header,
+    render_restore_result,
+    render_restore_summary,
+)
 
 
 class BackupFormat(StrEnum):
@@ -48,22 +58,6 @@ class DatabaseRestoreResult:
     schema_name: str | None
     command: tuple[str, ...]
     tool_path: str
-
-
-def _ensure_backup_supported(engine: sa.Engine) -> None:
-    require_backend(
-        engine,
-        feature="Database backup",
-        supported_dialects=(Dialect.POSTGRESQL,),
-    )
-
-
-def _ensure_restore_supported(engine: sa.Engine) -> None:
-    require_backend(
-        engine,
-        feature="Database restore",
-        supported_dialects=(Dialect.POSTGRESQL,),
-    )
 
 
 def _pg_dump_path() -> str:
@@ -216,7 +210,7 @@ def create_database_backup(
     db_schema: str | None = None,
     dry_run: bool = False,
 ) -> DatabaseBackupResult:
-    _ensure_backup_supported(engine)
+    require_backend(engine, feature="Database backup", supported_dialects=(Dialect.POSTGRESQL,))
     tool_path = _pg_dump_path()
     resolved_output_path = Path(output_path) if output_path is not None else _default_output_path(format)
     resolved_output_path = resolved_output_path.expanduser().resolve()
@@ -232,18 +226,11 @@ def create_database_backup(
     if not dry_run:
         resolved_output_path.parent.mkdir(parents=True, exist_ok=True)
         try:
-            subprocess.run(
-                command,
-                env=env,
-                check=True,
-                capture_output=True,
-                text=True,
-            )
+            subprocess.run(command, env=env, check=True, capture_output=True, text=True)
         except subprocess.CalledProcessError as exc:
             stderr = (exc.stderr or "").strip()
             raise RuntimeError(
-                "Database backup failed via `pg_dump`."
-                + (f" {stderr}" if stderr else "")
+                "Database backup failed via `pg_dump`." + (f" {stderr}" if stderr else "")
             ) from exc
 
     return DatabaseBackupResult(
@@ -271,7 +258,7 @@ def restore_database_backup(
     db_schema: str | None = None,
     dry_run: bool = False,
 ) -> DatabaseRestoreResult:
-    _ensure_restore_supported(engine)
+    require_backend(engine, feature="Database restore", supported_dialects=(Dialect.POSTGRESQL,))
     resolved_input_path = Path(input_path).expanduser().resolve()
     if not resolved_input_path.exists():
         raise RuntimeError(f"Backup artifact not found: {resolved_input_path}")
@@ -287,18 +274,11 @@ def restore_database_backup(
 
     if not dry_run:
         try:
-            subprocess.run(
-                command,
-                env=env,
-                check=True,
-                capture_output=True,
-                text=True,
-            )
+            subprocess.run(command, env=env, check=True, capture_output=True, text=True)
         except subprocess.CalledProcessError as exc:
             stderr = (exc.stderr or "").strip()
             raise RuntimeError(
-                "Database restore failed."
-                + (f" {stderr}" if stderr else "")
+                "Database restore failed." + (f" {stderr}" if stderr else "")
             ) from exc
 
     return DatabaseRestoreResult(
@@ -316,3 +296,89 @@ def restore_database_backup(
         command=tuple(command),
         tool_path=tool_path,
     )
+
+
+app = typer.Typer(rich_markup_mode="rich")
+
+
+@app.command(
+    "backup-database",
+    help=f"Create a PostgreSQL dump artifact that can be restored into another environment. {POSTGRESQL_ONLY_HELP}",
+)
+def backup_database_command(
+    dotenv: str | None = typer.Option(None, help="Optional dotenv file to load."),
+    engine_schema: str | None = typer.Option(None, help="Engine schema selector."),
+    db_schema: str | None = typer.Option(None, help="Optional schema-limited backup."),
+    output_path: str | None = typer.Option(
+        None,
+        help="Backup artifact path. Defaults to a timestamped file in the current directory.",
+    ),
+    format: BackupFormat = typer.Option(BackupFormat.CUSTOM, help="Backup format."),
+    dry_run: bool = typer.Option(False, "--dry-run"),
+) -> None:
+    conn = resolve_connection(dotenv=dotenv, engine_schema=engine_schema, db_schema=db_schema)
+    console.print(
+        render_command_header(
+            command_name="backup-database",
+            engine_schema=conn.engine_schema,
+            db_schema=conn.db_schema,
+            vocabulary_included=None,
+            mode_label="dry-run" if dry_run else "apply",
+        )
+    )
+    try:
+        engine = build_engine(dotenv=conn.dotenv, engine_schema=conn.engine_schema)
+        with console.status("Creating restore-ready PostgreSQL backup..."):
+            result = create_database_backup(
+                engine,
+                output_path=output_path,
+                format=format,
+                db_schema=conn.db_schema,
+                dry_run=dry_run,
+            )
+        console.print(render_backup_result(result))
+        console.print(render_backup_summary(result, dry_run=dry_run))
+    except Exception as exc:
+        handle_error(exc)
+
+
+@app.command(
+    "restore-database",
+    help=f"Restore a PostgreSQL backup artifact into the configured target database. {POSTGRESQL_ONLY_HELP}",
+)
+def restore_database_command(
+    input_path: str = typer.Argument(..., help="Backup artifact path to restore."),
+    dotenv: str | None = typer.Option(None, help="Optional dotenv file to load."),
+    engine_schema: str | None = typer.Option(None, help="Engine schema selector."),
+    db_schema: str | None = typer.Option(
+        None, help="Optional schema-limited restore for custom-format dumps."
+    ),
+    format: BackupFormat = typer.Option(
+        ..., help="Restore format. Required: choose `custom` or `plain`."
+    ),
+    dry_run: bool = typer.Option(False, "--dry-run"),
+) -> None:
+    conn = resolve_connection(dotenv=dotenv, engine_schema=engine_schema, db_schema=db_schema)
+    console.print(
+        render_command_header(
+            command_name="restore-database",
+            engine_schema=conn.engine_schema,
+            db_schema=conn.db_schema,
+            vocabulary_included=None,
+            mode_label="dry-run" if dry_run else "apply",
+        )
+    )
+    try:
+        engine = build_engine(dotenv=conn.dotenv, engine_schema=conn.engine_schema)
+        with console.status("Restoring PostgreSQL backup artifact..."):
+            result = restore_database_backup(
+                engine,
+                input_path=input_path,
+                format=format,
+                db_schema=conn.db_schema,
+                dry_run=dry_run,
+            )
+        console.print(render_restore_result(result))
+        console.print(render_restore_summary(result, dry_run=dry_run))
+    except Exception as exc:
+        handle_error(exc)

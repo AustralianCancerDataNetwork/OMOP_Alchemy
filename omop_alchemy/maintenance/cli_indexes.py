@@ -4,16 +4,25 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 import sqlalchemy as sa
+import typer
 
 from omop_alchemy.cdm.base.indexing import OMOP_CLUSTER_INDEX_INFO_KEY
 
 from ..backend_support import Dialect, backend_label, supports_backend
+from ._cli_utils import build_engine, handle_error, resolve_connection
 from .tables import (
     MaintenanceTable,
     TableCategory,
     qualified_table_name,
     schema_adjusted_metadata,
     select_omop_tables,
+)
+from .ui import (
+    console,
+    render_command_header,
+    render_index_note,
+    render_index_results,
+    render_index_summary,
 )
 
 
@@ -48,6 +57,8 @@ class IndexManagementResult:
     action: IndexAction
     status: str
     detail: str
+
+
 def _schema_metadata_indexes(
     tables: list[MaintenanceTable],
     db_schema: str | None,
@@ -60,10 +71,7 @@ def _schema_metadata_indexes(
                 indexes[(table.table_name, str(index.name))] = index
         return indexes
 
-    _, copied_tables = schema_adjusted_metadata(
-        tables,
-        db_schema=db_schema,
-    )
+    _, copied_tables = schema_adjusted_metadata(tables, db_schema=db_schema)
     for table_name, table in copied_tables.items():
         for index in table.indexes:
             indexes[(table_name, str(index.name))] = index
@@ -95,6 +103,8 @@ def _cluster_column_names(
         if str(index.name) == cluster_index_name:
             return tuple(column.name for column in index.columns)
     return table.primary_key_names
+
+
 def collect_index_targets(
     engine: sa.Engine,
     *,
@@ -145,10 +155,7 @@ def manage_indexes(
     inspector = sa.inspect(engine)
     selected_tables = select_omop_tables(vocabulary_included=vocabulary_included)
     metadata_indexes = _schema_metadata_indexes(selected_tables, db_schema)
-    clustering_supported = supports_backend(
-        engine,
-        supported_dialects=(Dialect.POSTGRESQL,),
-    )
+    clustering_supported = supports_backend(engine, supported_dialects=(Dialect.POSTGRESQL,))
 
     results: list[IndexManagementResult] = []
 
@@ -262,3 +269,79 @@ def manage_indexes(
                 )
 
     return results
+
+
+app = typer.Typer(
+    help="Manage ORM-defined secondary indexes.",
+    rich_markup_mode="rich",
+)
+
+
+@app.command("disable")
+def disable_indexes_command(
+    dotenv: str | None = typer.Option(None, help="Optional dotenv file to load."),
+    engine_schema: str | None = typer.Option(None, help="Engine schema selector."),
+    db_schema: str | None = typer.Option(None, help="Database schema override."),
+    vocabulary_included: bool = typer.Option(False, "--vocab/--no-vocab"),
+    dry_run: bool = typer.Option(False, "--dry-run"),
+) -> None:
+    conn = resolve_connection(dotenv=dotenv, engine_schema=engine_schema, db_schema=db_schema)
+    console.print(
+        render_command_header(
+            command_name="indexes disable",
+            engine_schema=conn.engine_schema,
+            db_schema=conn.db_schema,
+            vocabulary_included=vocabulary_included,
+            mode_label="dry-run" if dry_run else "apply",
+        )
+    )
+    try:
+        engine = build_engine(dotenv=conn.dotenv, engine_schema=conn.engine_schema)
+        with console.status("Managing metadata-defined indexes..."):
+            results = manage_indexes(
+                engine,
+                action=IndexAction.DISABLE,
+                db_schema=conn.db_schema,
+                vocabulary_included=vocabulary_included,
+                dry_run=dry_run,
+            )
+        console.print(render_index_results(results))
+        console.print(render_index_summary(results, dry_run=dry_run))
+        console.print(render_index_note(IndexAction.DISABLE))
+    except Exception as exc:
+        handle_error(exc)
+
+
+@app.command("enable")
+def enable_indexes_command(
+    dotenv: str | None = typer.Option(None, help="Optional dotenv file to load."),
+    engine_schema: str | None = typer.Option(None, help="Engine schema selector."),
+    db_schema: str | None = typer.Option(None, help="Database schema override."),
+    vocabulary_included: bool = typer.Option(False, "--vocab/--no-vocab"),
+    dry_run: bool = typer.Option(False, "--dry-run"),
+) -> None:
+    conn = resolve_connection(dotenv=dotenv, engine_schema=engine_schema, db_schema=db_schema)
+    console.print(
+        render_command_header(
+            command_name="indexes enable",
+            engine_schema=conn.engine_schema,
+            db_schema=conn.db_schema,
+            vocabulary_included=vocabulary_included,
+            mode_label="dry-run" if dry_run else "apply",
+        )
+    )
+    try:
+        engine = build_engine(dotenv=conn.dotenv, engine_schema=conn.engine_schema)
+        with console.status("Managing metadata-defined indexes..."):
+            results = manage_indexes(
+                engine,
+                action=IndexAction.ENABLE,
+                db_schema=conn.db_schema,
+                vocabulary_included=vocabulary_included,
+                dry_run=dry_run,
+            )
+        console.print(render_index_results(results))
+        console.print(render_index_summary(results, dry_run=dry_run))
+        console.print(render_index_note(IndexAction.ENABLE))
+    except Exception as exc:
+        handle_error(exc)

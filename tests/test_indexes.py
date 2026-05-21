@@ -3,8 +3,8 @@ from typer.testing import CliRunner
 
 from omop_alchemy.cdm.base.indexing import OMOP_CLUSTER_INDEX_INFO_KEY, omop_index_name
 from omop_alchemy.maintenance.cli import app
-from omop_alchemy.maintenance.create_tables import create_missing_tables
-from omop_alchemy.maintenance.indexes import (
+from omop_alchemy.maintenance.cli_schema import create_missing_tables
+from omop_alchemy.maintenance.cli_indexes import (
     IndexAction,
     IndexManagementResult,
     collect_index_targets,
@@ -162,19 +162,19 @@ def test_disable_indexes_cli_invokes_management(monkeypatch):
         ]
 
     monkeypatch.setattr(
-        "omop_alchemy.maintenance.cli.load_environment",
+        "omop_alchemy.maintenance._cli_utils.load_environment",
         fake_load_environment,
     )
     monkeypatch.setattr(
-        "omop_alchemy.maintenance.cli.get_engine_name",
+        "omop_alchemy.maintenance._cli_utils.get_engine_name",
         fake_get_engine_name,
     )
     monkeypatch.setattr(
-        "omop_alchemy.maintenance.cli.create_engine_with_dependencies",
+        "omop_alchemy.maintenance._cli_utils.create_engine_with_dependencies",
         fake_create_engine,
     )
     monkeypatch.setattr(
-        "omop_alchemy.maintenance.cli.manage_indexes",
+        "omop_alchemy.maintenance.cli_indexes.manage_indexes",
         fake_manage_indexes,
     )
 

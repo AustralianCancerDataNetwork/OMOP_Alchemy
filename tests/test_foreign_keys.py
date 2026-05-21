@@ -3,8 +3,8 @@ import pytest
 from typer.testing import CliRunner
 
 from omop_alchemy.maintenance.cli import app
-from omop_alchemy.maintenance.create_tables import create_missing_tables
-from omop_alchemy.maintenance.foreign_keys import (
+from omop_alchemy.maintenance.cli_schema import create_missing_tables
+from omop_alchemy.maintenance.cli_foreign_keys import (
     ForeignKeyAction,
     ForeignKeyConstraintViolation,
     validate_foreign_key_constraints,
@@ -83,15 +83,15 @@ def test_disable_foreign_keys_cli_fails_gracefully_for_sqlite(monkeypatch):
         return sa.create_engine(url, future=future)
 
     monkeypatch.setattr(
-        "omop_alchemy.maintenance.cli.load_environment",
+        "omop_alchemy.maintenance._cli_utils.load_environment",
         fake_load_environment,
     )
     monkeypatch.setattr(
-        "omop_alchemy.maintenance.cli.get_engine_name",
+        "omop_alchemy.maintenance._cli_utils.get_engine_name",
         fake_get_engine_name,
     )
     monkeypatch.setattr(
-        "omop_alchemy.maintenance.cli.create_engine_with_dependencies",
+        "omop_alchemy.maintenance._cli_utils.create_engine_with_dependencies",
         fake_create_engine,
     )
 
@@ -124,11 +124,11 @@ def test_manage_foreign_key_triggers_strict_does_not_enable_on_validation_failur
             return _FakeConnection()
 
     monkeypatch.setattr(
-        "omop_alchemy.maintenance.foreign_keys._ensure_postgresql_supported",
+        "omop_alchemy.maintenance.cli_foreign_keys._ensure_postgresql_supported",
         lambda engine, *, feature: None,
     )
     monkeypatch.setattr(
-        "omop_alchemy.maintenance.foreign_keys.collect_foreign_key_targets",
+        "omop_alchemy.maintenance.cli_foreign_keys.collect_foreign_key_targets",
         lambda engine, *, db_schema=None, vocabulary_included=False: [
             type("Target", (), {
                 "table_name": "person",
@@ -149,7 +149,7 @@ def test_manage_foreign_key_triggers_strict_does_not_enable_on_validation_failur
         ],
     )
     monkeypatch.setattr(
-        "omop_alchemy.maintenance.foreign_keys._collect_strict_validation_failures",
+        "omop_alchemy.maintenance.cli_foreign_keys._collect_strict_validation_failures",
         lambda connection, *, db_schema=None, vocabulary_included=False: {
             "visit_occurrence": [
                 ForeignKeyConstraintViolation(
@@ -194,11 +194,11 @@ def test_manage_foreign_key_triggers_strict_enables_when_validation_passes(monke
             return _FakeConnection()
 
     monkeypatch.setattr(
-        "omop_alchemy.maintenance.foreign_keys._ensure_postgresql_supported",
+        "omop_alchemy.maintenance.cli_foreign_keys._ensure_postgresql_supported",
         lambda engine, *, feature: None,
     )
     monkeypatch.setattr(
-        "omop_alchemy.maintenance.foreign_keys.collect_foreign_key_targets",
+        "omop_alchemy.maintenance.cli_foreign_keys.collect_foreign_key_targets",
         lambda engine, *, db_schema=None, vocabulary_included=False: [
             type("Target", (), {
                 "table_name": "person",
@@ -211,7 +211,7 @@ def test_manage_foreign_key_triggers_strict_enables_when_validation_passes(monke
         ],
     )
     monkeypatch.setattr(
-        "omop_alchemy.maintenance.foreign_keys._collect_strict_validation_failures",
+        "omop_alchemy.maintenance.cli_foreign_keys._collect_strict_validation_failures",
         lambda connection, *, db_schema=None, vocabulary_included=False: {},
     )
 
@@ -260,19 +260,19 @@ def test_enable_foreign_keys_strict_cli_invokes_strict_management(monkeypatch):
         return []
 
     monkeypatch.setattr(
-        "omop_alchemy.maintenance.cli.load_environment",
+        "omop_alchemy.maintenance._cli_utils.load_environment",
         fake_load_environment,
     )
     monkeypatch.setattr(
-        "omop_alchemy.maintenance.cli.get_engine_name",
+        "omop_alchemy.maintenance._cli_utils.get_engine_name",
         fake_get_engine_name,
     )
     monkeypatch.setattr(
-        "omop_alchemy.maintenance.cli.create_engine_with_dependencies",
+        "omop_alchemy.maintenance._cli_utils.create_engine_with_dependencies",
         fake_create_engine,
     )
     monkeypatch.setattr(
-        "omop_alchemy.maintenance.cli.manage_foreign_key_triggers",
+        "omop_alchemy.maintenance.cli_foreign_keys.manage_foreign_key_triggers",
         fake_manage_foreign_key_triggers,
     )
 
@@ -301,11 +301,11 @@ def test_validate_foreign_key_constraints_reports_failures(monkeypatch):
             return _FakeConnection()
 
     monkeypatch.setattr(
-        "omop_alchemy.maintenance.foreign_keys._ensure_postgresql_supported",
+        "omop_alchemy.maintenance.cli_foreign_keys._ensure_postgresql_supported",
         lambda engine, *, feature: None,
     )
     monkeypatch.setattr(
-        "omop_alchemy.maintenance.foreign_keys.collect_foreign_key_targets",
+        "omop_alchemy.maintenance.cli_foreign_keys.collect_foreign_key_targets",
         lambda engine, *, db_schema=None, vocabulary_included=False: [
             type("Target", (), {
                 "table_name": "person",
@@ -326,7 +326,7 @@ def test_validate_foreign_key_constraints_reports_failures(monkeypatch):
         ],
     )
     monkeypatch.setattr(
-        "omop_alchemy.maintenance.foreign_keys._collect_strict_validation_failures",
+        "omop_alchemy.maintenance.cli_foreign_keys._collect_strict_validation_failures",
         lambda connection, *, db_schema=None, vocabulary_included=False: {
             "visit_occurrence": [
                 ForeignKeyConstraintViolation(
@@ -370,7 +370,7 @@ def test_foreign_keys_validate_cli_invokes_validation(monkeypatch):
         db_schema: str | None = None,
         vocabulary_included: bool = False,
     ):
-        from omop_alchemy.maintenance.foreign_keys import (
+        from omop_alchemy.maintenance.cli_foreign_keys import (
             ForeignKeyConstraintViolation,
             ForeignKeyValidationReport,
             ForeignKeyValidationResult,
@@ -406,19 +406,19 @@ def test_foreign_keys_validate_cli_invokes_validation(monkeypatch):
         )
 
     monkeypatch.setattr(
-        "omop_alchemy.maintenance.cli.load_environment",
+        "omop_alchemy.maintenance._cli_utils.load_environment",
         fake_load_environment,
     )
     monkeypatch.setattr(
-        "omop_alchemy.maintenance.cli.get_engine_name",
+        "omop_alchemy.maintenance._cli_utils.get_engine_name",
         fake_get_engine_name,
     )
     monkeypatch.setattr(
-        "omop_alchemy.maintenance.cli.create_engine_with_dependencies",
+        "omop_alchemy.maintenance._cli_utils.create_engine_with_dependencies",
         fake_create_engine,
     )
     monkeypatch.setattr(
-        "omop_alchemy.maintenance.cli.validate_foreign_key_constraints",
+        "omop_alchemy.maintenance.cli_foreign_keys.validate_foreign_key_constraints",
         fake_validate_foreign_key_constraints,
     )
 

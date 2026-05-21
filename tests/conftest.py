@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from typing import Any, Dict, Tuple
 
-from omop_alchemy.maintenance.load_vocab import _load_vocab_model_csv
+from omop_alchemy.maintenance.cli_vocab import _load_vocab_model_csv
 from omop_alchemy.cdm.model.clinical import Condition_Occurrence, Person
 from omop_alchemy.cdm.model.derived import Observation_Period
 from omop_alchemy.cdm.model.structural import Episode, Episode_Event

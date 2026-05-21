@@ -1,8 +1,8 @@
 from typer.testing import CliRunner
 
 from omop_alchemy.maintenance.cli import app
-from omop_alchemy.maintenance.defaults import defaults_path, load_connection_defaults
-from omop_alchemy.maintenance.indexes import IndexAction, IndexManagementResult
+from omop_alchemy.maintenance.cli_config import defaults_path, load_connection_defaults
+from omop_alchemy.maintenance.cli_indexes import IndexAction, IndexManagementResult
 from omop_alchemy.maintenance.tables import TableCategory
 
 
@@ -75,19 +75,19 @@ def test_cli_uses_saved_connection_defaults(monkeypatch):
         return []
 
     monkeypatch.setattr(
-        "omop_alchemy.maintenance.cli.load_environment",
+        "omop_alchemy.maintenance._cli_utils.load_environment",
         fake_load_environment,
     )
     monkeypatch.setattr(
-        "omop_alchemy.maintenance.cli.get_engine_name",
+        "omop_alchemy.maintenance._cli_utils.get_engine_name",
         fake_get_engine_name,
     )
     monkeypatch.setattr(
-        "omop_alchemy.maintenance.cli.create_engine_with_dependencies",
+        "omop_alchemy.maintenance._cli_utils.create_engine_with_dependencies",
         fake_create_engine,
     )
     monkeypatch.setattr(
-        "omop_alchemy.maintenance.cli.manage_indexes",
+        "omop_alchemy.maintenance.cli_indexes.manage_indexes",
         fake_manage_indexes,
     )
 

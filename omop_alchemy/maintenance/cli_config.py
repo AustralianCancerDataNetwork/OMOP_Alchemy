@@ -6,6 +6,10 @@ import os
 from pathlib import Path
 import tomllib
 
+import typer
+
+from .ui import console, render_connection_defaults
+
 
 DEFAULTS_FILENAME = ".omop-maint.toml"
 DEFAULTS_ENV_VAR = "OMOP_MAINT_DEFAULTS_FILE"
@@ -176,3 +180,73 @@ def clear_connection_defaults(
 
     save_connection_defaults(updated)
     return path
+
+
+app = typer.Typer(
+    help="Manage persisted maintenance CLI connection overrides.",
+    rich_markup_mode="rich",
+)
+
+
+@app.command("show")
+def config_show_command() -> None:
+    """Display current saved connection defaults."""
+    defaults = load_connection_defaults()
+    console.print(render_connection_defaults(defaults, path=str(defaults_path())))
+
+
+@app.command("set-overrides")
+def config_set_overrides_command(
+    dotenv: str | None = typer.Option(None, help="Override dotenv file to load."),
+    engine_schema: str | None = typer.Option(None, help="Override engine schema selector."),
+    db_schema: str | None = typer.Option(None, help="Override database schema."),
+    athena_source: str | None = typer.Option(
+        None, help="Override path to unzipped Athena vocabulary files."
+    ),
+) -> None:
+    """Save one or more connection defaults to the project config file."""
+    current = load_connection_defaults()
+    updated = current.with_updates(
+        dotenv=dotenv,
+        engine_schema=engine_schema,
+        db_schema=db_schema,
+        athena_source=athena_source,
+    )
+    path = save_connection_defaults(updated)
+    console.print(render_connection_defaults(updated, path=str(path), title="Saved Overrides"))
+
+
+@app.command("clear-overrides")
+def config_clear_overrides_command(
+    dotenv: bool = typer.Option(False, "--dotenv", help="Clear overridden dotenv."),
+    engine_schema: bool = typer.Option(
+        False, "--engine-schema", help="Clear overridden engine schema."
+    ),
+    db_schema: bool = typer.Option(False, "--db-schema", help="Clear overridden database schema."),
+    athena_source: bool = typer.Option(
+        False, "--athena-source", help="Clear overridden Athena source path."
+    ),
+) -> None:
+    """Clear one or more saved connection overrides."""
+    path = clear_connection_defaults(
+        clear_dotenv=dotenv,
+        clear_engine_schema=engine_schema,
+        clear_db_schema=db_schema,
+        clear_athena_source=athena_source,
+    )
+    if path is None:
+        console.print(
+            render_connection_defaults(
+                ConnectionDefaults(),
+                path=str(defaults_path()),
+                title="Overrides Already Clear",
+            )
+        )
+        return
+    console.print(
+        render_connection_defaults(
+            load_connection_defaults(),
+            path=str(path),
+            title="Overrides Cleared",
+        )
+    )

@@ -12,7 +12,7 @@ from pathlib import Path
 import sqlalchemy as sa
 
 from omop_alchemy.cdm.model.vocabulary import Concept
-from omop_alchemy.maintenance.load_vocab import (
+from omop_alchemy.maintenance.cli_vocab import (
     _load_vocab_model_csv,
     load_vocab_source,
 )

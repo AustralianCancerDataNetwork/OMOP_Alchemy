@@ -2,9 +2,9 @@ import sqlalchemy as sa
 import pytest
 from typer.testing import CliRunner
 
-from omop_alchemy.maintenance.analyze_tables import AnalyzeTableResult, analyze_tables
+from omop_alchemy.maintenance.cli_tables import AnalyzeTableResult, analyze_tables
 from omop_alchemy.maintenance.cli import app
-from omop_alchemy.maintenance.create_tables import create_missing_tables
+from omop_alchemy.maintenance.cli_schema import create_missing_tables
 from omop_alchemy.maintenance.tables import TableCategory, TableScope
 
 runner = CliRunner()

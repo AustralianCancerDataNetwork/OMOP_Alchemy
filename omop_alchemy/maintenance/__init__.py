@@ -1,16 +1,18 @@
-from .backup import (
+from .cli_backup import (
     BackupFormat,
     DatabaseBackupResult,
     DatabaseRestoreResult,
     create_database_backup,
     restore_database_backup,
 )
-from .analyze_tables import AnalyzeTableResult, analyze_tables
-from .create_tables import TableCreationResult, collect_missing_tables, create_missing_tables
-from .data_summary import TableSummaryResult, collect_data_summary
-from .defaults import ConnectionDefaults, clear_connection_defaults, defaults_path, load_connection_defaults, save_connection_defaults
-from .doctor import DoctorCheck, DoctorRecommendation, DoctorReport, collect_doctor_report
-from .foreign_keys import (
+from .cli_config import (
+    ConnectionDefaults,
+    clear_connection_defaults,
+    defaults_path,
+    load_connection_defaults,
+    save_connection_defaults,
+)
+from .cli_foreign_keys import (
     ForeignKeyAction,
     ForeignKeyConstraintViolation,
     ForeignKeyManagementResult,
@@ -23,29 +25,44 @@ from .foreign_keys import (
     manage_foreign_key_triggers,
     validate_foreign_key_constraints,
 )
-from .info import CommandSupport, DependencyStatus, MaintenanceInfo, collect_maintenance_info
-from .indexes import (
+from .cli_indexes import (
     IndexAction,
     IndexManagementResult,
     IndexTarget,
     collect_index_targets,
     manage_indexes,
 )
-from .load_vocab import VocabularyLoadReport, VocabularyLoadResult, load_vocab_source
-from .reconcile import (
+from .cli_schema import (
+    CommandSupport,
+    DependencyStatus,
+    DoctorCheck,
+    DoctorRecommendation,
+    DoctorReport,
+    MaintenanceInfo,
     ReconciliationIssue,
     SchemaReconciliationReport,
+    TableCreationResult,
     TableReconciliationResult,
+    TableSummaryResult,
+    collect_data_summary,
+    collect_doctor_report,
+    collect_maintenance_info,
+    collect_missing_tables,
+    create_missing_tables,
     reconcile_schema,
 )
-from .reset_sequences import (
+from .cli_tables import (
+    AnalyzeTableResult,
     SequenceResetResult,
     SequenceTarget,
+    TruncateTableResult,
+    analyze_tables,
     collect_sequence_targets,
     reset_model_sequences,
+    truncate_tables,
 )
+from .cli_vocab import VocabularyLoadReport, VocabularyLoadResult, load_vocab_source
 from .tables import MaintenanceTable, TableCategory, collect_maintenance_tables, select_maintenance_tables
-from .truncate_tables import TruncateTableResult, truncate_tables
 
 __all__ = [
     "analyze_tables",

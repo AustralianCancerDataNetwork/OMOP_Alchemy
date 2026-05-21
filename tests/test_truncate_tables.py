@@ -4,12 +4,12 @@ import pytest
 from typer.testing import CliRunner
 
 from omop_alchemy.maintenance.cli import app
-from omop_alchemy.maintenance.create_tables import create_missing_tables
+from omop_alchemy.maintenance.cli_schema import create_missing_tables
 from omop_alchemy.maintenance.tables import TableCategory, TableScope
-from omop_alchemy.maintenance.truncate_tables import TruncateTableResult, truncate_tables
+from omop_alchemy.maintenance.cli_tables import TruncateTableResult, truncate_tables
 
 runner = CliRunner()
-truncate_tables_module = importlib.import_module("omop_alchemy.maintenance.truncate_tables")
+truncate_tables_module = importlib.import_module("omop_alchemy.maintenance.cli_tables")
 
 
 def test_truncate_tables_requires_postgresql(tmp_path):
@@ -92,19 +92,19 @@ def test_truncate_tables_cli_invokes_management(monkeypatch):
         ]
 
     monkeypatch.setattr(
-        "omop_alchemy.maintenance.cli.load_environment",
+        "omop_alchemy.maintenance._cli_utils.load_environment",
         fake_load_environment,
     )
     monkeypatch.setattr(
-        "omop_alchemy.maintenance.cli.get_engine_name",
+        "omop_alchemy.maintenance._cli_utils.get_engine_name",
         fake_get_engine_name,
     )
     monkeypatch.setattr(
-        "omop_alchemy.maintenance.cli.create_engine_with_dependencies",
+        "omop_alchemy.maintenance._cli_utils.create_engine_with_dependencies",
         fake_create_engine,
     )
     monkeypatch.setattr(
-        "omop_alchemy.maintenance.cli.truncate_tables",
+        "omop_alchemy.maintenance.cli_tables.truncate_tables",
         fake_truncate_tables,
     )
 

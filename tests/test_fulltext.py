@@ -231,11 +231,11 @@ def test_fulltext_install_cli_passes_options(monkeypatch):
         )
 
     monkeypatch.setattr(
-        "omop_alchemy.maintenance.cli._build_engine",
+        "omop_alchemy.maintenance.cli_fulltext.build_engine",
         fake_build_engine,
     )
     monkeypatch.setattr(
-        "omop_alchemy.maintenance.cli.install_fulltext_columns",
+        "omop_alchemy.maintenance.cli_fulltext.install_fulltext_columns",
         fake_install_fulltext_columns,
     )
 
