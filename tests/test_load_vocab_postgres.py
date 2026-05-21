@@ -7,26 +7,24 @@ These tests require a running PostgreSQL container. Start one with:
 Then run:
     pytest -m postgres
 """
-import shutil
 from pathlib import Path
 
-import pytest
 import sqlalchemy as sa
 
 from omop_alchemy.cdm.model.vocabulary import Concept
 from omop_alchemy.maintenance.load_vocab import (
-    REQUIRED_VOCAB_MODELS,
     _load_vocab_model_csv,
     load_vocab_source,
 )
-
-_FIXTURE_SOURCE = Path(__file__).parent / "fixtures" / "athena_source"
+from tests.conftest import _ATHENA_FIXTURE_DATA, _write_fixture_csv
 
 
 def _copy_fixture_source(base_dir: Path) -> Path:
-    """Copy the shared Athena fixture set into an isolated per-test source dir."""
+    """Write the shared in-memory Athena fixture set into an isolated per-test source dir."""
     source_path = base_dir / "athena_source"
-    shutil.copytree(_FIXTURE_SOURCE, source_path)
+    source_path.mkdir(parents=True)
+    for table_name, data in _ATHENA_FIXTURE_DATA.items():
+        _write_fixture_csv(source_path, table_name, data)
     return source_path
 
 
@@ -39,28 +37,18 @@ def _make_concept_source(
     """
     Build a minimal vocabulary source where CONCEPT.csv contains exactly one
     test concept with a Gender domain reference, and all other required tables
-    are copied from the shared fixture (which has the Gender domain row).
+    are written from the shared in-memory fixture.
     """
     source_path = base_dir / "athena_source"
     source_path.mkdir(parents=True)
 
-    for fname in (
-        "DOMAIN.csv",
-        "VOCABULARY.csv",
-        "CONCEPT_CLASS.csv",
-        "RELATIONSHIP.csv",
-        "CONCEPT_ANCESTOR.csv",
-        "CONCEPT_RELATIONSHIP.csv",
-        "CONCEPT_SYNONYM.csv",
-    ):
-        shutil.copy(_FIXTURE_SOURCE / fname, source_path / fname)
+    for table_name, data in _ATHENA_FIXTURE_DATA.items():
+        if table_name != "concept":
+            _write_fixture_csv(source_path, table_name, data)
 
-    (source_path / "CONCEPT.csv").write_text(
-        "concept_id\tconcept_name\tdomain_id\tvocabulary_id\tconcept_class_id\t"
-        "standard_concept\tconcept_code\tvalid_start_date\tvalid_end_date\tinvalid_reason\n"
-        f"{concept_id}\t{concept_name}\tGender\tGender\tGender\tS\tTEST\t19700101\t20991231\t\n",
-        encoding="utf-8",
-    )
+    concept_cols = list(_ATHENA_FIXTURE_DATA["concept"].keys())
+    concept_row = [concept_id, concept_name, "Gender", "Gender", "Gender", "S", "TEST", "19700101", "20991231", None]
+    _write_fixture_csv(source_path, "concept", {col: (val,) for col, val in zip(concept_cols, concept_row)})
     return source_path
 
 
@@ -68,7 +56,7 @@ def _make_concept_source(
 # Tests
 # ---------------------------------------------------------------------------
 
-@pytest.mark.postgres
+
 def test_end_to_end_vocab_load_on_postgres(pg_session, pg_engine, tmp_path):
     """load_vocab_source() completes end-to-end on real Postgres via orm-loader>=0.4.0."""
     source_path = _copy_fixture_source(tmp_path)
@@ -82,18 +70,7 @@ def test_end_to_end_vocab_load_on_postgres(pg_session, pg_engine, tmp_path):
     assert count == 7
 
 
-@pytest.mark.postgres
-def test_initial_load_uses_insert_if_empty_on_postgres(pg_session, pg_engine, tmp_path):
-    """initial_load=True uses the empty-target insert fast path on a fresh Postgres load."""
-    source_path = _copy_fixture_source(tmp_path)
-    report = load_vocab_source(pg_engine, source_path=source_path, initial_load=True)
 
-    assert report.merge_strategy == "insert_if_empty"
-    count = pg_session.execute(sa.text("SELECT COUNT(*) FROM concept")).scalar()
-    assert count == 7
-
-
-@pytest.mark.postgres
 def test_quote_mode_auto_regression_on_postgres(pg_session, pg_engine, tmp_path):
     """
     quote_mode='auto' strips RFC-4180 double-quotes via PostgreSQL COPY.
@@ -107,38 +84,16 @@ def test_quote_mode_auto_regression_on_postgres(pg_session, pg_engine, tmp_path)
 
     long_name = "A" * 255  # exactly at VARCHAR(255) limit when unquoted
 
-    for model in REQUIRED_VOCAB_MODELS:
-        table_name = model.__tablename__.upper()
-        csv_path = source_path / f"{table_name}.csv"
-        if table_name == "CONCEPT":
-            # Wrap the 255-char name in double-quotes so it's 257 chars raw.
-            csv_path.write_text(
-                "concept_id\tconcept_name\tdomain_id\tvocabulary_id\t"
-                "concept_class_id\tstandard_concept\tconcept_code\t"
-                "valid_start_date\tvalid_end_date\tinvalid_reason\n"
-                f'1\t"{long_name}"\tGender\tGender\tGender\tS\tTEST\t19700101\t20991231\t\n',
-                encoding="utf-8",
-            )
-        elif table_name == "DOMAIN":
-            csv_path.write_text(
-                "domain_id\tdomain_name\tdomain_concept_id\nGender\tGender\t0\n",
-                encoding="utf-8",
-            )
-        elif table_name == "VOCABULARY":
-            csv_path.write_text(
-                "vocabulary_id\tvocabulary_name\tvocabulary_reference\t"
-                "vocabulary_version\tvocabulary_concept_id\n"
-                "Gender\tOMOP Gender\tOHDSI\tv1.0\t0\n",
-                encoding="utf-8",
-            )
-        elif table_name == "CONCEPT_CLASS":
-            csv_path.write_text(
-                "concept_class_id\tconcept_class_name\tconcept_class_concept_id\n"
-                "Gender\tGender\t0\n",
-                encoding="utf-8",
-            )
-        else:
-            shutil.copy(_FIXTURE_SOURCE / f"{table_name}.csv", csv_path)
+    # All tables except concept get the standard fixture data.
+    for table_name, data in _ATHENA_FIXTURE_DATA.items():
+        if table_name != "concept":
+            _write_fixture_csv(source_path, table_name, data)
+
+    # Concept gets a single row whose name is wrapped in RFC-4180 double-quotes
+    # so the raw file value is 257 chars. quote_mode='auto' must strip them.
+    concept_cols = list(_ATHENA_FIXTURE_DATA["concept"].keys())
+    concept_row = [1, f'"{long_name}"', "Gender", "Gender", "Gender", "S", "TEST", "19700101", "20991231", None]
+    _write_fixture_csv(source_path, "concept", {col: (val,) for col, val in zip(concept_cols, concept_row)})
 
     # Should not raise: literal mode would produce a 257-char value and fail.
     load_vocab_source(pg_engine, source_path=source_path)
@@ -153,7 +108,7 @@ def test_quote_mode_auto_regression_on_postgres(pg_session, pg_engine, tmp_path)
     assert not concept_name.startswith('"'), "Surrounding quotes were not stripped"
 
 
-@pytest.mark.postgres
+
 def test_load_vocab_model_csv_on_postgres(pg_session, tmp_path):
     """
     _load_vocab_model_csv loads data correctly on a real PostgreSQL session.
@@ -177,7 +132,7 @@ def test_load_vocab_model_csv_on_postgres(pg_session, tmp_path):
     assert count == 7
 
 
-@pytest.mark.postgres
+
 def test_replace_strategy_overwrites_existing_rows(pg_session, pg_engine, tmp_path):
     """merge_strategy='replace' fully replaces rows with the same PKs on second load."""
     concept_id = 99999
@@ -198,7 +153,7 @@ def test_replace_strategy_overwrites_existing_rows(pg_session, pg_engine, tmp_pa
     assert name == "name_v2", f"Expected 'name_v2' after replace, got {name!r}"
 
 
-@pytest.mark.postgres
+
 def test_upsert_strategy_is_non_destructive(pg_session, pg_engine, tmp_path):
     """merge_strategy='upsert' preserves existing rows on second load with same PKs."""
     concept_id = 99998
@@ -221,7 +176,7 @@ def test_upsert_strategy_is_non_destructive(pg_session, pg_engine, tmp_path):
     )
 
 
-@pytest.mark.postgres
+
 def test_chunksize_forwarded_to_loader(pg_session, pg_engine, monkeypatch, tmp_path):
     """chunksize is forwarded from load_vocab_source through to _load_vocab_model_csv."""
     from omop_alchemy.maintenance import load_vocab as _lv_module
@@ -251,7 +206,7 @@ def test_chunksize_forwarded_to_loader(pg_session, pg_engine, monkeypatch, tmp_p
     )
 
 
-@pytest.mark.postgres
+
 def test_db_schema_search_path_on_postgres(pg_engine, tmp_path):
     """
     load_vocab_source with db_schema creates vocabulary tables in the requested

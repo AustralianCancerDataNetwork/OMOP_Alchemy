@@ -1,28 +1,17 @@
 import pytest
-from pathlib import Path
 from orm_loader.helpers import bootstrap
 import sqlalchemy as sa
 from sqlalchemy.orm import sessionmaker
 
 from omop_alchemy.cdm.model.vocabulary import (
     Domain,
-    Vocabulary,
-    Concept_Class,
     Relationship,
     Concept,
     Concept_Ancestor,
     Concept_Relationship,
 )
-
-ATHENA_LOAD_ORDER = [
-    Domain,
-    Vocabulary,
-    Concept_Class,
-    Relationship,
-    Concept,
-    Concept_Ancestor,
-    Concept_Relationship,
-]
+from pathlib import Path
+from tests.conftest import ATHENA_LOAD_ORDER, _ATHENA_FIXTURE_DATA, _write_fixture_csv
 
 
 @pytest.fixture(scope="session")
@@ -58,25 +47,19 @@ def db_session(connection):
 
 
 @pytest.fixture(scope="session")
-def athena_vocab(connection):
+def athena_vocab(connection, tmp_path_factory):
     """
     Load the minimal Athena vocabulary fixture using the real ORM CSV loader.
-    Files follow the Athena convention: UPPERCASE table names with .csv extension.
+
+    Writes in-memory fixture data to a temp directory so no static CSV files
+    on disk are required.
     """
+    base_path: Path = tmp_path_factory.mktemp("athena_vocab")
     Session = sessionmaker(bind=connection, future=True)
     session = Session()
 
-    base_path = (
-        Path(__file__).parent
-        / "fixtures"
-        / "athena_source"
-    )
-
     for model in ATHENA_LOAD_ORDER:
-        csv_path = base_path / f"{model.__tablename__.upper()}.csv"
-        if not csv_path.exists():
-            raise RuntimeError(f"Missing vocab CSV: {csv_path}")
-
+        csv_path = _write_fixture_csv(base_path, model.__tablename__, _ATHENA_FIXTURE_DATA[model.__tablename__])
         model.load_csv(session, csv_path)
 
     session.commit()

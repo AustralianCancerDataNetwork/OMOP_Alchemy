@@ -1,8 +1,0 @@
-vocabulary_id	vocabulary_name	vocabulary_reference	vocabulary_version	vocabulary_concept_id
-CDM	Common Data Model	OHDSI	v5.4	0
-Episode	OMOP Episode	OHDSI	v1.0	0
-Ethnicity	OMOP Ethnicity	OHDSI	v1.0	0
-Gender	OMOP Gender	OHDSI	v1.0	0
-Race	OMOP Race	OHDSI	v1.0	0
-SNOMED	SNOMED-CT	IHTSDO	SNOMED CT 2023	0
-Type Concept	OMOP Type Concept	OHDSI	v1.0	0
