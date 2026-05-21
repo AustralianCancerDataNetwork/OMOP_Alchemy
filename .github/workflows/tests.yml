@@ -6,8 +6,8 @@ on:
   pull_request:
 
 jobs:
-  unit-and-sqlite-tests:
-    name: Unit & SQLite tests (Python ${{ matrix.python-version }})
+  sqlite-tests:
+    name: SQLite tests (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -25,11 +25,11 @@ jobs:
       - name: Install dependencies
         run: pip install -e ".[dev]"
 
-      - name: Run tests (excluding postgres)
-        run: pytest -m "not postgres" -q
+      - name: Run tests
+        run: pytest -q
 
-  postgres-integration-tests:
-    name: PostgreSQL integration tests (Python ${{ matrix.python-version }})
+  postgres-tests:
+    name: PostgreSQL tests (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -62,12 +62,7 @@ jobs:
       - name: Install dependencies (including postgres extra)
         run: pip install -e ".[dev,postgres]"
 
-      - name: Run postgres integration tests
-        run: pytest -m postgres -v
+      - name: Run tests
+        run: pytest -v
         env:
-          PGHOST: localhost
-          PGPORT: 55432
-          PGUSER: test
-          PGPASSWORD: test
-          PGDATABASE: test_db
           ENGINE_CDM: postgresql+psycopg://test:test@localhost:55432/test_db

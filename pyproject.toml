@@ -76,9 +76,6 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.pytest.ini_options]
-markers = [
-    "postgres: marks tests that require a running PostgreSQL instance (deselect with '-m not postgres')",
-]
 
 [tool.setuptools]
 include-package-data = true
