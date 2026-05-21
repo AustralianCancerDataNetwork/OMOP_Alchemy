@@ -35,7 +35,7 @@ from .doctor import collect_doctor_report
 from .help import install_help_customizations
 from .info import collect_maintenance_info
 from .indexes import IndexAction, manage_indexes
-from .load_vocab import VocabularyLoadProgress, load_vocab_source
+from .load_vocab import MergeStrategy, VocabularyLoadProgress, load_vocab_source
 from .reconcile import reconcile_schema
 from .reset_sequences import reset_model_sequences
 from .tables import TableScope
@@ -821,18 +821,13 @@ def load_vocab_source_command(
     dotenv: str | None = typer.Option(None, help="Optional dotenv file to load."),
     engine_schema: str | None = typer.Option(None, help="Engine schema selector."),
     db_schema: str | None = typer.Option(None, help="Database schema override. PostgreSQL only; uses search_path for ORM CSV loading."),
-    merge_strategy: str = typer.Option(
+    merge_strategy: MergeStrategy = typer.Option(
         "replace",
-        help="CSV merge strategy passed to the ORM loader. Defaults to `replace` to keep the database in sync with the Athena source; use `upsert` for incremental updates.",
+        help="CSV merge strategy. One of `replace` (default, keeps DB in sync), `upsert` (incremental, non-destructive), or `insert_if_empty` (fast path for a fresh empty target).",
     ),
     chunksize: int | None = typer.Option(
         100_000,
         help="Chunk size for fallback ORM CSV loading. Defaults to 100 000 rows; pass 0 to disable chunking.",
-    ),
-    initial_load: bool = typer.Option(
-        False,
-        "--initial-load",
-        help="Assume target vocabulary tables are empty and use the first-load fast path for a fresh Athena vocabulary load.",
     ),
     dry_run: bool = typer.Option(False, "--dry-run"),
 ) -> None:
@@ -858,14 +853,6 @@ def load_vocab_source_command(
                 "No Athena vocabulary source path is configured. "
                 "Set it with `omop-alchemy config set-overrides --athena-source <path>` "
                 "or pass `--athena-source`."
-            )
-        )
-        raise typer.Exit(code=1)
-
-    if initial_load and merge_strategy != "replace":
-        console.print(
-            render_error(
-                "`--initial-load` cannot be combined with `--merge-strategy` values other than `replace`."
             )
         )
         raise typer.Exit(code=1)
@@ -914,7 +901,6 @@ def load_vocab_source_command(
                 db_schema=connection_defaults.db_schema,
                 dry_run=dry_run,
                 merge_strategy=merge_strategy,
-                initial_load=initial_load,
                 chunksize=None if chunksize == 0 else chunksize,
                 progress_callback=_update_progress,
             )
