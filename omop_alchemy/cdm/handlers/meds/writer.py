@@ -9,7 +9,8 @@ import struct
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -112,8 +113,8 @@ class MEDSWriter:
         include_observation_periods: bool = True,
         full_code_metadata: bool = False,
         batch_size: int = 1000,
-        dataset_name: Optional[str] = None,
-        dataset_version: Optional[str] = None,
+        dataset_name: str | None = None,
+        dataset_version: str | None = None,
     ) -> None:
         self._session = session
         self._output_dir = Path(output_dir)
@@ -130,7 +131,7 @@ class MEDSWriter:
 
     def write(
         self,
-        subject_ids: Optional[Sequence[int]] = None,
+        subject_ids: Sequence[int] | None = None,
     ) -> WriteResult:
         """Export subjects to disk and return a summary.
 
@@ -142,6 +143,18 @@ class MEDSWriter:
             WriteResult with counts of exported subjects, emitted events,
             shard files written, code metadata rows, and per-table drop counts
             for events whose concept_id could not be resolved.
+
+        Example — full export::
+
+            result = MEDSWriter(session, "/data/meds_export").write()
+            # WriteResult(subjects_exported=12400, events_emitted=3820000,
+            #             shards_written=10, codes_written=8241,
+            #             drop_counts={"measurement": 312})
+
+        Example — subset export for a pilot cohort::
+
+            pilot_ids = session.scalars(sa.select(Person.person_id).limit(100)).all()
+            result = MEDSWriter(session, "/tmp/pilot", num_shards=2).write(pilot_ids)
         """
         self._output_dir.mkdir(parents=True, exist_ok=True)
         (self._output_dir / "data").mkdir(exist_ok=True)
@@ -198,7 +211,7 @@ class MEDSWriter:
     # ------------------------------------------------------------------ #
 
     def _resolve_person_ids(
-        self, subject_ids: Optional[Sequence[int]]
+        self, subject_ids: Sequence[int] | None
     ) -> list[int]:
         if subject_ids is not None:
             return list(subject_ids)
@@ -211,13 +224,13 @@ class MEDSWriter:
         self,
         person_ids: list[int],
         code_map: dict[int, str],
-    ) -> tuple[list[dict], set[str], dict[str, int]]:
+    ) -> tuple[list[dict[str, Any]], set[str], dict[str, int]]:
         """Extract MEDS rows from the database with per-table drop counting.
 
         Returns:
             (all_rows, emitted_codes, drop_counts)
         """
-        all_rows: list[dict] = []
+        all_rows: list[dict[str, Any]] = []
         emitted_codes: set[str] = set()
         drop_counts: dict[str, int] = {}
 
@@ -257,7 +270,7 @@ class MEDSWriter:
 
         return all_rows, emitted_codes, drop_counts
 
-    def _write_shards(self, all_rows: list[dict]) -> int:
+    def _write_shards(self, all_rows: list[dict[str, Any]]) -> int:
         table = pa.Table.from_pylist(all_rows)
 
         shard_values = [
@@ -298,7 +311,7 @@ class MEDSWriter:
         # clinical event tables; "table" is always present.
         extension_cols = ["table", "end", "visit_id", "unit"]
 
-        md = meds.DatasetMetadataSchema(
+        md = meds.DatasetMetadataSchema(  # type: ignore[call-arg]
             dataset_name=self._dataset_name,
             dataset_version=self._dataset_version,
             etl_name="omop_alchemy",

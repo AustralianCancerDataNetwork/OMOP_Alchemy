@@ -5,7 +5,7 @@ from omop_alchemy.cdm.handlers.meds._guards import *  # noqa: F401,F403
 import pyarrow as pa
 import meds
 from datetime import datetime, time
-from typing import TYPE_CHECKING
+from typing import Any
 
 import sqlalchemy as sa
 from sqlalchemy.orm import object_session
@@ -22,10 +22,6 @@ from omop_alchemy.cdm.handlers.meds.meds_event import (
     Device_MEDS_Event,
 )
 
-if TYPE_CHECKING:
-    pass
-
-
 def _to_datetime(d: object, *, end: bool = False) -> datetime:
     """Coerce a date or datetime to datetime; use midnight or 23:59:59 for bare dates."""
     if isinstance(d, datetime):
@@ -39,6 +35,23 @@ class Person_MEDS(Person):
     Mirrors Person_Timeline but serialises to MEDS row dicts and PyArrow
     tables rather than JSON.  Usable independently of MEDSWriter for
     single-patient export or interactive exploration.
+
+    Quick single-patient export::
+
+        from omop_alchemy.cdm.handlers.meds.code_metadata import build_concept_id_map
+        from omop_alchemy.cdm.handlers.meds.person_meds import Person_MEDS
+
+        code_map, _ = build_concept_id_map(session)
+        person = session.get(Person_MEDS, 42)
+
+        rows = person.meds_rows(code_map)
+        # [{"subject_id": 42, "time": datetime(1975, 3, 1), "code": "MEDS_BIRTH", ...},
+        #  {"subject_id": 42, "time": datetime(1975, 3, 1), "code": "Gender/8507", ...},
+        #  {"subject_id": 42, "time": datetime(2020, 5, 12), "code": "SNOMED/44054006", ...},
+        #  ...]  # sorted by time ascending
+
+        table = person.to_meds_table(code_map)
+        # PyArrow table aligned to meds.DataSchema, ready for pq.write_table()
     """
 
     EVENT_TABLES = (
@@ -65,7 +78,7 @@ class Person_MEDS(Person):
             self.day_of_birth or 1,
         )
 
-    def _observation_period_rows(self) -> list[dict]:
+    def _observation_period_rows(self) -> list[dict[str, Any]]:
         """TR-07d: one interval row per Observation_Period (code OMOP/OBSERVATION_PERIOD)."""
         session = object_session(self)
         if session is None:
@@ -93,7 +106,7 @@ class Person_MEDS(Person):
     # Public interface                                                     #
     # ------------------------------------------------------------------ #
 
-    def demographic_rows(self, concept_id_map: dict[int, str]) -> list[dict]:
+    def demographic_rows(self, concept_id_map: dict[int, str]) -> list[dict[str, Any]]:
         """TR-07: birth, demographic concept, and death events for this person.
 
         All rows except death are timestamped at birth_datetime.
@@ -101,7 +114,7 @@ class Person_MEDS(Person):
         resolves in concept_id_map (unmapped concept_id=0 is silently skipped).
         """
         birth_dt = self._birth_datetime
-        rows: list[dict] = []
+        rows: list[dict[str, Any]] = []
 
         rows.append({
             "subject_id": self.person_id,
@@ -156,11 +169,19 @@ class Person_MEDS(Person):
         concept_id_map: dict[int, str],
         *,
         include_observation_periods: bool = True,
-    ) -> list[dict]:
+    ) -> list[dict[str, Any]]:
         """All MEDS event rows for this person, sorted by time ascending.
 
         Rows with equal times preserve their collection order (demographics
         first, then observation periods, then clinical events by table).
+
+        Example::
+
+            code_map, _ = build_concept_id_map(session)
+            rows = session.get(Person_MEDS, person_id).meds_rows(code_map)
+            codes = [r["code"] for r in rows]
+            # ["MEDS_BIRTH", "Gender/8532", "OMOP/OBSERVATION_PERIOD",
+            #  "SNOMED/73211009", "LOINC/2160-0", "MEDS_DEATH"]
         """
         session = object_session(self)
         rows = self.demographic_rows(concept_id_map)
@@ -190,6 +211,25 @@ class Person_MEDS(Person):
         Validates against meds.DataSchema before returning.  Extension
         columns (table, end, visit_id, unit) are preserved alongside the
         core MEDS columns.
+
+        Example::
+
+            import pyarrow.parquet as pq
+
+            code_map, _ = build_concept_id_map(session)
+            person = session.get(Person_MEDS, 42)
+            table = person.to_meds_table(code_map)
+
+            print(table.schema)
+            # subject_id: int64
+            # time: timestamp[us]
+            # code: string
+            # numeric_value: float
+            # text_value: large_string
+            # table: string  (extension)
+            # end: timestamp[us]  (extension, nullable)
+
+            pq.write_table(table, "/tmp/patient_42.parquet")
         """
         rows = self.meds_rows(
             concept_id_map,

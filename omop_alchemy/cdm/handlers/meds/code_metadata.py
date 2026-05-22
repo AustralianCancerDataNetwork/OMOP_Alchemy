@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from omop_alchemy.cdm.handlers.meds._guards import *  # noqa: F401,F403
 
-from typing import Optional
 
 import pyarrow as pa
 import meds
@@ -24,7 +23,7 @@ __all__ = [
 
 def build_code_metadata(
     session: so.Session,
-    emitted_codes: Optional[set[str]] = None,
+    emitted_codes: set[str] | None = None,
     *,
     mode: str = "emitted",
 ) -> pa.Table:
@@ -41,6 +40,22 @@ def build_code_metadata(
 
     Returns:
         PyArrow table validated against meds.CodeMetadataSchema, sorted by code.
+
+    Example — write codes only for events that were actually exported::
+
+        import pyarrow.parquet as pq
+        from omop_alchemy.cdm.handlers.meds.code_metadata import build_code_metadata
+
+        emitted = {"SNOMED/73211009", "LOINC/2160-0", "MEDS_BIRTH"}
+        codes_table = build_code_metadata(session, emitted, mode="emitted")
+        pq.write_table(codes_table, "/path/to/metadata/codes.parquet")
+
+        # Each row:  code | description | parent_codes
+        # "LOINC/2160-0" | "Creatinine [Mass/volume] in Serum" | ["LOINC/..."]
+
+    Example — full vocabulary snapshot (mode="all") for a shareable dataset::
+
+        codes_table = build_code_metadata(session, mode="all")
     """
     code_map, name_map = build_concept_id_map(session)
     code_to_id: dict[str, int] = {v: k for k, v in code_map.items()}

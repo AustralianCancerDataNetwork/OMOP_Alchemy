@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from omop_alchemy.cdm.handlers.meds._guards import *  # noqa: F401,F403
 
-from typing import Optional
+from typing import Any
 
 from omop_alchemy.cdm.handlers.timeline.event_timeline import ClinicalEvent, EventMapping
 from omop_alchemy.cdm.model.clinical import (
@@ -25,19 +25,40 @@ class MEDSEvent(ClinicalEvent):
         _unit_source_value_field   raw unit string column (or None)
         _unit_concept_id_field     unit concept_id column (or None)
         _value_source_value_field  SOURCE_CODE fallback column (or None)
+
+    Each concrete subclass is a SQLAlchemy polymorphic view over its OMOP
+    table, so instances are obtained via a session query, not constructed
+    directly::
+
+        from omop_alchemy.cdm.handlers.meds.code_metadata import build_concept_id_map
+        from omop_alchemy.cdm.handlers.meds.meds_event import Condition_MEDS_Event
+
+        code_map, _ = build_concept_id_map(session)
+
+        events = session.scalars(
+            sa.select(Condition_MEDS_Event).where(
+                Condition_MEDS_Event.person_id == 123
+            )
+        ).all()
+
+        rows = []
+        for event in events:
+            rows.extend(event.to_meds_rows(code_map))
+        # rows → [{"subject_id": 123, "time": datetime(2021, 3, 4), "code": "SNOMED/73211009",
+        #          "numeric_value": None, "text_value": None, "table": "condition_occurrence"}]
     """
 
-    _source_concept_field: Optional[str] = None
+    _source_concept_field: str | None = None
     _table_name: str = ""
-    _unit_source_value_field: Optional[str] = None
-    _unit_concept_id_field: Optional[str] = None
-    _value_source_value_field: Optional[str] = None
+    _unit_source_value_field: str | None = None
+    _unit_concept_id_field: str | None = None
+    _value_source_value_field: str | None = None
 
     # ------------------------------------------------------------------ #
     # Internal helpers                                                   #
     # ------------------------------------------------------------------ #
 
-    def _resolve_code(self, concept_id_map: dict[int, str]) -> Optional[str]:
+    def _resolve_code(self, concept_id_map: dict[int, str]) -> str | None:
         """TR-03b: source_concept_id > standard concept_id > None (drop row)."""
         if self._source_concept_field:
             src = int(getattr(self, self._source_concept_field, None) or 0)
@@ -52,7 +73,7 @@ class MEDSEvent(ClinicalEvent):
 
     def _resolve_numeric_text(
         self, concept_id_map: dict[int, str]
-    ) -> tuple[Optional[float], Optional[str]]:
+    ) -> tuple[float | None, str | None]:
         """TR-06: EventValue → (numeric_value, text_value).
 
         Concept-valued results follow the meds_etl convention:
@@ -87,7 +108,7 @@ class MEDSEvent(ClinicalEvent):
 
         return (None, None)
 
-    def _resolve_unit(self, concept_id_map: dict[int, str]) -> Optional[str]:
+    def _resolve_unit(self, concept_id_map: dict[int, str]) -> str | None:
         """Coalesce unit_source_value, then unit_concept_id lookup."""
         if self._unit_source_value_field:
             uv = getattr(self, self._unit_source_value_field, None)
@@ -103,7 +124,7 @@ class MEDSEvent(ClinicalEvent):
     # Public interface                                                   #
     # ------------------------------------------------------------------ #
 
-    def to_meds_rows(self, concept_id_map: dict[int, str]) -> list[dict]:
+    def to_meds_rows(self, concept_id_map: dict[int, str]) -> list[dict[str, Any]]:
         """Return zero or one MEDS row dicts for this event.
 
         Returns [] when the event code resolves to None (TR-03c: unmapped
@@ -116,6 +137,19 @@ class MEDSEvent(ClinicalEvent):
             visit_id  — if visit_occurrence_id is non-null
             unit      — coalesced from unit_source_value / unit_concept_id
             end       — end datetime for interval events (TR-05b)
+
+        Example — a measurement with a numeric value and unit::
+
+            code_map, _ = build_concept_id_map(session)
+            event = session.get(Measurement_MEDS_Event, measurement_id)
+            event.to_meds_rows(code_map)
+            # [{"subject_id": 7, "time": datetime(2022, 6, 1, 9, 0),
+            #   "code": "LOINC/2160-0", "numeric_value": 1.1,
+            #   "text_value": None, "unit": "mg/dL", "table": "measurement"}]
+
+        Example — an unmapped event (concept_id == 0) returns an empty list::
+
+            event.to_meds_rows({})   # → []
         """
         code = self._resolve_code(concept_id_map)
         if code is None:
@@ -124,7 +158,7 @@ class MEDSEvent(ClinicalEvent):
         et = self.event_time
         numeric_value, text_value = self._resolve_numeric_text(concept_id_map)
 
-        row: dict = {
+        row: dict[str, Any] = {
             "subject_id": self.person_id,
             "time": et.start,
             "code": code,
