@@ -20,3 +20,8 @@ __all__ = [
     "ConceptResolverRegistry",
     "unregister_optional_fulltext_columns",
 ]
+
+try:
+    from .meds import *  # noqa: F401,F403
+except ImportError:
+    pass

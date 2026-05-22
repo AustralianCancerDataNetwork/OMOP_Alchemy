@@ -43,6 +43,10 @@ dependencies = [
 postgres = [
   "psycopg[binary]>=3.2",
 ]
+meds = [
+  "pyarrow>=8",
+  "meds>=0.3,<0.5",
+]
 
 dev = [
   "ipython>=8.0",

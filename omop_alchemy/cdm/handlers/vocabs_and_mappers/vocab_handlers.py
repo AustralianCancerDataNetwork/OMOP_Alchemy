@@ -393,6 +393,47 @@ class ConceptResolver:
         )
 
 
+# ---------------------------------------------------------------------------
+# Reverse-lookup utilities  (concept_id → string, complementing the
+# forward resolvers above which map string → concept_id)
+# ---------------------------------------------------------------------------
+
+# Standard OMOP vocabulary entries have concept_id < this threshold.
+# Site/customer-specific concepts use IDs at or above it.
+CUSTOM_CONCEPT_ID_START: int = 2_000_000_000
+
+
+def build_concept_id_map(
+    session: so.Session,
+) -> tuple[dict[int, str], dict[int, str]]:
+    """Build reverse-lookup dicts from the concept table.
+
+    Performs a single full-table scan and returns two plain dicts keyed by
+    concept_id. concept_id = 0 (the OMOP sentinel for unmapped concepts) is
+    excluded from both dicts.
+
+    Returns:
+        code_map:  concept_id  →  "vocabulary_id/concept_code"
+        name_map:  concept_id  →  concept_name
+    """
+    stmt = sa.select(
+        Concept.concept_id,
+        Concept.vocabulary_id,
+        Concept.concept_code,
+        Concept.concept_name,
+    ).where(Concept.concept_id != 0)
+
+    code_map: dict[int, str] = {}
+    name_map: dict[int, str] = {}
+
+    for row in session.execute(stmt):
+        cid: int = row.concept_id
+        code_map[cid] = f"{row.vocabulary_id}/{row.concept_code}"
+        name_map[cid] = row.concept_name
+
+    return code_map, name_map
+
+
 def make_concept_resolver(
     session: so.Session,
     *,
