@@ -40,5 +40,5 @@ def test_analyze_tables_rejects_vacuum_on_sqlite(tmp_path):
     with pytest.raises(RuntimeError) as exc_info:
         analyze_tables(engine, scope=TableScope.CLINICAL, vacuum=True)
 
-    assert "VACUUM ANALYZE is only supported for PostgreSQL" in str(exc_info.value)
+    assert "not supported by the SQLite backend" in str(exc_info.value)
 

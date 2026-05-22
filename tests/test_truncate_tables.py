@@ -19,7 +19,7 @@ def test_truncate_tables_requires_postgresql(tmp_path):
     with pytest.raises(RuntimeError) as exc_info:
         truncate_tables(engine, scope=TableScope.CLINICAL, dry_run=True)
 
-    assert "only supported for PostgreSQL engines" in str(exc_info.value)
+    assert "not supported by the SQLite backend" in str(exc_info.value)
 
 
 def test_truncate_tables_reports_blocking_foreign_key_references(monkeypatch, tmp_path):
@@ -27,7 +27,7 @@ def test_truncate_tables_reports_blocking_foreign_key_references(monkeypatch, tm
     engine = sa.create_engine(f"sqlite:///{tmp_path / 'truncate_fk.db'}", future=True)
     create_missing_tables(engine, vocabulary_included=True)
 
-    monkeypatch.setattr(truncate_tables_module, "require_backend", lambda *args, **kwargs: None)
+    monkeypatch.setattr(truncate_tables_module, "require_backend_support", lambda *args, **kwargs: None)
 
     with pytest.raises(RuntimeError) as exc_info:
         truncate_tables(engine, scope=TableScope.CLINICAL, dry_run=False)
@@ -92,15 +92,15 @@ def test_truncate_tables_cli_invokes_management(monkeypatch):
         ]
 
     monkeypatch.setattr(
-        "omop_alchemy.maintenance._cli_utils.load_environment",
+        "omop_alchemy.db.load_environment",
         fake_load_environment,
     )
     monkeypatch.setattr(
-        "omop_alchemy.maintenance._cli_utils.get_engine_name",
+        "omop_alchemy.db.get_engine_name",
         fake_get_engine_name,
     )
     monkeypatch.setattr(
-        "omop_alchemy.maintenance._cli_utils.create_engine_with_dependencies",
+        "omop_alchemy.db.create_engine_with_dependencies",
         fake_create_engine,
     )
     monkeypatch.setattr(

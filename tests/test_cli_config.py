@@ -1,7 +1,7 @@
 from typer.testing import CliRunner
 
 from omop_alchemy.maintenance.cli import app
-from omop_alchemy.maintenance.cli_config import defaults_path, load_connection_defaults
+from omop_alchemy.maintenance.cli_config import defaults_path, ConnectionDefaults
 from omop_alchemy.maintenance.cli_indexes import IndexAction, IndexManagementResult
 from omop_alchemy.maintenance.tables import TableCategory
 
@@ -10,13 +10,13 @@ runner = CliRunner()
 
 
 def test_config_set_overrides_and_show():
-    """Config set-overrides persists values and config show surfaces them."""
+    """Config override persists values and config show surfaces them."""
     with runner.isolated_filesystem():
         result = runner.invoke(
             app,
             [
                 "config",
-                "set-overrides",
+                "override",
                 "--dotenv",
                 ".env.test",
                 "--engine-schema",
@@ -30,7 +30,7 @@ def test_config_set_overrides_and_show():
 
         assert result.exit_code == 0
         assert defaults_path().exists()
-        loaded_defaults = load_connection_defaults()
+        loaded_defaults = ConnectionDefaults.load()
         assert loaded_defaults.dotenv == str((defaults_path().parent / ".env.test").resolve())
         assert loaded_defaults.engine_schema == "cdm"
         assert loaded_defaults.db_schema == "public"
@@ -75,15 +75,15 @@ def test_cli_uses_saved_connection_defaults(monkeypatch):
         return []
 
     monkeypatch.setattr(
-        "omop_alchemy.maintenance._cli_utils.load_environment",
+        "omop_alchemy.db.load_environment",
         fake_load_environment,
     )
     monkeypatch.setattr(
-        "omop_alchemy.maintenance._cli_utils.get_engine_name",
+        "omop_alchemy.db.get_engine_name",
         fake_get_engine_name,
     )
     monkeypatch.setattr(
-        "omop_alchemy.maintenance._cli_utils.create_engine_with_dependencies",
+        "omop_alchemy.db.create_engine_with_dependencies",
         fake_create_engine,
     )
     monkeypatch.setattr(
@@ -96,7 +96,7 @@ def test_cli_uses_saved_connection_defaults(monkeypatch):
             app,
             [
                 "config",
-                "set-overrides",
+                "override",
                 "--dotenv",
                 ".env.saved",
                 "--engine-schema",
@@ -124,10 +124,10 @@ def test_config_show_surfaces_manual_logging_setting() -> None:
             encoding="utf-8",
         )
 
-        loaded_defaults = load_connection_defaults()
+        loaded_defaults = ConnectionDefaults.load()
         assert loaded_defaults.logging == "off"
 
         show_result = runner.invoke(app, ["config", "show"])
         assert show_result.exit_code == 0
-        assert "logging" in show_result.stdout
+        assert "Logging" in show_result.stdout
         assert "off" in show_result.stdout

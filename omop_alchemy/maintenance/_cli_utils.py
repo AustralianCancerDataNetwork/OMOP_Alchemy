@@ -1,41 +1,20 @@
 from __future__ import annotations
-
-import functools
-import logging
-
 import typer
-from sqlalchemy.engine import Engine
+from typing import Optional
+from sqlalchemy import Engine
 from sqlalchemy.exc import SQLAlchemyError
+from rich.console import Console
 
-from omop_alchemy import create_engine_with_dependencies, get_engine_name, load_environment
-
-from .cli_config import ConnectionDefaults, defaults_path, load_connection_defaults
 from .tables import TableScope
-from .ui import console, render_error
-
-
-def resolve_connection(
-    *,
-    dotenv: str | None,
-    engine_schema: str | None,
-    db_schema: str | None,
-    athena_source: str | None = None,
-) -> ConnectionDefaults:
-    saved = load_connection_defaults()
-    return ConnectionDefaults(
-        dotenv=dotenv if dotenv is not None else saved.dotenv,
-        engine_schema=engine_schema if engine_schema is not None else saved.engine_schema,
-        db_schema=db_schema if db_schema is not None else saved.db_schema,
-        athena_source=athena_source if athena_source is not None else saved.athena_source,
-    )
-
-
-def build_engine(*, dotenv: str | None, engine_schema: str | None) -> Engine:
-    load_environment(dotenv or "")
-    return create_engine_with_dependencies(get_engine_name(engine_schema), future=True)
+from .ui import console, render_error, render_command_header
+from ..db import build_engine, resolve_connection, ConnectionDefaults
+from ..backends import BackendNotSupportedError
 
 
 def handle_error(exc: Exception) -> None:
+    if isinstance(exc, BackendNotSupportedError):
+        console.print(render_error(f"Not supported: {exc}"))
+        raise typer.Exit(code=1) from exc
     if isinstance(exc, RuntimeError):
         console.print(render_error(str(exc)))
         raise typer.Exit(code=1) from exc
@@ -63,24 +42,35 @@ def resolve_selection(
     return scope or default_scope, None
 
 
-@functools.lru_cache(maxsize=None)
-def configure_logging() -> None:
-    mode = (load_connection_defaults().logging or "file").strip().lower()
-    if mode not in {"file", "console", "off"}:
-        mode = "file"
-    if mode == "off":
-        return
+def setup_cli_cmd(
+    *,
+    console: Console,
+    dotenv: Optional[str],
+    engine_schema: Optional[str],
+    db_schema: Optional[str],
+    command_name: str,
+    vocabulary_included: Optional[bool],
+    mode_label: str,
+    athena_source: Optional[str] = None,
+) -> tuple[ConnectionDefaults, Engine]:
+    """Convenience function to resolve connection, print command header, and build engine for CLI commands."""
 
-    formatter = logging.Formatter("%(asctime)s | %(levelname)-8s | %(name)s | %(message)s")
-    if mode == "file":
-        log_path = defaults_path().parent / "logging" / "omop-alchemy.log"
-        log_path.parent.mkdir(parents=True, exist_ok=True)
-        handler: logging.Handler = logging.FileHandler(log_path, encoding="utf-8")
-    else:
-        handler = logging.StreamHandler()
-    handler.setFormatter(formatter)
+    conn = resolve_connection(
+        dotenv=dotenv,
+        engine_schema=engine_schema,
+        db_schema=db_schema,
+        athena_source=athena_source,
+    )
+    console.print(
+        render_command_header(
+            command_name=command_name,
+            engine_schema=conn.engine_schema,
+            db_schema=conn.db_schema,
+            vocabulary_included=vocabulary_included,
+            mode_label=mode_label,
+        )
+    )
+    engine = build_engine(dotenv=conn.dotenv, engine_schema=conn.engine_schema)
+    return conn, engine
 
-    root_logger = logging.getLogger()
-    root_logger.addHandler(handler)
-    if root_logger.level in {logging.NOTSET, logging.WARNING, logging.ERROR, logging.CRITICAL}:
-        root_logger.setLevel(logging.INFO)
+    

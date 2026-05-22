@@ -202,15 +202,15 @@ def test_load_vocab_source_cli_uses_saved_athena_source(monkeypatch):
         )
 
     monkeypatch.setattr(
-        "omop_alchemy.maintenance._cli_utils.load_environment",
+        "omop_alchemy.db.load_environment",
         fake_load_environment,
     )
     monkeypatch.setattr(
-        "omop_alchemy.maintenance._cli_utils.get_engine_name",
+        "omop_alchemy.db.get_engine_name",
         fake_get_engine_name,
     )
     monkeypatch.setattr(
-        "omop_alchemy.maintenance._cli_utils.create_engine_with_dependencies",
+        "omop_alchemy.db.create_engine_with_dependencies",
         fake_create_engine,
     )
     monkeypatch.setattr(
@@ -225,7 +225,7 @@ def test_load_vocab_source_cli_uses_saved_athena_source(monkeypatch):
             app,
             [
                 "config",
-                "set-overrides",
+                "override",
                 "--athena-source",
                 str(athena_dir),
                 "--engine-schema",
@@ -464,7 +464,7 @@ def test_load_vocab_source_cli_surfaces_database_error_detail(monkeypatch):
         )
 
     monkeypatch.setattr(
-        "omop_alchemy.maintenance.cli_vocab.build_engine",
+        "omop_alchemy.maintenance._cli_utils.build_engine",
         fake_build_engine,
     )
     monkeypatch.setattr(

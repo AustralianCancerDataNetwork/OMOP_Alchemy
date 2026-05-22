@@ -162,15 +162,15 @@ def test_disable_indexes_cli_invokes_management(monkeypatch):
         ]
 
     monkeypatch.setattr(
-        "omop_alchemy.maintenance._cli_utils.load_environment",
+        "omop_alchemy.db.load_environment",
         fake_load_environment,
     )
     monkeypatch.setattr(
-        "omop_alchemy.maintenance._cli_utils.get_engine_name",
+        "omop_alchemy.db.get_engine_name",
         fake_get_engine_name,
     )
     monkeypatch.setattr(
-        "omop_alchemy.maintenance._cli_utils.create_engine_with_dependencies",
+        "omop_alchemy.db.create_engine_with_dependencies",
         fake_create_engine,
     )
     monkeypatch.setattr(

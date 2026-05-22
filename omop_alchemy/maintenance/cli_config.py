@@ -1,13 +1,11 @@
 from __future__ import annotations
-
-from dataclasses import dataclass
-import json
-import os
-from pathlib import Path
-import tomllib
-
 import typer
+from typing import Optional
 
+from ..db import (
+    ConnectionDefaults,
+    defaults_path,
+)
 from .ui import console, render_connection_defaults
 
 
@@ -18,235 +16,49 @@ LEGACY_DEFAULTS_SECTION = "connection"
 PROJECT_MARKER = "pyproject.toml"
 
 
-@dataclass(frozen=True)
-class ConnectionDefaults:
-    dotenv: str | None = None
-    engine_schema: str | None = None
-    db_schema: str | None = None
-    athena_source: str | None = None
-    logging: str | None = None
-
-    def with_updates(
-        self,
-        *,
-        dotenv: str | None = None,
-        engine_schema: str | None = None,
-        db_schema: str | None = None,
-        athena_source: str | None = None,
-        logging: str | None = None,
-    ) -> "ConnectionDefaults":
-        return ConnectionDefaults(
-            dotenv=self.dotenv if dotenv is None else dotenv,
-            engine_schema=self.engine_schema if engine_schema is None else engine_schema,
-            db_schema=self.db_schema if db_schema is None else db_schema,
-            athena_source=(
-                self.athena_source if athena_source is None else athena_source
-            ),
-            logging=self.logging if logging is None else logging,
-        )
-
-
-def defaults_path() -> Path:
-    configured_path = os.getenv(DEFAULTS_ENV_VAR)
-    if configured_path:
-        return Path(configured_path).expanduser().resolve()
-
-    current = Path.cwd().resolve()
-    for directory in (current, *current.parents):
-        if (directory / PROJECT_MARKER).exists():
-            return (directory / DEFAULTS_FILENAME).resolve()
-
-    return (current / DEFAULTS_FILENAME).resolve()
-
-
-def _clean(value: object) -> str | None:
-    if value is None:
-        return None
-    value_str = str(value).strip()
-    return value_str or None
-
-
-def _resolve_relative_path(config_path: Path, value: object) -> str | None:
-    cleaned = _clean(value)
-    if cleaned is None:
-        return None
-
-    path_value = Path(cleaned).expanduser()
-    if path_value.is_absolute():
-        return str(path_value)
-
-    return str((config_path.parent / path_value).resolve())
-
-
-def _relative_path_for_storage(config_path: Path, value: str | None) -> str | None:
-    if value is None:
-        return None
-
-    path_value = Path(value).expanduser()
-    if not path_value.is_absolute():
-        path_value = (Path.cwd() / path_value).resolve()
-
-    return os.path.relpath(path_value, start=config_path.parent)
-
-
-def load_connection_defaults() -> ConnectionDefaults:
-    path = defaults_path()
-    if not path.exists():
-        return ConnectionDefaults()
-
-    data = tomllib.loads(path.read_text(encoding="utf-8"))
-    defaults = data.get(DEFAULTS_SECTION, {})
-    connection = data.get(LEGACY_DEFAULTS_SECTION, {})
-
-    if not isinstance(defaults, dict):
-        defaults = {}
-    if not isinstance(connection, dict):
-        connection = {}
-
-    return ConnectionDefaults(
-        dotenv=_resolve_relative_path(
-            path,
-            defaults.get("dotenv", defaults.get("env_path", connection.get("dotenv"))),
-        ),
-        engine_schema=_clean(defaults.get("engine_schema", connection.get("engine_schema"))),
-        db_schema=_clean(defaults.get("db_schema", connection.get("db_schema"))),
-        athena_source=_resolve_relative_path(
-            path,
-            defaults.get("athena_source", connection.get("athena_source")),
-        ),
-        logging=_clean(defaults.get("logging", connection.get("logging"))),
-    )
-
-
-def save_connection_defaults(defaults: ConnectionDefaults) -> Path:
-    path = defaults_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
-
-    lines = [f"[{DEFAULTS_SECTION}]"]
-    dotenv = _relative_path_for_storage(path, defaults.dotenv)
-    if dotenv is not None:
-        lines.append(f"dotenv = {json.dumps(dotenv)}")
-    if defaults.engine_schema is not None:
-        lines.append(f"engine_schema = {json.dumps(defaults.engine_schema)}")
-    if defaults.db_schema is not None:
-        lines.append(f"db_schema = {json.dumps(defaults.db_schema)}")
-    athena_source = _relative_path_for_storage(path, defaults.athena_source)
-    if athena_source is not None:
-        lines.append(f"athena_source = {json.dumps(athena_source)}")
-    if defaults.logging is not None:
-        lines.append(f"logging = {json.dumps(defaults.logging)}")
-    lines.append("")
-
-    path.write_text("\n".join(lines), encoding="utf-8")
-    return path
-
-
-def clear_connection_defaults(
-    *,
-    clear_dotenv: bool = False,
-    clear_engine_schema: bool = False,
-    clear_db_schema: bool = False,
-    clear_athena_source: bool = False,
-) -> Path | None:
-    path = defaults_path()
-    if not path.exists():
-        return None
-
-    if not any((clear_dotenv, clear_engine_schema, clear_db_schema, clear_athena_source)):
-        path.unlink()
-        return path
-
-    current = load_connection_defaults()
-    updated = ConnectionDefaults(
-        dotenv=None if clear_dotenv else current.dotenv,
-        engine_schema=None if clear_engine_schema else current.engine_schema,
-        db_schema=None if clear_db_schema else current.db_schema,
-        athena_source=None if clear_athena_source else current.athena_source,
-        logging=current.logging,
-    )
-
-    if all(
-        value is None
-        for value in (
-            updated.dotenv,
-            updated.engine_schema,
-            updated.db_schema,
-            updated.athena_source,
-            updated.logging,
-        )
-    ):
-        path.unlink()
-        return path
-
-    save_connection_defaults(updated)
-    return path
-
-
 app = typer.Typer(
-    help="Manage persisted maintenance CLI connection overrides.",
+    help="Manage persisted maintenance CLI connection overrides stored in .omop-maint.toml.",
     rich_markup_mode="rich",
 )
 
 
 @app.command("show")
 def config_show_command() -> None:
-    """Display current saved connection defaults."""
-    defaults = load_connection_defaults()
+    """Display current saved connection defaults from the nearest .omop-maint.toml file."""
+    defaults = ConnectionDefaults.load()
     console.print(render_connection_defaults(defaults, path=str(defaults_path())))
 
 
-@app.command("set-overrides")
-def config_set_overrides_command(
-    dotenv: str | None = typer.Option(None, help="Override dotenv file to load."),
-    engine_schema: str | None = typer.Option(None, help="Override engine schema selector."),
-    db_schema: str | None = typer.Option(None, help="Override database schema."),
-    athena_source: str | None = typer.Option(
-        None, help="Override path to unzipped Athena vocabulary files."
+@app.command("override")
+def config_override_command(
+    dotenv: Optional[str] = typer.Option(
+        None,
+        help=(
+            "Path to a .env file to load before resolving the connection. "
+            "Saved as a path relative to .omop-maint.toml and resolved back to absolute on load."
+        ),
+    ),
+    engine_schema: Optional[str] = typer.Option(
+        None,
+        help="Named engine configuration to use (e.g. 'cdm', 'results'). Resolves to the ENGINE_<SCHEMA> environment variable group.",
+    ),
+    db_schema: Optional[str] = typer.Option(
+        None,
+        help="Database schema to target (e.g. 'cdm5', 'vocab'). Sets search_path on PostgreSQL; not supported on SQLite.",
+    ),
+    athena_source: Optional[str] = typer.Option(
+        None,
+        help=(
+            "Path to the unzipped Athena vocabulary CSV directory. "
+            "Saved relative to .omop-maint.toml; used by load-vocab-source when --athena-source is omitted."
+        ),
     ),
 ) -> None:
-    """Save one or more connection defaults to the project config file."""
-    current = load_connection_defaults()
-    updated = current.with_updates(
+    """Persist one or more connection overrides to .omop-maint.toml for future CLI invocations."""
+    updated, path = ConnectionDefaults.update_and_save_defaults(
         dotenv=dotenv,
         engine_schema=engine_schema,
         db_schema=db_schema,
         athena_source=athena_source,
     )
-    path = save_connection_defaults(updated)
     console.print(render_connection_defaults(updated, path=str(path), title="Saved Overrides"))
-
-
-@app.command("clear-overrides")
-def config_clear_overrides_command(
-    dotenv: bool = typer.Option(False, "--dotenv", help="Clear overridden dotenv."),
-    engine_schema: bool = typer.Option(
-        False, "--engine-schema", help="Clear overridden engine schema."
-    ),
-    db_schema: bool = typer.Option(False, "--db-schema", help="Clear overridden database schema."),
-    athena_source: bool = typer.Option(
-        False, "--athena-source", help="Clear overridden Athena source path."
-    ),
-) -> None:
-    """Clear one or more saved connection overrides."""
-    path = clear_connection_defaults(
-        clear_dotenv=dotenv,
-        clear_engine_schema=engine_schema,
-        clear_db_schema=db_schema,
-        clear_athena_source=athena_source,
-    )
-    if path is None:
-        console.print(
-            render_connection_defaults(
-                ConnectionDefaults(),
-                path=str(defaults_path()),
-                title="Overrides Already Clear",
-            )
-        )
-        return
-    console.print(
-        render_connection_defaults(
-            load_connection_defaults(),
-            path=str(path),
-            title="Overrides Cleared",
-        )
-    )

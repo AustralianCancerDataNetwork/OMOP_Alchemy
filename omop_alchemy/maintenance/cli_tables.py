@@ -5,8 +5,8 @@ from dataclasses import dataclass
 import sqlalchemy as sa
 import typer
 
-from ..backend_support import Dialect, POSTGRESQL_ONLY_HELP, require_backend
-from ._cli_utils import build_engine, handle_error, resolve_connection, resolve_selection
+from ..backends import resolve_backend, require_backend_support, backend_support_note
+from ._cli_utils import handle_error, resolve_selection, setup_cli_cmd
 from .tables import (
     TableCategory,
     TableScope,
@@ -19,7 +19,6 @@ from .ui import (
     render_analyze_note,
     render_analyze_results,
     render_analyze_summary,
-    render_command_header,
     render_error,
     render_sequence_reset_results,
     render_sequence_reset_summary,
@@ -35,6 +34,8 @@ from .ui import (
 
 @dataclass(frozen=True)
 class AnalyzeTableResult:
+    """Outcome of an ANALYZE or VACUUM ANALYZE operation for one ORM-managed table."""
+
     table_name: str
     category: TableCategory
     model_name: str
@@ -53,21 +54,11 @@ def analyze_tables(
     vacuum: bool = False,
     dry_run: bool = False,
 ) -> list[AnalyzeTableResult]:
+    """Run ANALYZE (or VACUUM ANALYZE) on selected ORM-managed tables to refresh planner statistics."""
     if scope is not None and table_names is not None:
         raise RuntimeError("Use either `scope` or `table_names`, not both.")
 
-    require_backend(
-        engine,
-        feature="Table analysis",
-        supported_dialects=(Dialect.POSTGRESQL, Dialect.SQLITE),
-    )
-
-    if vacuum and engine.dialect.name != Dialect.POSTGRESQL:
-        raise RuntimeError(
-            "VACUUM ANALYZE is only supported for PostgreSQL engines. "
-            f"Current dialect: '{engine.dialect.name}'."
-        )
-
+    backend = resolve_backend(engine)
     selected_tables = resolve_maintenance_tables(scope=scope, table_names=table_names)
     inspector = sa.inspect(engine)
     operation = "VACUUM ANALYZE" if vacuum else "ANALYZE"
@@ -95,9 +86,8 @@ def analyze_tables(
                 )
                 continue
 
-            qualified_name = qualified_table_name(maintenance_table.table_name, db_schema)
             if not dry_run:
-                connection.exec_driver_sql(f"{operation} {qualified_name}")
+                backend.analyze_table(connection, maintenance_table.table_name, db_schema, vacuum=vacuum)
 
             results.append(
                 AnalyzeTableResult(
@@ -124,6 +114,8 @@ def analyze_tables(
 
 @dataclass(frozen=True)
 class TruncateTableResult:
+    """Outcome of truncating one ORM-managed table, with the pre-truncation row count."""
+
     table_name: str
     category: TableCategory
     model_name: str
@@ -139,6 +131,7 @@ def _blocking_foreign_key_references(
     db_schema: str | None,
     selected_table_names: set[str],
 ) -> dict[str, set[str]]:
+    """Return tables outside the selection that FK-reference at least one selected table, preventing truncation."""
     blockers: dict[str, set[str]] = {}
 
     for table_name in inspector.get_table_names(schema=db_schema):
@@ -155,6 +148,7 @@ def _blocking_foreign_key_references(
 
 
 def _format_blocking_reference_error(blockers: dict[str, set[str]]) -> str:
+    """Format a human-readable error message listing which external tables are blocking truncation."""
     blocker_parts = [
         f"{table_name} <- {', '.join(sorted(referencing_tables))}"
         for table_name, referencing_tables in sorted(blockers.items())
@@ -180,13 +174,14 @@ def truncate_tables(
     cascade: bool = False,
     dry_run: bool = False,
 ) -> list[TruncateTableResult]:
+    """Truncate selected ORM-managed tables; raises if non-selected tables hold blocking FK references."""
     if scope is not None and table_names is not None:
         raise RuntimeError("Use either `scope` or `table_names`, not both.")
     if scope is None and table_names is None:
         raise RuntimeError("Select tables to truncate with `scope` or `table_names`.")
 
-    require_backend(engine, feature="Table truncation", supported_dialects=(Dialect.POSTGRESQL,))
-
+    backend = resolve_backend(engine)
+    require_backend_support(backend, "truncate_table_batch", "Table truncation")
     selected_tables = resolve_maintenance_tables(scope=scope, table_names=table_names)
     inspector = sa.inspect(engine)
     results: list[TruncateTableResult] = []
@@ -236,18 +231,13 @@ def truncate_tables(
                 raise RuntimeError(_format_blocking_reference_error(blockers))
 
         if existing_tables and not dry_run:
-            truncate_sql = (
-                "TRUNCATE TABLE "
-                + ", ".join(
-                    qualified_table_name(table_name, db_schema)
-                    for table_name in existing_tables
-                )
+            backend.truncate_table_batch(
+                connection,
+                existing_tables,
+                db_schema,
+                restart_identities=restart_identities,
+                cascade=cascade,
             )
-            if restart_identities:
-                truncate_sql += " RESTART IDENTITY"
-            if cascade:
-                truncate_sql += " CASCADE"
-            connection.exec_driver_sql(truncate_sql)
 
     return results
 
@@ -258,6 +248,8 @@ def truncate_tables(
 
 @dataclass(frozen=True)
 class SequenceTarget:
+    """An ORM-managed table with a single-column integer primary key that owns a PostgreSQL sequence."""
+
     table_name: str
     category: TableCategory
     model_name: str
@@ -267,6 +259,8 @@ class SequenceTarget:
 
 @dataclass(frozen=True)
 class SequenceResetResult:
+    """Outcome of resetting one PostgreSQL sequence to table max + 1."""
+
     table_name: str
     category: TableCategory
     model_name: str
@@ -282,6 +276,7 @@ def collect_sequence_targets(
     *,
     vocabulary_included: bool = False,
 ) -> list[SequenceTarget]:
+    """Return ORM-managed tables that have a single integer primary key and therefore own a sequence."""
     targets: list[SequenceTarget] = []
     for table in select_omop_tables(
         vocabulary_included=vocabulary_included,
@@ -309,8 +304,9 @@ def reset_model_sequences(
     vocabulary_included: bool = False,
     dry_run: bool = False,
 ) -> list[SequenceResetResult]:
-    require_backend(engine, feature="Sequence reset", supported_dialects=(Dialect.POSTGRESQL,))
-
+    """Reset each owned sequence to MAX(pk_column) + 1 to prevent insert conflicts after bulk loads."""
+    backend = resolve_backend(engine)
+    require_backend_support(backend, "find_sequence_name", "Sequence reset")
     inspector = sa.inspect(engine)
     targets = collect_sequence_targets(vocabulary_included=vocabulary_included)
     results: list[SequenceResetResult] = []
@@ -320,14 +316,9 @@ def reset_model_sequences(
             if not inspector.has_table(target.table_name, schema=db_schema):
                 continue
 
-            fully_qualified_table_name = qualified_table_name(target.table_name, db_schema)
-            sequence_name = connection.execute(
-                sa.text("SELECT pg_get_serial_sequence(:table_name, :column_name)"),
-                {
-                    "table_name": fully_qualified_table_name,
-                    "column_name": target.pk_column_name,
-                },
-            ).scalar_one_or_none()
+            sequence_name = backend.find_sequence_name(
+                connection, target.table_name, target.pk_column_name, db_schema
+            )
 
             if sequence_name is None:
                 results.append(
@@ -345,19 +336,17 @@ def reset_model_sequences(
                 )
                 continue
 
+            fully_qualified = qualified_table_name(target.table_name, db_schema)
             current_max = connection.execute(
                 sa.text(
                     f"SELECT COALESCE(MAX({target.pk_column_name}), 0) "
-                    f"FROM {fully_qualified_table_name}"
+                    f"FROM {fully_qualified}"
                 )
             ).scalar_one()
             next_value = int(current_max) + 1
 
             if not dry_run:
-                connection.execute(
-                    sa.text("SELECT setval(:sequence_name, :next_value, false)"),
-                    {"sequence_name": sequence_name, "next_value": next_value},
-                )
+                backend.set_sequence_value(connection, sequence_name, next_value)
 
             results.append(
                 SequenceResetResult(
@@ -384,50 +373,58 @@ def reset_model_sequences(
 # CLI commands
 # ---------------------------------------------------------------------------
 
-app = typer.Typer(rich_markup_mode="rich")
+app = typer.Typer(rich_markup_mode="rich", help="Manage Database Tables: analyze, truncate, and reset sequences",)
 
-
-@app.command(
-    "analyze-tables",
-    help="Refresh planner statistics for selected ORM-managed tables.",
-)
+@app.command("analyze-tables")
 def analyze_tables_command(
-    dotenv: str | None = typer.Option(None, help="Optional dotenv file to load."),
-    engine_schema: str | None = typer.Option(None, help="Engine schema selector."),
-    db_schema: str | None = typer.Option(None, help="Database schema override."),
+    dotenv: str | None = typer.Option(
+        None,
+        help="Path to a .env file to load before resolving the connection. Overrides the saved DOTENV default.",
+    ),
+    engine_schema: str | None = typer.Option(
+        None,
+        help="Named engine configuration to use (e.g. 'cdm', 'results'). Resolves to the ENGINE_<SCHEMA> environment variable group.",
+    ),
+    db_schema: str | None = typer.Option(
+        None,
+        help="Database schema to target (e.g. 'cdm5', 'vocab'). Sets search_path on PostgreSQL; not supported on SQLite.",
+    ),
     scope: TableScope | None = typer.Option(
         None,
         "--scope",
-        help="Category scope to analyze. Defaults to all ORM-managed tables when omitted.",
+        help="CDM category scope to analyze (e.g. 'clinical', 'vocabulary'). Defaults to all ORM-managed tables when omitted.",
         case_sensitive=False,
     ),
     table: list[str] | None = typer.Option(
         None,
         "--table",
-        help="Specific ORM-managed table name to analyze. Repeat for multiple tables.",
+        help="Specific ORM-managed table name to analyze. Repeat to target multiple tables.",
     ),
     vacuum: bool = typer.Option(
         False,
         "--vacuum",
-        help="Use VACUUM ANALYZE instead of ANALYZE. PostgreSQL only.",
+        help="Use VACUUM ANALYZE instead of plain ANALYZE to also reclaim dead tuples. Not available on all backends.",
     ),
-    dry_run: bool = typer.Option(False, "--dry-run"),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Preview planned actions without applying any changes to the database.",
+    ),
 ) -> None:
+    """Analyse selected ORM-managed tables to update planner statistics."""
     resolved_scope, resolved_tables = resolve_selection(
         scope=scope, tables=table, default_scope=TableScope.ALL
     )
-    conn = resolve_connection(dotenv=dotenv, engine_schema=engine_schema, db_schema=db_schema)
-    console.print(
-        render_command_header(
+    try:
+        conn, engine = setup_cli_cmd(
+            console=console,
+            dotenv=dotenv,
+            engine_schema=engine_schema,
+            db_schema=db_schema,
             command_name="analyze-tables",
-            engine_schema=conn.engine_schema,
-            db_schema=conn.db_schema,
             vocabulary_included=None,
             mode_label="dry-run" if dry_run else "apply",
         )
-    )
-    try:
-        engine = build_engine(dotenv=conn.dotenv, engine_schema=conn.engine_schema)
         with console.status("Refreshing planner statistics for selected tables..."):
             results = analyze_tables(
                 engine,
@@ -446,27 +443,43 @@ def analyze_tables_command(
 
 @app.command(
     "reset-sequences",
-    help=f"Reset owned sequences from table max + 1. {POSTGRESQL_ONLY_HELP}",
+    help=f"Reset each owned sequence to MAX(pk) + 1 to prevent insert conflicts after bulk loads. {backend_support_note('find_sequence_name')}",
 )
 def reset_sequences_command(
-    dotenv: str | None = typer.Option(None, help="Optional dotenv file to load."),
-    engine_schema: str | None = typer.Option(None, help="Engine schema selector."),
-    db_schema: str | None = typer.Option(None, help="Database schema override."),
-    vocabulary_included: bool = typer.Option(False, "--vocab/--no-vocab"),
-    dry_run: bool = typer.Option(False, "--dry-run"),
+    dotenv: str | None = typer.Option(
+        None,
+        help="Path to a .env file to load before resolving the connection. Overrides the saved DOTENV default.",
+    ),
+    engine_schema: str | None = typer.Option(
+        None,
+        help="Named engine configuration to use (e.g. 'cdm', 'results'). Resolves to the ENGINE_<SCHEMA> environment variable group.",
+    ),
+    db_schema: str | None = typer.Option(
+        None,
+        help="Database schema to target (e.g. 'cdm5', 'vocab'). Sets search_path on PostgreSQL; not supported on SQLite.",
+    ),
+    vocabulary_included: bool = typer.Option(
+        False,
+        "--vocab/--no-vocab",
+        help="Include OMOP vocabulary tables in the selection.",
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Preview planned actions without applying any changes to the database.",
+    ),
 ) -> None:
-    conn = resolve_connection(dotenv=dotenv, engine_schema=engine_schema, db_schema=db_schema)
-    console.print(
-        render_command_header(
+    """Reset each owned sequence to MAX(pk) + 1 to prevent insert conflicts after bulk loads."""
+    try:
+        conn, engine = setup_cli_cmd(
+            console=console,
+            dotenv=dotenv,
+            engine_schema=engine_schema,
+            db_schema=db_schema,
             command_name="reset-sequences",
-            engine_schema=conn.engine_schema,
-            db_schema=conn.db_schema,
             vocabulary_included=vocabulary_included,
             mode_label="dry-run" if dry_run else "apply",
         )
-    )
-    try:
-        engine = build_engine(dotenv=conn.dotenv, engine_schema=conn.engine_schema)
         with console.status("Resetting PostgreSQL sequences..."):
             results = reset_model_sequences(
                 engine,
@@ -482,40 +495,54 @@ def reset_sequences_command(
 
 @app.command(
     "truncate-tables",
-    help=f"Truncate selected ORM-managed tables. {POSTGRESQL_ONLY_HELP}",
+    help=f"Truncate selected ORM-managed OMOP tables; aborts if external FK references would block unless --cascade is set. {backend_support_note('truncate_table_batch')}",
 )
 def truncate_tables_command(
-    dotenv: str | None = typer.Option(None, help="Optional dotenv file to load."),
-    engine_schema: str | None = typer.Option(None, help="Engine schema selector."),
-    db_schema: str | None = typer.Option(None, help="Database schema override."),
+    dotenv: str | None = typer.Option(
+        None,
+        help="Path to a .env file to load before resolving the connection. Overrides the saved DOTENV default.",
+    ),
+    engine_schema: str | None = typer.Option(
+        None,
+        help="Named engine configuration to use (e.g. 'cdm', 'results'). Resolves to the ENGINE_<SCHEMA> environment variable group.",
+    ),
+    db_schema: str | None = typer.Option(
+        None,
+        help="Database schema to target (e.g. 'cdm5', 'vocab'). Sets search_path on PostgreSQL; not supported on SQLite.",
+    ),
     scope: TableScope | None = typer.Option(
         None,
         "--scope",
-        help="Category scope to truncate.",
+        help="CDM category scope to truncate (e.g. 'clinical', 'vocabulary'). Must specify scope or --table.",
         case_sensitive=False,
     ),
     table: list[str] | None = typer.Option(
         None,
         "--table",
-        help="Specific ORM-managed table name to truncate. Repeat for multiple tables.",
+        help="Specific ORM-managed table name to truncate. Repeat to target multiple tables.",
     ),
     restart_identities: bool = typer.Option(
         False,
         "--restart-identities",
-        help="Restart owned identities during truncation.",
+        help="Reset owned sequences to 1 after truncation (TRUNCATE ... RESTART IDENTITY).",
     ),
     cascade: bool = typer.Option(
         False,
         "--cascade",
-        help="Include dependent tables via PostgreSQL CASCADE.",
+        help="Automatically truncate dependent tables via PostgreSQL CASCADE. Use with care.",
     ),
     yes: bool = typer.Option(
         False,
         "--yes",
-        help="Confirm that you want to apply this destructive operation.",
+        help="Confirm the destructive operation. Required when not using --dry-run.",
     ),
-    dry_run: bool = typer.Option(False, "--dry-run"),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Preview planned actions without applying any changes to the database.",
+    ),
 ) -> None:
+    """Truncate selected ORM-managed OMOP tables; aborts if external FK references would block unless --cascade is set."""
     resolved_scope, resolved_tables = resolve_selection(scope=scope, tables=table)
     if resolved_scope is None and resolved_tables is None:
         console.print(
@@ -528,18 +555,16 @@ def truncate_tables_command(
         )
         raise typer.Exit(code=1)
 
-    conn = resolve_connection(dotenv=dotenv, engine_schema=engine_schema, db_schema=db_schema)
-    console.print(
-        render_command_header(
+    try:
+        conn, engine = setup_cli_cmd(
+            console=console,
+            dotenv=dotenv,
+            engine_schema=engine_schema,
+            db_schema=db_schema,
             command_name="truncate-tables",
-            engine_schema=conn.engine_schema,
-            db_schema=conn.db_schema,
             vocabulary_included=None,
             mode_label="dry-run" if dry_run else "apply",
         )
-    )
-    try:
-        engine = build_engine(dotenv=conn.dotenv, engine_schema=conn.engine_schema)
         with console.status("Truncating selected tables..."):
             results = truncate_tables(
                 engine,

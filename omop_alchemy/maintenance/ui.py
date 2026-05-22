@@ -9,17 +9,23 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
-from omop_alchemy.cdm.handlers.fulltext import FullTextResult
+from omop_alchemy.backends.base import FullTextResult
 
-from ..backend_support import backend_label
+from ..backends.resolve import _DIALECT_TO_BACKEND_MAP, SupportedDialect as _SupportedDialect
+
+
+def __backend_label(dialect_name: str) -> str:
+    try:
+        return _DIALECT_TO_BACKEND_MAP[_SupportedDialect(dialect_name)].name
+    except (ValueError, KeyError):
+        return dialect_name
 from .ascii import render_banner
 from .tables import TableCategory
 
 if TYPE_CHECKING:
-    from .cli_backup import DatabaseBackupResult, DatabaseRestoreResult
+    from .cli_backup import BackupResult
     from .cli_config import ConnectionDefaults
     from .cli_foreign_keys import (
-        ForeignKeyAction,
         ForeignKeyConstraintViolation,
         ForeignKeyManagementResult,
         ForeignKeyStatusResult,
@@ -143,11 +149,8 @@ def render_connection_defaults(
     grid.add_column(style="bold cyan")
     grid.add_column()
     grid.add_row("File", path)
-    grid.add_row("dotenv", defaults.dotenv or "-")
-    grid.add_row("engine_schema", defaults.engine_schema or "-")
-    grid.add_row("db_schema", defaults.db_schema or "-")
-    grid.add_row("athena_source", defaults.athena_source or "-")
-    grid.add_row("logging", defaults.logging or "file")
+    for param, value in defaults.to_dict().items():
+        grid.add_row(param.replace("_", " ").title(), value or "-")
     return Panel.fit(grid, title=f"[bold]{title}[/bold]", border_style="blue")
 
 
@@ -201,7 +204,7 @@ def render_info_database(info: MaintenanceInfo) -> Panel:
     grid.add_column(style="bold cyan")
     grid.add_column()
     grid.add_row("Engine URL", info.engine_url or "-")
-    grid.add_row("Backend", backend_label(info.backend) if info.backend else "-")
+    grid.add_row("Backend", _backend_label(info.backend) if info.backend else "-")
     grid.add_row("Engine created", _bool_label(info.engine_created))
     grid.add_row("Connection ready", _bool_label(info.connection_ready))
 
@@ -238,32 +241,32 @@ def render_info_dependencies(info: MaintenanceInfo) -> RenderableType:
     return table
 
 
-def render_backup_result(result: DatabaseBackupResult) -> Panel:
+def render_backup_result(result: BackupResult) -> Panel:
     grid = Table.grid(padding=(0, 2))
     grid.add_column(style="bold cyan")
     grid.add_column()
     grid.add_row("Status", _status_text(result.status))
-    grid.add_row("Backend", backend_label(result.backend))
+    grid.add_row("Backend", _backend_label(result.backend))
     grid.add_row("Database", result.database_name)
     grid.add_row("Schema", result.schema_name or "all schemas")
-    grid.add_row("Format", result.format.value)
-    grid.add_row("Output", result.output_path)
+    grid.add_row("Format", result.backup_format.value)
+    grid.add_row("Output", result.file_path)
     grid.add_row("Tool", result.tool_path)
     grid.add_row("Detail", result.detail)
     return Panel.fit(grid, title="[bold]Backup[/bold]", border_style="green" if result.status == "created" else "cyan")
 
 
-def render_backup_summary(result: DatabaseBackupResult, *, dry_run: bool) -> Panel:
+def render_backup_summary(result: BackupResult, *, dry_run: bool) -> Panel:
     restore_hint = (
-        f"Restore with `pg_restore -d <target_database> {result.output_path}`."
-        if result.format.value == "custom"
-        else f"Restore with `psql -d <target_database> -f {result.output_path}`."
+        f"Restore with `pg_restore -d <target_database> {result.file_path}`."
+        if result.backup_format.value == "custom"
+        else f"Restore with `psql -d <target_database> -f {result.file_path}`."
     )
     grid = Table.grid(padding=(0, 2))
     grid.add_column(style="bold cyan")
     grid.add_column()
-    grid.add_row("Artifact", result.output_path)
-    grid.add_row("Format", result.format.value)
+    grid.add_row("Artifact", result.file_path)
+    grid.add_row("Format", result.backup_format.value)
     grid.add_row("Restore", restore_hint)
     grid.add_row(
         "Summary",
@@ -272,27 +275,27 @@ def render_backup_summary(result: DatabaseBackupResult, *, dry_run: bool) -> Pan
     return Panel.fit(grid, title="[bold]Summary[/bold]", border_style="cyan" if dry_run else "green")
 
 
-def render_restore_result(result: DatabaseRestoreResult) -> Panel:
+def render_restore_result(result: BackupResult) -> Panel:
     grid = Table.grid(padding=(0, 2))
     grid.add_column(style="bold cyan")
     grid.add_column()
     grid.add_row("Status", _status_text(result.status))
-    grid.add_row("Backend", backend_label(result.backend))
+    grid.add_row("Backend", _backend_label(result.backend))
     grid.add_row("Database", result.database_name)
     grid.add_row("Schema", result.schema_name or "all schemas")
-    grid.add_row("Format", result.format.value)
-    grid.add_row("Input", result.input_path)
+    grid.add_row("Format", result.backup_format.value)
+    grid.add_row("Input", result.file_path)
     grid.add_row("Tool", result.tool_path)
     grid.add_row("Detail", result.detail)
     return Panel.fit(grid, title="[bold]Restore[/bold]", border_style="green" if result.status == "applied" else "cyan")
 
 
-def render_restore_summary(result: DatabaseRestoreResult, *, dry_run: bool) -> Panel:
+def render_restore_summary(result: BackupResult, *, dry_run: bool) -> Panel:
     grid = Table.grid(padding=(0, 2))
     grid.add_column(style="bold cyan")
     grid.add_column()
-    grid.add_row("Artifact", result.input_path)
-    grid.add_row("Format", result.format.value)
+    grid.add_row("Artifact", result.file_path)
+    grid.add_row("Format", result.backup_format.value)
     grid.add_row(
         "Summary",
         "Restore planned; no changes were applied to the target database."
@@ -363,7 +366,7 @@ def render_reconciliation_summary(report: SchemaReconciliationReport) -> Panel:
     grid = Table.grid(padding=(0, 2))
     grid.add_column(style="bold cyan")
     grid.add_column()
-    grid.add_row("Backend", backend_label(report.backend))
+    grid.add_row("Backend", _backend_label(report.backend))
     grid.add_row("Tables", str(len(report.table_results)))
     if matched:
         grid.add_row("Matched", str(matched))
@@ -657,7 +660,7 @@ def render_foreign_key_results(results: Iterable[ForeignKeyManagementResult]) ->
         style = STATUS_STYLES.get(result.status, "white")
         table.add_row(
             Text(result.status.upper(), style=style),
-            result.action.value,
+            "Enable" if result.enable else "Disable",
             result.table_name,
             _category_label(result.category),
             str(result.outgoing_constraint_count),
@@ -669,7 +672,7 @@ def render_foreign_key_results(results: Iterable[ForeignKeyManagementResult]) ->
 
 def render_foreign_key_summary(results: Iterable[ForeignKeyManagementResult], *, dry_run: bool) -> Panel:
     items = list(results)
-    action = items[0].action.value if items else "manage"
+    action = "Enable" if items and items[0].enable else "Disable"
     failed = sum(item.status == "failed" for item in items)
     skipped = sum(item.status == "skipped" for item in items)
     grid = Table.grid(padding=(0, 2))
@@ -694,8 +697,8 @@ def render_foreign_key_summary(results: Iterable[ForeignKeyManagementResult], *,
     return Panel.fit(grid, title="[bold]Summary[/bold]", border_style=border_style)
 
 
-def render_foreign_key_note(action: ForeignKeyAction, *, strict: bool = False) -> Panel:
-    if action == "disable":
+def render_foreign_key_note(enable: bool, *, strict: bool = False) -> Panel:
+    if not enable:
         body = (
             "PostgreSQL keeps the foreign key constraints defined in metadata. "
             "This command disables the internal RI triggers that enforce them."

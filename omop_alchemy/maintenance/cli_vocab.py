@@ -11,6 +11,7 @@ import typer
 from orm_loader.tables.typing import CSVTableProtocol
 from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn, TextColumn, TimeElapsedColumn
 
+from ..backends.resolve import SupportedDialect
 from omop_alchemy.cdm.model.vocabulary import (
     Concept,
     Concept_Ancestor,
@@ -24,15 +25,14 @@ from omop_alchemy.cdm.model.vocabulary import (
     Vocabulary,
 )
 
-from ..backend_support import Dialect, require_backend
-from ._cli_utils import build_engine, handle_error, resolve_connection
-from .cli_foreign_keys import ForeignKeyAction, manage_foreign_key_triggers
+from ..backends import resolve_backend
+from ._cli_utils import handle_error, setup_cli_cmd
+from .cli_foreign_keys import manage_foreign_key_triggers
 from .cli_indexes import IndexAction, manage_indexes
 from .cli_tables import reset_model_sequences
 from .tables import TableCategory, schema_adjusted_metadata, select_maintenance_tables
 from .ui import (
     console,
-    render_command_header,
     render_error,
     render_vocab_load_results,
     render_vocab_load_summary,
@@ -49,6 +49,8 @@ COMMIT_PROGRESS_FRACTION = 0.70
 
 @dataclass(frozen=True)
 class VocabularyLoadResult:
+    """Outcome of loading one Athena vocabulary CSV file via the staged ORM CSV loader."""
+
     table_name: str
     status: str
     row_count: int | None
@@ -59,6 +61,8 @@ class VocabularyLoadResult:
 
 @dataclass(frozen=True)
 class VocabularyLoadReport:
+    """Complete vocabulary load report: per-table outcomes and load session metadata."""
+
     source_path: str
     backend: str
     db_schema: str | None
@@ -70,6 +74,8 @@ class VocabularyLoadReport:
 
 @dataclass(frozen=True)
 class VocabularyLoadProgress:
+    """Progress event emitted after each table load phase; drives the CLI progress bar."""
+
     phase: str
     table_name: str | None
     table_index: int
@@ -126,6 +132,7 @@ def _emit_progress(
     total_units: float,
     detail: str,
 ) -> None:
+    """Fire the caller-supplied progress callback with a normalised VocabularyLoadProgress snapshot; no-ops if None."""
     if progress_callback is None:
         return
 
@@ -150,6 +157,7 @@ def _is_missing_staging_table_error(
     *,
     model: VocabularyModel,
 ) -> bool:
+    """Return True if the exception is a ProgrammingError caused by the staging table not existing yet."""
     staging_table_name = model.staging_tablename()
     message = str(exc).lower()
     return (
@@ -169,6 +177,7 @@ def _load_vocab_model_csv(
     chunksize: int | None = None,
     index_strategy: str = "auto",
 ) -> int:
+    """Call model.load_csv; if the staging table is absent, create it and retry once."""
     load_kwargs: dict[str, object] = {
         "merge_strategy": merge_strategy,
         "quote_mode": quote_mode,
@@ -200,15 +209,9 @@ def _load_vocab_model_csv(
         )
 
 
-def _ensure_supported_backend(engine: sa.Engine) -> None:
-    require_backend(
-        engine,
-        feature="Vocabulary source loading",
-        supported_dialects=(Dialect.SQLITE, Dialect.POSTGRESQL),
-    )
-
 
 def _find_vocab_csv_path(source_path: Path, table_name: str) -> Path | None:
+    """Locate the CSV file for table_name under source_path, trying exact name, lower, upper, and case-insensitive glob."""
     direct_candidates = (
         source_path / f"{table_name}.csv",
         source_path / f"{table_name.lower()}.csv",
@@ -226,6 +229,7 @@ def _find_vocab_csv_path(source_path: Path, table_name: str) -> Path | None:
 
 
 def _missing_required_files(source_path: Path) -> list[str]:
+    """Return the table names of required vocabulary CSVs that cannot be found under source_path."""
     missing: list[str] = []
     for model in REQUIRED_VOCAB_MODELS:
         if _find_vocab_csv_path(source_path, model.__tablename__) is None:
@@ -238,6 +242,7 @@ def _create_missing_vocabulary_tables(
     *,
     db_schema: str | None,
 ) -> int:
+    """Create any vocabulary-category ORM tables that are absent from the target database; returns the count created."""
     vocab_tables = select_maintenance_tables(
         categories=(TableCategory.VOCABULARY,),
     )
@@ -270,17 +275,18 @@ def _configure_loader_connection(
     *,
     db_schema: str | None,
 ) -> None:
+    """Set search_path on PostgreSQL connections when a db_schema is requested; raises on SQLite with a schema."""
     if db_schema is None:
         return
 
-    if connection.dialect.name != Dialect.POSTGRESQL:
+    if connection.dialect.name != SupportedDialect.POSTGRESQL:
         raise RuntimeError(
             "Vocabulary source loading with `--db-schema` is only supported on PostgreSQL. "
             "SQLite uses the default database namespace."
         )
 
-    quoted_schema = '"' + db_schema.replace('"', '""') + '"'
-    connection.exec_driver_sql(f"SET search_path TO {quoted_schema}")
+    backend = resolve_backend(connection.engine)
+    backend.configure_schema_context(connection, db_schema)
 
 
 def load_vocab_source(
@@ -294,8 +300,7 @@ def load_vocab_source(
     bulk_mode: bool = True,
     progress_callback: VocabularyLoadProgressCallback | None = None,
 ) -> VocabularyLoadReport:
-    _ensure_supported_backend(engine)
-
+    """Load all Athena vocabulary CSVs from source_path; with bulk_mode, indexes and FK triggers are toggled around the load."""
     resolved_source_path = Path(source_path).expanduser().resolve()
     if not resolved_source_path.exists() or not resolved_source_path.is_dir():
         raise RuntimeError(
@@ -364,12 +369,12 @@ def load_vocab_source(
     _use_bulk_mode = (
         bulk_mode
         and not dry_run
-        and engine.dialect.name == Dialect.POSTGRESQL
+        and engine.dialect.name == SupportedDialect.POSTGRESQL
     )
     if _use_bulk_mode:
         manage_foreign_key_triggers(
             engine,
-            action=ForeignKeyAction.DISABLE,
+            enable=False,
             vocabulary_included=True,
             db_schema=db_schema,
             dry_run=False,
@@ -552,7 +557,7 @@ def load_vocab_source(
         )
         manage_foreign_key_triggers(
             engine,
-            action=ForeignKeyAction.ENABLE,
+            enable=True,
             vocabulary_included=True,
             db_schema=db_schema,
             dry_run=False,
@@ -560,7 +565,7 @@ def load_vocab_source(
 
     results.extend(missing_optional_results)
 
-    if not dry_run and engine.dialect.name == Dialect.POSTGRESQL:
+    if not dry_run and engine.dialect.name == SupportedDialect.POSTGRESQL:
         sequence_results = reset_model_sequences(
             engine,
             db_schema=db_schema,
@@ -592,13 +597,20 @@ app = typer.Typer(rich_markup_mode="rich")
 )
 def load_vocab_source_command(
     athena_source: str | None = typer.Option(
-        None, help="Path to unzipped Athena vocabulary CSV files."
+        None,
+        help="Path to the unzipped Athena vocabulary CSV directory. Falls back to the saved athena-source default.",
     ),
-    dotenv: str | None = typer.Option(None, help="Optional dotenv file to load."),
-    engine_schema: str | None = typer.Option(None, help="Engine schema selector."),
+    dotenv: str | None = typer.Option(
+        None,
+        help="Path to a .env file to load before resolving the connection. Overrides the saved DOTENV default.",
+    ),
+    engine_schema: str | None = typer.Option(
+        None,
+        help="Named engine configuration to use (e.g. 'cdm', 'results'). Resolves to the ENGINE_<SCHEMA> environment variable group.",
+    ),
     db_schema: str | None = typer.Option(
         None,
-        help="Database schema override. PostgreSQL only; uses search_path for ORM CSV loading.",
+        help="Database schema to target. Sets search_path on PostgreSQL before loading; not supported on SQLite.",
     ),
     merge_strategy: MergeStrategy = typer.Option(
         "replace",
@@ -618,40 +630,37 @@ def load_vocab_source_command(
         help=(
             "Disable FK triggers and drop indexes globally before loading, then rebuild after. "
             "Much faster than per-table management for a full vocabulary reload. "
-            "PostgreSQL only; ignored on SQLite. "
+            "Requires FK trigger and index management support; ignored on backends that do not support it. "
             "If the load fails mid-way, run `indexes enable --vocab` and `foreign-keys enable` to recover."
         ),
     ),
-    dry_run: bool = typer.Option(False, "--dry-run"),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Preview planned actions without applying any changes to the database.",
+    ),
 ) -> None:
-    conn = resolve_connection(
-        dotenv=dotenv,
-        engine_schema=engine_schema,
-        db_schema=db_schema,
-        athena_source=athena_source,
-    )
-    console.print(
-        render_command_header(
+    """Load all Athena vocabulary CSVs from the configured source path, optionally toggling indexes and FK triggers for speed."""
+    try:
+        conn, engine = setup_cli_cmd(
+            console=console,
+            dotenv=dotenv,
+            engine_schema=engine_schema,
+            db_schema=db_schema,
             command_name="load-vocab-source",
-            engine_schema=conn.engine_schema,
-            db_schema=conn.db_schema,
             vocabulary_included=True,
             mode_label="dry-run" if dry_run else "apply",
+            athena_source=athena_source
         )
-    )
-
-    if conn.athena_source is None:
-        console.print(
-            render_error(
-                "No Athena vocabulary source path is configured. "
-                "Set it with `omop-alchemy config set-overrides --athena-source <path>` "
-                "or pass `--athena-source`."
+        if conn.athena_source is None:
+            console.print(
+                render_error(
+                    "No Athena vocabulary source path is configured. "
+                    "Set it with `omop-alchemy config override --athena-source <path>` "
+                    "or pass `--athena-source`."
+                )
             )
-        )
-        raise typer.Exit(code=1)
-
-    try:
-        engine = build_engine(dotenv=conn.dotenv, engine_schema=conn.engine_schema)
+            raise typer.Exit(code=1)
 
         with Progress(
             SpinnerColumn(),

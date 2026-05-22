@@ -12,7 +12,7 @@ from . import (
     cli_tables as tables,
     cli_vocab as vocab,
 )
-from ._cli_utils import configure_logging
+from ..logger_config import configure_logging
 from .help import install_help_customizations
 
 install_help_customizations()
@@ -20,8 +20,7 @@ install_help_customizations()
 app = typer.Typer(
     help=(
         "OMOP Alchemy maintenance utilities.\n\n"
-        "PostgreSQL-only commands: reset-sequences, truncate-tables, "
-        "foreign-keys, backup-database, restore-database, fulltext."
+        "Some commands require backend-specific support — see individual command help for details."
     ),
     rich_markup_mode="rich",
 )

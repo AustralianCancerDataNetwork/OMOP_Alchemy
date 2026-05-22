@@ -7,7 +7,7 @@ using mock exceptions to simulate missing packages.
 """
 import pytest
 
-from omop_alchemy.config import (
+from omop_alchemy.db import (
     POSTGRES_DRIVER_MODULES,
     _missing_driver_message,
     create_engine_with_dependencies,

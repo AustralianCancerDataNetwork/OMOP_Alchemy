@@ -8,18 +8,16 @@ import typer
 
 from omop_alchemy.cdm.base.indexing import OMOP_CLUSTER_INDEX_INFO_KEY
 
-from ..backend_support import Dialect, backend_label, supports_backend
-from ._cli_utils import build_engine, handle_error, resolve_connection
+from ..backends import resolve_backend, backend_supports
+from ._cli_utils import handle_error, setup_cli_cmd
 from .tables import (
     MaintenanceTable,
     TableCategory,
-    qualified_table_name,
     schema_adjusted_metadata,
     select_omop_tables,
 )
 from .ui import (
     console,
-    render_command_header,
     render_index_note,
     render_index_results,
     render_index_summary,
@@ -27,12 +25,16 @@ from .ui import (
 
 
 class IndexAction(StrEnum):
+    """Whether to create or drop ORM-defined secondary indexes."""
+
     DISABLE = "disable"
     ENABLE = "enable"
 
 
 @dataclass(frozen=True)
 class IndexTarget:
+    """An ORM-defined index that currently exists in the target database."""
+
     table_name: str
     category: TableCategory
     model_name: str
@@ -45,6 +47,8 @@ class IndexTarget:
 
 @dataclass(frozen=True)
 class IndexManagementResult:
+    """Outcome of creating or dropping one ORM-defined index, or clustering a table."""
+
     operation: str
     table_name: str
     category: TableCategory
@@ -63,6 +67,7 @@ def _schema_metadata_indexes(
     tables: list[MaintenanceTable],
     db_schema: str | None,
 ) -> dict[tuple[str, str], sa.Index]:
+    """Return a (table_name, index_name) → Index mapping from ORM metadata, adjusted for db_schema if provided."""
     indexes: dict[tuple[str, str], sa.Index] = {}
 
     if db_schema is None:
@@ -80,6 +85,7 @@ def _schema_metadata_indexes(
 
 
 def _cluster_target_name(table: MaintenanceTable) -> str | None:
+    """Return the name of the ORM-designated cluster index for a table, or None if no cluster target is defined."""
     cluster_indexes = [
         str(index.name)
         for index in table.table.indexes
@@ -99,6 +105,7 @@ def _cluster_column_names(
     table: MaintenanceTable,
     cluster_index_name: str,
 ) -> tuple[str, ...]:
+    """Return the column names of the named cluster index; falls back to the primary key if the index is not found."""
     for index in table.table.indexes:
         if str(index.name) == cluster_index_name:
             return tuple(column.name for column in index.columns)
@@ -111,6 +118,7 @@ def collect_index_targets(
     db_schema: str | None = None,
     vocabulary_included: bool = False,
 ) -> list[IndexTarget]:
+    """List ORM-defined indexes that currently exist in the target database."""
     inspector = sa.inspect(engine)
     selected_tables = select_omop_tables(vocabulary_included=vocabulary_included)
 
@@ -152,10 +160,12 @@ def manage_indexes(
     vocabulary_included: bool = False,
     dry_run: bool = False,
 ) -> list[IndexManagementResult]:
+    """Create or drop all ORM-defined indexes; also CLUSTER tables on PostgreSQL when enabling."""
+    backend = resolve_backend(engine)
     inspector = sa.inspect(engine)
     selected_tables = select_omop_tables(vocabulary_included=vocabulary_included)
     metadata_indexes = _schema_metadata_indexes(selected_tables, db_schema)
-    clustering_supported = supports_backend(engine, supported_dialects=(Dialect.POSTGRESQL,))
+    clustering_supported = backend_supports(backend, "cluster_table")
 
     results: list[IndexManagementResult] = []
 
@@ -235,17 +245,14 @@ def manage_indexes(
                             status="skipped",
                             detail=(
                                 "cluster metadata present but unsupported on "
-                                f"{backend_label(engine.dialect.name)}"
+                                f"{backend.name}"
                             ),
                         )
                     )
                     continue
 
                 if not dry_run:
-                    connection.exec_driver_sql(
-                        f"CLUSTER {qualified_table_name(table.table_name, db_schema)} "
-                        f"USING {cluster_index_name}"
-                    )
+                    backend.cluster_table(connection, table.table_name, cluster_index_name, db_schema)
 
                 results.append(
                     IndexManagementResult(
@@ -279,24 +286,40 @@ app = typer.Typer(
 
 @app.command("disable")
 def disable_indexes_command(
-    dotenv: str | None = typer.Option(None, help="Optional dotenv file to load."),
-    engine_schema: str | None = typer.Option(None, help="Engine schema selector."),
-    db_schema: str | None = typer.Option(None, help="Database schema override."),
-    vocabulary_included: bool = typer.Option(False, "--vocab/--no-vocab"),
-    dry_run: bool = typer.Option(False, "--dry-run"),
+    dotenv: str | None = typer.Option(
+        None,
+        help="Path to a .env file to load before resolving the connection. Overrides the saved DOTENV default.",
+    ),
+    engine_schema: str | None = typer.Option(
+        None,
+        help="Named engine configuration to use (e.g. 'cdm', 'results'). Resolves to the ENGINE_<SCHEMA> environment variable group.",
+    ),
+    db_schema: str | None = typer.Option(
+        None,
+        help="Database schema to target (e.g. 'cdm5', 'vocab'). Sets search_path on PostgreSQL; not supported on SQLite.",
+    ),
+    vocabulary_included: bool = typer.Option(
+        False,
+        "--vocab/--no-vocab",
+        help="Include OMOP vocabulary tables in the selection.",
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Preview planned actions without applying any changes to the database.",
+    ),
 ) -> None:
-    conn = resolve_connection(dotenv=dotenv, engine_schema=engine_schema, db_schema=db_schema)
-    console.print(
-        render_command_header(
+    """Drop all ORM-defined secondary indexes from the target database; useful before bulk data loads."""
+    try:
+        conn, engine = setup_cli_cmd(
+            console=console,
+            dotenv=dotenv,
+            engine_schema=engine_schema,
+            db_schema=db_schema,
             command_name="indexes disable",
-            engine_schema=conn.engine_schema,
-            db_schema=conn.db_schema,
             vocabulary_included=vocabulary_included,
             mode_label="dry-run" if dry_run else "apply",
         )
-    )
-    try:
-        engine = build_engine(dotenv=conn.dotenv, engine_schema=conn.engine_schema)
         with console.status("Managing metadata-defined indexes..."):
             results = manage_indexes(
                 engine,
@@ -314,24 +337,40 @@ def disable_indexes_command(
 
 @app.command("enable")
 def enable_indexes_command(
-    dotenv: str | None = typer.Option(None, help="Optional dotenv file to load."),
-    engine_schema: str | None = typer.Option(None, help="Engine schema selector."),
-    db_schema: str | None = typer.Option(None, help="Database schema override."),
-    vocabulary_included: bool = typer.Option(False, "--vocab/--no-vocab"),
-    dry_run: bool = typer.Option(False, "--dry-run"),
+    dotenv: str | None = typer.Option(
+        None,
+        help="Path to a .env file to load before resolving the connection. Overrides the saved DOTENV default.",
+    ),
+    engine_schema: str | None = typer.Option(
+        None,
+        help="Named engine configuration to use (e.g. 'cdm', 'results'). Resolves to the ENGINE_<SCHEMA> environment variable group.",
+    ),
+    db_schema: str | None = typer.Option(
+        None,
+        help="Database schema to target (e.g. 'cdm5', 'vocab'). Sets search_path on PostgreSQL; not supported on SQLite.",
+    ),
+    vocabulary_included: bool = typer.Option(
+        False,
+        "--vocab/--no-vocab",
+        help="Include OMOP vocabulary tables in the selection.",
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Preview planned actions without applying any changes to the database.",
+    ),
 ) -> None:
-    conn = resolve_connection(dotenv=dotenv, engine_schema=engine_schema, db_schema=db_schema)
-    console.print(
-        render_command_header(
+    """Recreate all ORM-defined secondary indexes; also CLUSTERs tables on PostgreSQL where metadata specifies it."""
+    try:
+        conn, engine = setup_cli_cmd(
+            console=console,
+            dotenv=dotenv,
+            engine_schema=engine_schema,
+            db_schema=db_schema,
             command_name="indexes enable",
-            engine_schema=conn.engine_schema,
-            db_schema=conn.db_schema,
             vocabulary_included=vocabulary_included,
             mode_label="dry-run" if dry_run else "apply",
         )
-    )
-    try:
-        engine = build_engine(dotenv=conn.dotenv, engine_schema=conn.engine_schema)
         with console.status("Managing metadata-defined indexes..."):
             results = manage_indexes(
                 engine,

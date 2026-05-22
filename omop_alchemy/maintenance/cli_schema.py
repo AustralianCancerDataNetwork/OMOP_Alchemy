@@ -8,12 +8,15 @@ import shutil
 
 import sqlalchemy as sa
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.engine.interfaces import ReflectedIndex
 import typer
 
-from omop_alchemy import create_engine_with_dependencies, get_engine_name, load_environment
+from omop_alchemy import create_engine_with_dependencies, load_environment
+from omop_alchemy.backends.resolve import SupportedDialect
+from omop_alchemy.db import get_engine_name
 
-from ..backend_support import Dialect, backend_label
-from ._cli_utils import build_engine, handle_error, resolve_connection
+from ..backends import resolve_backend
+from ._cli_utils import handle_error, setup_cli_cmd
 from .cli_config import defaults_path
 from .cli_foreign_keys import (
     ForeignKeyStatusResult,
@@ -25,7 +28,6 @@ from .cli_indexes import _cluster_target_name
 from .tables import (
     MaintenanceTable,
     TableCategory,
-    TableScope,
     collect_maintenance_tables,
     missing_maintenance_tables,
     qualified_table_name,
@@ -35,7 +37,6 @@ from .tables import (
 )
 from .ui import (
     console,
-    render_command_header,
     render_data_summary_results,
     render_data_summary_summary,
     render_doctor_checks,
@@ -55,12 +56,22 @@ from .ui import (
 )
 
 
+def _backend_label(dialect_name: str) -> str:
+    from ..backends.resolve import _DIALECT_TO_BACKEND_MAP, SupportedDialect
+    try:
+        return _DIALECT_TO_BACKEND_MAP[SupportedDialect(dialect_name)].name
+    except (ValueError, KeyError):
+        return dialect_name
+
+
 # ---------------------------------------------------------------------------
 # info
 # ---------------------------------------------------------------------------
 
 @dataclass(frozen=True)
 class DependencyStatus:
+    """Installation status of a Python package or external tool dependency."""
+
     name: str
     installed: bool
     version: str | None
@@ -68,6 +79,8 @@ class DependencyStatus:
 
 @dataclass(frozen=True)
 class CommandSupport:
+    """Readiness assessment for one CLI command given the current backend and connection state."""
+
     command_name: str
     requirement: str
     status: str
@@ -76,6 +89,8 @@ class CommandSupport:
 
 @dataclass(frozen=True)
 class MaintenanceInfo:
+    """Full environment snapshot: package version, connection state, and per-command readiness."""
+
     package_version: str
     cli_path: str | None
     pg_dump_path: str | None
@@ -102,10 +117,12 @@ class MaintenanceInfo:
 
 
 def _package_version() -> str:
+    """Return the installed omop-alchemy package version string."""
     return importlib.metadata.version("omop-alchemy")
 
 
 def _dependency_status(distribution_name: str, module_name: str) -> DependencyStatus:
+    """Check whether a Python package is importable and return its installed version if found."""
     installed = importlib.util.find_spec(module_name) is not None
     version: str | None = None
     if installed:
@@ -117,6 +134,7 @@ def _dependency_status(distribution_name: str, module_name: str) -> DependencySt
 
 
 def _external_dependency_status(name: str, executable_name: str) -> DependencyStatus:
+    """Check whether an external CLI tool is on PATH and return a DependencyStatus (version always None)."""
     return DependencyStatus(
         name=name,
         installed=shutil.which(executable_name) is not None,
@@ -125,6 +143,7 @@ def _external_dependency_status(name: str, executable_name: str) -> DependencySt
 
 
 def _command_support_for_unavailable_engine(detail: str) -> tuple[CommandSupport, ...]:
+    """Return a full CommandSupport tuple with every command marked blocked, used when the engine cannot be created."""
     blocked = "blocked"
     return (
         CommandSupport("doctor", "Any SQLAlchemy backend", blocked, detail),
@@ -161,7 +180,8 @@ def _command_support_for_backend(
     pg_restore_path: str | None,
     psql_path: str | None,
 ) -> tuple[CommandSupport, ...]:
-    current_backend = backend_label(backend)
+    """Compute the readiness status of every CLI command given the current backend, connection state, and tool availability."""
+    current_backend = _backend_label(backend)
     if not engine_created:
         blocked_detail = (
             f"Backend resolved to {current_backend}, but the engine could not be created: {engine_error}"
@@ -179,7 +199,7 @@ def _command_support_for_backend(
         f"Ready on {current_backend}." if connection_ready else blocked_detail
     )
 
-    if backend == Dialect.POSTGRESQL:
+    if backend == SupportedDialect.POSTGRESQL:
         analyze_status = portable_status
         analyze_detail = (
             "Ready on PostgreSQL; ANALYZE and VACUUM ANALYZE are both supported."
@@ -265,18 +285,18 @@ def _command_support_for_backend(
             "PostgreSQL + pg_dump",
             (
                 "ready"
-                if connection_ready and backend == Dialect.POSTGRESQL and pg_dump_path is not None
+                if connection_ready and backend == SupportedDialect.POSTGRESQL and pg_dump_path is not None
                 else "blocked"
-                if backend == Dialect.POSTGRESQL
+                if backend == SupportedDialect.POSTGRESQL
                 else "unsupported"
                 if connection_ready
                 else "blocked"
             ),
             (
                 "Ready on PostgreSQL; `pg_dump` is available."
-                if connection_ready and backend == Dialect.POSTGRESQL and pg_dump_path is not None
+                if connection_ready and backend == SupportedDialect.POSTGRESQL and pg_dump_path is not None
                 else "PostgreSQL is configured, but `pg_dump` is not on PATH."
-                if connection_ready and backend == Dialect.POSTGRESQL
+                if connection_ready and backend == SupportedDialect.POSTGRESQL
                 else f"Requires PostgreSQL. Current backend: {current_backend}."
                 if connection_ready
                 else blocked_detail
@@ -287,18 +307,18 @@ def _command_support_for_backend(
             "PostgreSQL + pg_restore/psql",
             (
                 "ready"
-                if connection_ready and backend == Dialect.POSTGRESQL and (pg_restore_path is not None or psql_path is not None)
+                if connection_ready and backend == SupportedDialect.POSTGRESQL and (pg_restore_path is not None or psql_path is not None)
                 else "blocked"
-                if backend == Dialect.POSTGRESQL
+                if backend == SupportedDialect.POSTGRESQL
                 else "unsupported"
                 if connection_ready
                 else "blocked"
             ),
             (
                 "Ready on PostgreSQL; restore client tooling is available."
-                if connection_ready and backend == Dialect.POSTGRESQL and (pg_restore_path is not None or psql_path is not None)
+                if connection_ready and backend == SupportedDialect.POSTGRESQL and (pg_restore_path is not None or psql_path is not None)
                 else "PostgreSQL is configured, but neither `pg_restore` nor `psql` is on PATH."
-                if connection_ready and backend == Dialect.POSTGRESQL
+                if connection_ready and backend == SupportedDialect.POSTGRESQL
                 else f"Requires PostgreSQL. Current backend: {current_backend}."
                 if connection_ready
                 else blocked_detail
@@ -324,6 +344,7 @@ def collect_maintenance_info(
     dotenv: str | None = None,
     vocabulary_included: bool = True,
 ) -> MaintenanceInfo:
+    """Probe the current environment: resolve config, attempt a connection, and assess per-command readiness."""
     load_environment(dotenv or "")
     pg_dump_path = shutil.which("pg_dump")
     pg_restore_path = shutil.which("pg_restore")
@@ -441,6 +462,8 @@ def collect_maintenance_info(
 
 @dataclass(frozen=True)
 class DoctorCheck:
+    """Result of a single named maintenance health check (e.g. 'managed tables', 'schema drift')."""
+
     name: str
     status: str
     detail: str
@@ -448,6 +471,8 @@ class DoctorCheck:
 
 @dataclass(frozen=True)
 class DoctorRecommendation:
+    """Actionable recommendation derived from health check results, with an optional CLI command hint."""
+
     status: str
     summary: str
     action: str | None
@@ -455,6 +480,8 @@ class DoctorRecommendation:
 
 @dataclass(frozen=True)
 class DoctorReport:
+    """Complete doctor report: health checks, prioritised recommendations, and optional deep-inspection data."""
+
     info: MaintenanceInfo
     checks: tuple[DoctorCheck, ...]
     recommendations: tuple[DoctorRecommendation, ...]
@@ -470,6 +497,7 @@ def _build_recommendations(
     foreign_key_status: tuple[ForeignKeyStatusResult, ...] | None,
     foreign_key_validation: ForeignKeyValidationReport | None,
 ) -> tuple[DoctorRecommendation, ...]:
+    """Derive a prioritised list of actionable recommendations from the doctor check results."""
     recommendations: list[DoctorRecommendation] = []
 
     if not info.connection_ready:
@@ -523,7 +551,7 @@ def _build_recommendations(
             )
         )
 
-    if info.backend == Dialect.POSTGRESQL and info.pg_dump_path is None:
+    if info.backend == SupportedDialect.POSTGRESQL and info.pg_dump_path is None:
         recommendations.append(
             DoctorRecommendation(
                 status="warning",
@@ -533,7 +561,7 @@ def _build_recommendations(
         )
 
     if (
-        info.backend == Dialect.POSTGRESQL
+        info.backend == SupportedDialect.POSTGRESQL
         and info.pg_restore_path is None
         and info.psql_path is None
     ):
@@ -565,6 +593,7 @@ def collect_doctor_report(
     vocabulary_included: bool = True,
     deep: bool = False,
 ) -> DoctorReport:
+    """Run all maintenance health checks and return a prioritised report with recommendations."""
     load_environment(dotenv or "")
     info = collect_maintenance_info(
         engine_schema=engine_schema,
@@ -631,7 +660,7 @@ def collect_doctor_report(
                     )
                 )
 
-            if info.backend == Dialect.POSTGRESQL:
+            if info.backend == SupportedDialect.POSTGRESQL:
                 foreign_key_status = tuple(
                     collect_foreign_key_trigger_status(
                         engine,
@@ -725,7 +754,7 @@ def collect_doctor_report(
             )
         )
 
-    if info.backend == Dialect.POSTGRESQL:
+    if info.backend == SupportedDialect.POSTGRESQL:
         backup_tools_ready = info.pg_dump_path is not None and (
             info.pg_restore_path is not None or info.psql_path is not None
         )
@@ -770,6 +799,8 @@ def collect_doctor_report(
 
 @dataclass(frozen=True)
 class ReconciliationIssue:
+    """A single schema drift detail: column, index, FK, or cluster mismatch between ORM metadata and the database."""
+
     table_name: str
     category: TableCategory
     component: str
@@ -782,6 +813,8 @@ class ReconciliationIssue:
 
 @dataclass(frozen=True)
 class TableReconciliationResult:
+    """Per-table schema reconciliation summary: whether ORM metadata matches the live database."""
+
     table_name: str
     category: TableCategory
     model_name: str
@@ -793,12 +826,15 @@ class TableReconciliationResult:
 
 @dataclass(frozen=True)
 class SchemaReconciliationReport:
+    """Complete reconciliation report across all selected ORM-managed tables."""
+
     backend: str
     table_results: tuple[TableReconciliationResult, ...]
     issues: tuple[ReconciliationIssue, ...]
 
 
 def _schema_table(table: sa.Table, db_schema: str | None) -> sa.Table:
+    """Return table unchanged when db_schema is None, or a schema-qualified copy when a schema is specified."""
     if db_schema is None:
         return table
 
@@ -813,12 +849,14 @@ def _schema_table(table: sa.Table, db_schema: str | None) -> sa.Table:
 
 
 def _normalized_type(type_: sa.types.TypeEngine[object], dialect: sa.engine.Dialect) -> str:
+    """Compile a SQLAlchemy type to its dialect-specific string and normalise whitespace/case for comparison."""
     return type_.compile(dialect=dialect).lower().replace(" ", "")
 
 
 def _expected_foreign_keys(
     table: sa.Table,
 ) -> dict[tuple[tuple[str, ...], str, tuple[str, ...]], sa.ForeignKeyConstraint]:
+    """Index ORM-defined FK constraints by (constrained_cols, referred_table, referred_cols) for diffing."""
     expected: dict[tuple[tuple[str, ...], str, tuple[str, ...]], sa.ForeignKeyConstraint] = {}
     for constraint in table.foreign_key_constraints:
         constrained_columns = tuple(element.parent.name for element in constraint.elements)
@@ -833,6 +871,7 @@ def _actual_foreign_keys(
     table_name: str,
     db_schema: str | None,
 ) -> dict[tuple[tuple[str, ...], str, tuple[str, ...]], dict[str, object]]:
+    """Index live FK constraints from the database inspector by the same key tuple used by _expected_foreign_keys."""
     actual: dict[tuple[tuple[str, ...], str, tuple[str, ...]], dict[str, object]] = {}
     for foreign_key in inspector.get_foreign_keys(table_name, schema=db_schema):
         constrained_columns = tuple(foreign_key.get("constrained_columns") or [])
@@ -843,6 +882,7 @@ def _actual_foreign_keys(
 
 
 def _expected_indexes(table: sa.Table) -> dict[str, sa.Index]:
+    """Return ORM-defined named indexes for a table, keyed by index name."""
     return {
         str(index.name): index
         for index in table.indexes
@@ -854,36 +894,14 @@ def _actual_indexes(
     inspector: sa.Inspector,
     table_name: str,
     db_schema: str | None,
-) -> dict[str, dict[str, object]]:
+) -> dict[str, ReflectedIndex]:
+    """Return live named indexes from the database inspector, keyed by index name."""
     return {
         str(index["name"]): index
         for index in inspector.get_indexes(table_name, schema=db_schema)
         if index.get("name") is not None
     }
 
-
-def _actual_cluster_index_name(
-    connection: sa.Connection,
-    *,
-    table_name: str,
-    db_schema: str | None,
-) -> str | None:
-    result = connection.execute(
-        sa.text(
-            """
-            SELECT i.relname
-            FROM pg_index ix
-            JOIN pg_class t ON t.oid = ix.indrelid
-            JOIN pg_class i ON i.oid = ix.indexrelid
-            JOIN pg_namespace n ON n.oid = t.relnamespace
-            WHERE ix.indisclustered
-              AND t.relname = :table_name
-              AND (:db_schema IS NULL OR n.nspname = :db_schema)
-            """
-        ),
-        {"table_name": table_name, "db_schema": db_schema},
-    ).scalar_one_or_none()
-    return str(result) if result is not None else None
 
 
 def reconcile_schema(
@@ -892,9 +910,11 @@ def reconcile_schema(
     db_schema: str | None = None,
     vocabulary_included: bool = False,
 ) -> SchemaReconciliationReport:
+    """Compare ORM metadata against the live database schema; reports missing columns, indexes, FKs, and cluster state."""
     excluded_categories: tuple[TableCategory, ...] = (
         () if vocabulary_included else (TableCategory.VOCABULARY,)
     )
+    _backend = resolve_backend(engine)
     selected_tables = select_maintenance_tables(exclude_categories=excluded_categories)
     inspector = sa.inspect(engine)
     all_issues: list[ReconciliationIssue] = []
@@ -1120,12 +1140,12 @@ def reconcile_schema(
                         )
                     )
 
-            if engine.dialect.name == Dialect.POSTGRESQL:
+            if engine.dialect.name == SupportedDialect.POSTGRESQL:
                 expected_cluster = _cluster_target_name(maintenance_table)
-                actual_cluster = _actual_cluster_index_name(
+                actual_cluster = _backend.get_clustered_index_name(
                     connection,
-                    table_name=maintenance_table.table_name,
-                    db_schema=db_schema,
+                    maintenance_table.table_name,
+                    db_schema,
                 )
                 if expected_cluster != actual_cluster:
                     table_issues.append(
@@ -1178,6 +1198,8 @@ def reconcile_schema(
 
 @dataclass(frozen=True)
 class TableCreationResult:
+    """Outcome of attempting to create one missing ORM-managed table from SQLAlchemy metadata."""
+
     table_name: str
     category: TableCategory
     model_name: str
@@ -1187,6 +1209,7 @@ class TableCreationResult:
 
 
 def _table_dependencies(table: MaintenanceTable) -> tuple[str, ...]:
+    """Return the sorted names of tables that this table's ORM FK constraints refer to."""
     return tuple(
         sorted(
             {
@@ -1203,6 +1226,7 @@ def collect_missing_tables(
     db_schema: str | None = None,
     vocabulary_included: bool = True,
 ) -> list[MaintenanceTable]:
+    """Return ORM-managed tables that are absent from the target database."""
     inspector = sa.inspect(engine)
     return missing_maintenance_tables(
         inspector,
@@ -1218,6 +1242,7 @@ def create_missing_tables(
     vocabulary_included: bool = True,
     dry_run: bool = False,
 ) -> list[TableCreationResult]:
+    """Create any ORM-managed tables missing from the target database; skips tables with unresolved FK dependencies."""
     inspector = sa.inspect(engine)
     missing_tables = collect_missing_tables(
         engine,
@@ -1291,6 +1316,8 @@ def create_missing_tables(
 
 @dataclass(frozen=True)
 class TableSummaryResult:
+    """Row count and existence data for one ORM-managed OMOP table."""
+
     table_name: str
     category: TableCategory
     model_name: str
@@ -1307,6 +1334,7 @@ def collect_data_summary(
     vocabulary_included: bool = False,
     existing_only: bool = True,
 ) -> list[TableSummaryResult]:
+    """Return row counts and existence state for each ORM-managed table in the target database."""
     inspector = sa.inspect(engine)
     tables = select_omop_tables(vocabulary_included=vocabulary_included)
 
@@ -1349,27 +1377,38 @@ def collect_data_summary(
 app = typer.Typer(rich_markup_mode="rich")
 
 
-@app.command(
-    "info",
-    help="Inspect maintenance CLI readiness, backend compatibility, and current installation state.",
-)
+@app.command("info")
 def info_command(
-    dotenv: str | None = typer.Option(None, help="Optional dotenv file to load."),
-    engine_schema: str | None = typer.Option(None, help="Engine schema selector."),
-    db_schema: str | None = typer.Option(None, help="Database schema override."),
-    vocabulary_included: bool = typer.Option(False, "--vocab/--no-vocab"),
+    dotenv: str | None = typer.Option(
+        None,
+        help="Path to a .env file to load before resolving the connection. Overrides the saved DOTENV default.",
+    ),
+    engine_schema: str | None = typer.Option(
+        None,
+        help="Named engine configuration to use (e.g. 'cdm', 'results'). Resolves to the ENGINE_<SCHEMA> environment variable group.",
+    ),
+    db_schema: str | None = typer.Option(
+        None,
+        help="Database schema to target (e.g. 'cdm5', 'vocab'). Sets search_path on PostgreSQL; not supported on SQLite.",
+    ),
+    vocabulary_included: bool = typer.Option(
+        False,
+        "--vocab/--no-vocab",
+        help="Include OMOP vocabulary tables in the managed-table count.",
+    ),
 ) -> None:
-    conn = resolve_connection(dotenv=dotenv, engine_schema=engine_schema, db_schema=db_schema)
-    console.print(
-        render_command_header(
-            command_name="info",
-            engine_schema=conn.engine_schema,
-            db_schema=conn.db_schema,
+    """Inspect maintenance CLI readiness, backend compatibility, and current installation state."""
+    try:
+        conn, _ = setup_cli_cmd(
+            console=console,
+            dotenv=dotenv,
+            engine_schema=engine_schema,
+            db_schema=db_schema,    
+            command_name="info",         
             vocabulary_included=vocabulary_included,
             mode_label="inspect",
-        )
-    )
-    try:
+         )
+
         load_environment(conn.dotenv or "")
         with console.status("Inspecting maintenance environment..."):
             info = collect_maintenance_info(
@@ -1387,32 +1426,42 @@ def info_command(
         handle_error(exc)
 
 
-@app.command(
-    "doctor",
-    help="Run a read-only maintenance health check across connection readiness, schema drift, and FK state.",
-)
+@app.command("doctor")
 def doctor_command(
-    dotenv: str | None = typer.Option(None, help="Optional dotenv file to load."),
-    engine_schema: str | None = typer.Option(None, help="Engine schema selector."),
-    db_schema: str | None = typer.Option(None, help="Database schema override."),
-    vocabulary_included: bool = typer.Option(False, "--vocab/--no-vocab"),
+    dotenv: str | None = typer.Option(
+        None,
+        help="Path to a .env file to load before resolving the connection. Overrides the saved DOTENV default.",
+    ),
+    engine_schema: str | None = typer.Option(
+        None,
+        help="Named engine configuration to use (e.g. 'cdm', 'results'). Resolves to the ENGINE_<SCHEMA> environment variable group.",
+    ),
+    db_schema: str | None = typer.Option(
+        None,
+        help="Database schema to target (e.g. 'cdm5', 'vocab'). Sets search_path on PostgreSQL; not supported on SQLite.",
+    ),
+    vocabulary_included: bool = typer.Option(
+        False,
+        "--vocab/--no-vocab",
+        help="Include OMOP vocabulary tables in the selection.",
+    ),
     deep: bool = typer.Option(
         False,
         "--deep",
-        help="Include heavier checks such as PostgreSQL foreign key validation.",
+        help="Include heavier checks: FK validation scans every constraint for referential integrity violations.",
     ),
 ) -> None:
-    conn = resolve_connection(dotenv=dotenv, engine_schema=engine_schema, db_schema=db_schema)
-    console.print(
-        render_command_header(
+    """Run a read-only maintenance health check across connection readiness, schema drift, and FK state."""
+    try:
+        conn, _ = setup_cli_cmd(
+            console=console,
+            dotenv=dotenv,
+            engine_schema=engine_schema,
+            db_schema=db_schema,
             command_name="doctor",
-            engine_schema=conn.engine_schema,
-            db_schema=conn.db_schema,
             vocabulary_included=vocabulary_included,
             mode_label="inspect",
         )
-    )
-    try:
         load_environment(conn.dotenv or "")
         with console.status("Running maintenance doctor checks..."):
             report = collect_doctor_report(
@@ -1433,28 +1482,37 @@ def doctor_command(
         handle_error(exc)
 
 
-@app.command(
-    "reconcile-schema",
-    help="Compare ORM-managed SQLAlchemy metadata against the current target database schema.",
-)
+@app.command("reconcile-schema")
 def reconcile_schema_command(
-    dotenv: str | None = typer.Option(None, help="Optional dotenv file to load."),
-    engine_schema: str | None = typer.Option(None, help="Engine schema selector."),
-    db_schema: str | None = typer.Option(None, help="Database schema override."),
-    vocabulary_included: bool = typer.Option(False, "--vocab/--no-vocab"),
+    dotenv: str | None = typer.Option(
+        None,
+        help="Path to a .env file to load before resolving the connection. Overrides the saved DOTENV default.",
+    ),
+    engine_schema: str | None = typer.Option(
+        None,
+        help="Named engine configuration to use (e.g. 'cdm', 'results'). Resolves to the ENGINE_<SCHEMA> environment variable group.",
+    ),
+    db_schema: str | None = typer.Option(
+        None,
+        help="Database schema to target (e.g. 'cdm5', 'vocab'). Sets search_path on PostgreSQL; not supported on SQLite.",
+    ),
+    vocabulary_included: bool = typer.Option(
+        False,
+        "--vocab/--no-vocab",
+        help="Include OMOP vocabulary tables in the reconciliation.",
+    ),
 ) -> None:
-    conn = resolve_connection(dotenv=dotenv, engine_schema=engine_schema, db_schema=db_schema)
-    console.print(
-        render_command_header(
+    """Compare ORM-managed SQLAlchemy metadata against the current target database schema."""
+    try:
+        conn, engine = setup_cli_cmd(
+            console=console,
+            dotenv=dotenv,
+            engine_schema=engine_schema,
+            db_schema=db_schema,
             command_name="reconcile-schema",
-            engine_schema=conn.engine_schema,
-            db_schema=conn.db_schema,
             vocabulary_included=vocabulary_included,
             mode_label="inspect",
         )
-    )
-    try:
-        engine = build_engine(dotenv=conn.dotenv, engine_schema=conn.engine_schema)
         with console.status("Reconciling ORM metadata against target database schema..."):
             report = reconcile_schema(engine, db_schema=conn.db_schema, vocabulary_included=vocabulary_included)
         console.print(render_reconciliation_results(report.table_results))
@@ -1464,29 +1522,42 @@ def reconcile_schema_command(
         handle_error(exc)
 
 
-@app.command(
-    "create-missing-tables",
-    help="Create missing ORM-managed OMOP tables from metadata.",
-)
+@app.command("create-missing-tables")
 def create_missing_tables_command(
-    dotenv: str | None = typer.Option(None, help="Optional dotenv file to load."),
-    engine_schema: str | None = typer.Option(None, help="Engine schema selector."),
-    db_schema: str | None = typer.Option(None, help="Database schema override."),
-    vocabulary_included: bool = typer.Option(True, "--vocab/--no-vocab"),
-    dry_run: bool = typer.Option(False, "--dry-run"),
+    dotenv: str | None = typer.Option(
+        None,
+        help="Path to a .env file to load before resolving the connection. Overrides the saved DOTENV default.",
+    ),
+    engine_schema: str | None = typer.Option(
+        None,
+        help="Named engine configuration to use (e.g. 'cdm', 'results'). Resolves to the ENGINE_<SCHEMA> environment variable group.",
+    ),
+    db_schema: str | None = typer.Option(
+        None,
+        help="Database schema to target (e.g. 'cdm5', 'vocab'). Sets search_path on PostgreSQL; not supported on SQLite.",
+    ),
+    vocabulary_included: bool = typer.Option(
+        True,
+        "--vocab/--no-vocab",
+        help="Include OMOP vocabulary tables in the selection. Enabled by default.",
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Preview planned actions without applying any changes to the database.",
+    ),
 ) -> None:
-    conn = resolve_connection(dotenv=dotenv, engine_schema=engine_schema, db_schema=db_schema)
-    console.print(
-        render_command_header(
+    """Create missing ORM-managed OMOP tables from metadata."""
+    try:
+        conn, engine = setup_cli_cmd(
+            console=console,
+            dotenv=dotenv,
+            engine_schema=engine_schema,
+            db_schema=db_schema,
             command_name="create-missing-tables",
-            engine_schema=conn.engine_schema,
-            db_schema=conn.db_schema,
             vocabulary_included=vocabulary_included,
             mode_label="dry-run" if dry_run else "apply",
         )
-    )
-    try:
-        engine = build_engine(dotenv=conn.dotenv, engine_schema=conn.engine_schema)
         with console.status("Creating missing tables..."):
             results = create_missing_tables(
                 engine,
@@ -1500,29 +1571,42 @@ def create_missing_tables_command(
         handle_error(exc)
 
 
-@app.command(
-    "data-summary",
-    help="Summarise ORM-managed OMOP tables present in the target database.",
-)
+@app.command("data-summary")
 def data_summary_command(
-    dotenv: str | None = typer.Option(None, help="Optional dotenv file to load."),
-    engine_schema: str | None = typer.Option(None, help="Engine schema selector."),
-    db_schema: str | None = typer.Option(None, help="Database schema override."),
-    vocabulary_included: bool = typer.Option(False, "--vocab/--no-vocab"),
-    include_missing: bool = typer.Option(False, "--include-missing"),
+    dotenv: str | None = typer.Option(
+        None,
+        help="Path to a .env file to load before resolving the connection. Overrides the saved DOTENV default.",
+    ),
+    engine_schema: str | None = typer.Option(
+        None,
+        help="Named engine configuration to use (e.g. 'cdm', 'results'). Resolves to the ENGINE_<SCHEMA> environment variable group.",
+    ),
+    db_schema: str | None = typer.Option(
+        None,
+        help="Database schema to target (e.g. 'cdm5', 'vocab'). Sets search_path on PostgreSQL; not supported on SQLite.",
+    ),
+    vocabulary_included: bool = typer.Option(
+        False,
+        "--vocab/--no-vocab",
+        help="Include OMOP vocabulary tables in the summary.",
+    ),
+    include_missing: bool = typer.Option(
+        False,
+        "--include-missing",
+        help="Also list ORM-managed tables that are absent from the target database.",
+    ),
 ) -> None:
-    conn = resolve_connection(dotenv=dotenv, engine_schema=engine_schema, db_schema=db_schema)
-    console.print(
-        render_command_header(
+    """Summarise ORM-managed OMOP tables present in the target database."""
+    try:
+        conn, engine = setup_cli_cmd(
+            console=console,
+            dotenv=dotenv,
+            engine_schema=engine_schema,
+            db_schema=db_schema,
             command_name="data-summary",
-            engine_schema=conn.engine_schema,
-            db_schema=conn.db_schema,
             vocabulary_included=vocabulary_included,
             mode_label="inspect",
         )
-    )
-    try:
-        engine = build_engine(dotenv=conn.dotenv, engine_schema=conn.engine_schema)
         with console.status("Collecting table summary..."):
             results = collect_data_summary(
                 engine,
