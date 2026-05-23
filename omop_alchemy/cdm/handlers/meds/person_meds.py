@@ -69,7 +69,7 @@ class Person_MEDS(Person):
 
     @property
     def _birth_datetime(self) -> datetime:
-        """TR-07a: coalesce birth_datetime with year/month/day_of_birth."""
+        """Coalesce birth_datetime with year/month/day_of_birth fields."""
         if self.birth_datetime is not None:
             return _to_datetime(self.birth_datetime)
         return datetime(
@@ -79,7 +79,7 @@ class Person_MEDS(Person):
         )
 
     def _observation_period_rows(self) -> list[dict[str, Any]]:
-        """TR-07d: one interval row per Observation_Period (code OMOP/OBSERVATION_PERIOD)."""
+        """One interval row per Observation_Period, using code OMOP/OBSERVATION_PERIOD."""
         session = object_session(self)
         if session is None:
             return []
@@ -107,7 +107,7 @@ class Person_MEDS(Person):
     # ------------------------------------------------------------------ #
 
     def demographic_rows(self, concept_id_map: dict[int, str]) -> list[dict[str, Any]]:
-        """TR-07: birth, demographic concept, and death events for this person.
+        """Birth, demographic concept, and death events for this person.
 
         All rows except death are timestamped at birth_datetime.
         Gender, race, and ethnicity are emitted only when their concept_id

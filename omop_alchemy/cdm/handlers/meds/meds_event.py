@@ -59,7 +59,7 @@ class MEDSEvent(ClinicalEvent):
     # ------------------------------------------------------------------ #
 
     def _resolve_code(self, concept_id_map: dict[int, str]) -> str | None:
-        """TR-03b: source_concept_id > standard concept_id > None (drop row)."""
+        """Resolve event code: source_concept_id preferred over standard concept_id; returns None to drop."""
         if self._source_concept_field:
             src = int(getattr(self, self._source_concept_field, None) or 0)
             if src != 0:
@@ -74,7 +74,7 @@ class MEDSEvent(ClinicalEvent):
     def _resolve_numeric_text(
         self, concept_id_map: dict[int, str]
     ) -> tuple[float | None, str | None]:
-        """TR-06: EventValue → (numeric_value, text_value).
+        """Map event value to (numeric_value, text_value).
 
         Concept-valued results follow the meds_etl convention:
           - event has no source concept (src==0) AND value_source_value exists
@@ -127,7 +127,7 @@ class MEDSEvent(ClinicalEvent):
     def to_meds_rows(self, concept_id_map: dict[int, str]) -> list[dict[str, Any]]:
         """Return zero or one MEDS row dicts for this event.
 
-        Returns [] when the event code resolves to None (TR-03c: unmapped
+        Returns [] when the event code resolves to None (unmapped
         concept_id=0 rows are silently dropped; the caller counts drops).
 
         Row keys always present:
@@ -136,7 +136,7 @@ class MEDSEvent(ClinicalEvent):
         Row keys present when applicable:
             visit_id  — if visit_occurrence_id is non-null
             unit      — coalesced from unit_source_value / unit_concept_id
-            end       — end datetime for interval events (TR-05b)
+            end       — end datetime for interval events
 
         Example — a measurement with a numeric value and unit::
 
