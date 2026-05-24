@@ -26,7 +26,7 @@ How to install OMOP Alchemy, create sessions, and start querying safely.
 
 - [Installation](getting-started/installation.md)
 - [Quickstart](getting-started/quickstart.md)
-- [Sessions & engines](getting-started/sessions.md)
+- [Maintenance CLI](getting-started/maintenance.md)
 
 ---
 
