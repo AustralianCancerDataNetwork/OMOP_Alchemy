@@ -6,7 +6,7 @@ from sqlalchemy.engine import Engine
 from ..backends import backend_support_note as _backend_support_note
 from ..backends import resolve_backend, require_backend_support
 from ..backends.base import FullTextAction, FullTextError, FullTextResult
-from ._cli_utils import handle_error, setup_cli_cmd
+from ._cli_utils import omop_command
 from .ui import (
     console,
     render_fulltext_results,
@@ -189,19 +189,10 @@ def drop_fulltext_columns(
 # ── CLI commands ──────────────────────────────────────────────────────────────
 
 @app.command("install")
+@omop_command("fulltext install", vocabulary_included=True, dry_run=True)
 def install_fulltext_command(
-    dotenv: str | None = typer.Option(
-        None,
-        help="Path to a .env file to load before resolving the connection. Overrides the saved DOTENV default.",
-    ),
-    engine_schema: str | None = typer.Option(
-        None,
-        help="Named engine configuration to use (e.g. 'cdm', 'results'). Resolves to the ENGINE_<SCHEMA> environment variable group.",
-    ),
-    db_schema: str | None = typer.Option(
-        None,
-        help="Database schema to target (e.g. 'cdm5', 'vocab'). Sets search_path on PostgreSQL; not supported on SQLite.",
-    ),
+    conn,
+    engine,
     create_indexes: bool = typer.Option(
         True,
         "--create-indexes/--no-create-indexes",
@@ -212,129 +203,63 @@ def install_fulltext_command(
         "--fastupdate/--no-fastupdate",
         help="Enable PostgreSQL GIN fastupdate on newly created indexes (trades write speed for query latency).",
     ),
-    dry_run: bool = typer.Option(
-        False,
-        "--dry-run",
-        help="Preview planned actions without applying any changes to the database.",
-    ),
+    dry_run: bool = False,
 ) -> None:
     """Add tsvector sidecar columns to vocabulary tables and optionally create GIN indexes for fast full-text search."""
-    try:
-        conn, engine = setup_cli_cmd(
-            console=console,
-            dotenv=dotenv,
-            engine_schema=engine_schema,
-            db_schema=db_schema,
-            command_name="fulltext install",
-            vocabulary_included=True,
-            mode_label="dry-run" if dry_run else "apply",
+    with console.status("Managing PostgreSQL full-text sidecar columns..."):
+        results = install_fulltext_columns(
+            engine,
+            db_schema=conn.db_schema,
+            create_indexes=create_indexes,
+            fastupdate=fastupdate,
+            dry_run=dry_run,
         )
-        with console.status("Managing PostgreSQL full-text sidecar columns..."):
-            results = install_fulltext_columns(
-                engine,
-                db_schema=conn.db_schema,
-                create_indexes=create_indexes,
-                fastupdate=fastupdate,
-                dry_run=dry_run,
-            )
-        console.print(render_fulltext_results(results))
-        console.print(render_fulltext_summary(results, action="install", dry_run=dry_run))
-    except Exception as exc:
-        handle_error(exc)
+    console.print(render_fulltext_results(results))
+    console.print(render_fulltext_summary(results, action="install", dry_run=dry_run))
 
 
 @app.command("populate")
+@omop_command("fulltext populate", vocabulary_included=True, dry_run=True)
 def populate_fulltext_command(
-    dotenv: str | None = typer.Option(
-        None,
-        help="Path to a .env file to load before resolving the connection. Overrides the saved DOTENV default.",
-    ),
-    engine_schema: str | None = typer.Option(
-        None,
-        help="Named engine configuration to use (e.g. 'cdm', 'results'). Resolves to the ENGINE_<SCHEMA> environment variable group.",
-    ),
-    db_schema: str | None = typer.Option(
-        None,
-        help="Database schema to target (e.g. 'cdm5', 'vocab'). Sets search_path on PostgreSQL; not supported on SQLite.",
-    ),
+    conn,
+    engine,
     regconfig: str = typer.Option(
         "english",
         help="PostgreSQL text search configuration to use when building tsvector values (e.g. 'english', 'simple').",
     ),
-    dry_run: bool = typer.Option(
-        False,
-        "--dry-run",
-        help="Preview planned actions without applying any changes to the database.",
-    ),
+    dry_run: bool = False,
 ) -> None:
     """Fill tsvector sidecar columns with pre-computed search vectors using the specified PostgreSQL text search configuration."""
-    try:
-        conn, engine = setup_cli_cmd(
-            console=console,
-            dotenv=dotenv,
-            engine_schema=engine_schema,
-            db_schema=db_schema,
-            command_name="fulltext populate",
-            vocabulary_included=True,
-            mode_label="dry-run" if dry_run else "apply",
+    with console.status("Managing PostgreSQL full-text sidecar columns..."):
+        results = populate_fulltext_columns(
+            engine,
+            db_schema=conn.db_schema,
+            regconfig=regconfig,
+            dry_run=dry_run,
         )
-        with console.status("Managing PostgreSQL full-text sidecar columns..."):
-            results = populate_fulltext_columns(
-                engine,
-                db_schema=conn.db_schema,
-                regconfig=regconfig,
-                dry_run=dry_run,
-            )
-        console.print(render_fulltext_results(results))
-        console.print(render_fulltext_summary(results, action="populate", dry_run=dry_run))
-    except Exception as exc:
-        handle_error(exc)
+    console.print(render_fulltext_results(results))
+    console.print(render_fulltext_summary(results, action="populate", dry_run=dry_run))
 
 
 @app.command("drop")
+@omop_command("fulltext drop", vocabulary_included=True, dry_run=True)
 def drop_fulltext_command(
-    dotenv: str | None = typer.Option(
-        None,
-        help="Path to a .env file to load before resolving the connection. Overrides the saved DOTENV default.",
-    ),
-    engine_schema: str | None = typer.Option(
-        None,
-        help="Named engine configuration to use (e.g. 'cdm', 'results'). Resolves to the ENGINE_<SCHEMA> environment variable group.",
-    ),
-    db_schema: str | None = typer.Option(
-        None,
-        help="Database schema to target (e.g. 'cdm5', 'vocab'). Sets search_path on PostgreSQL; not supported on SQLite.",
-    ),
+    conn,
+    engine,
     drop_indexes: bool = typer.Option(
         True,
         "--drop-indexes/--no-drop-indexes",
         help="Drop managed GIN indexes before dropping the tsvector columns.",
     ),
-    dry_run: bool = typer.Option(
-        False,
-        "--dry-run",
-        help="Preview planned actions without applying any changes to the database.",
-    ),
+    dry_run: bool = False,
 ) -> None:
     """Remove tsvector sidecar columns and their associated GIN indexes from vocabulary tables."""
-    try:
-        conn, engine = setup_cli_cmd(
-            console=console,
-            dotenv=dotenv,
-            engine_schema=engine_schema,
-            db_schema=db_schema,
-            command_name="fulltext drop",
-            vocabulary_included=True,
-            mode_label="dry-run" if dry_run else "apply",
+    with console.status("Managing PostgreSQL full-text sidecar columns..."):
+        results = drop_fulltext_columns(
+            engine,
+            db_schema=conn.db_schema,
+            drop_indexes=drop_indexes,
+            dry_run=dry_run,
         )
-        with console.status("Managing PostgreSQL full-text sidecar columns..."):
-            results = drop_fulltext_columns(
-                engine,
-                db_schema=conn.db_schema,
-                drop_indexes=drop_indexes,
-                dry_run=dry_run,
-            )
-        console.print(render_fulltext_results(results))
-        console.print(render_fulltext_summary(results, action="drop", dry_run=dry_run))
-    except Exception as exc:
-        handle_error(exc)
+    console.print(render_fulltext_results(results))
+    console.print(render_fulltext_summary(results, action="drop", dry_run=dry_run))

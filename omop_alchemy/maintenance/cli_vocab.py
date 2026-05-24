@@ -26,7 +26,7 @@ from omop_alchemy.cdm.model.vocabulary import (
 )
 
 from ..backends import resolve_backend
-from ._cli_utils import handle_error, setup_cli_cmd
+from ._cli_utils import omop_command
 from .cli_foreign_keys import manage_foreign_key_triggers
 from .cli_indexes import IndexAction, manage_indexes
 from .cli_tables import reset_model_sequences
@@ -595,22 +595,13 @@ app = typer.Typer(rich_markup_mode="rich")
     "load-vocab-source",
     help="Load Athena vocabulary CSV files from a configured source path using the ORM staged CSV loader.",
 )
+@omop_command("load-vocab-source", vocabulary_included=True, dry_run=True)
 def load_vocab_source_command(
+    conn,
+    engine,
     athena_source: str | None = typer.Option(
         None,
         help="Path to the unzipped Athena vocabulary CSV directory. Falls back to the saved athena-source default.",
-    ),
-    dotenv: str | None = typer.Option(
-        None,
-        help="Path to a .env file to load before resolving the connection. Overrides the saved DOTENV default.",
-    ),
-    engine_schema: str | None = typer.Option(
-        None,
-        help="Named engine configuration to use (e.g. 'cdm', 'results'). Resolves to the ENGINE_<SCHEMA> environment variable group.",
-    ),
-    db_schema: str | None = typer.Option(
-        None,
-        help="Database schema to target. Sets search_path on PostgreSQL before loading; not supported on SQLite.",
     ),
     merge_strategy: MergeStrategy = typer.Option(
         "replace",
@@ -634,25 +625,10 @@ def load_vocab_source_command(
             "If the load fails mid-way, run `indexes enable --vocab` and `foreign-keys enable` to recover."
         ),
     ),
-    dry_run: bool = typer.Option(
-        False,
-        "--dry-run",
-        help="Preview planned actions without applying any changes to the database.",
-    ),
+    dry_run: bool = False,
 ) -> None:
     """Load all Athena vocabulary CSVs from the configured source path, optionally toggling indexes and FK triggers for speed."""
-    try:
-        conn, engine = setup_cli_cmd(
-            console=console,
-            dotenv=dotenv,
-            engine_schema=engine_schema,
-            db_schema=db_schema,
-            command_name="load-vocab-source",
-            vocabulary_included=True,
-            mode_label="dry-run" if dry_run else "apply",
-            athena_source=athena_source
-        )
-        if conn.athena_source is None:
+    if conn.athena_source is None:
             console.print(
                 render_error(
                     "No Athena vocabulary source path is configured. "
@@ -662,42 +638,40 @@ def load_vocab_source_command(
             )
             raise typer.Exit(code=1)
 
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[bold cyan]{task.description}"),
-            BarColumn(bar_width=None),
-            TaskProgressColumn(),
-            TimeElapsedColumn(),
-            console=console,
-            transient=False,
-        ) as progress:
-            task_id = progress.add_task(
-                "Preparing Athena vocabulary load...", total=100.0, completed=0
-            )
-            completed_tables: list[str] = []
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[bold cyan]{task.description}"),
+        BarColumn(bar_width=None),
+        TaskProgressColumn(),
+        TimeElapsedColumn(),
+        console=console,
+        transient=False,
+    ) as progress:
+        task_id = progress.add_task(
+            "Preparing Athena vocabulary load...", total=100.0, completed=0
+        )
+        completed_tables: list[str] = []
 
-            def _update_progress(event: VocabularyLoadProgress) -> None:
-                progress.update(task_id, completed=event.percent, description=event.detail)
-                if event.phase == "commit-complete" and event.table_name is not None:
-                    completed_tables.append(event.table_name)
-                    progress.console.print(
-                        f"[green]loaded[/green] [bold]{event.table_name}[/bold] "
-                        f"({len(completed_tables)}/{event.table_count})"
-                    )
+        def _update_progress(event: VocabularyLoadProgress) -> None:
+            progress.update(task_id, completed=event.percent, description=event.detail)
+            if event.phase == "commit-complete" and event.table_name is not None:
+                completed_tables.append(event.table_name)
+                progress.console.print(
+                    f"[green]loaded[/green] [bold]{event.table_name}[/bold] "
+                    f"({len(completed_tables)}/{event.table_count})"
+                )
 
-            report = load_vocab_source(
-                engine,
-                source_path=conn.athena_source,
-                db_schema=conn.db_schema,
-                dry_run=dry_run,
-                merge_strategy=merge_strategy,
-                chunksize=None if chunksize == 0 else chunksize,
-                bulk_mode=bulk_mode,
-                progress_callback=_update_progress,
-            )
-            progress.update(task_id, completed=100.0, description="Athena vocabulary load complete")
+        report = load_vocab_source(
+            engine,
+            source_path=conn.athena_source,
+            db_schema=conn.db_schema,
+            dry_run=dry_run,
+            merge_strategy=merge_strategy,
+            chunksize=None if chunksize == 0 else chunksize,
+            bulk_mode=bulk_mode,
+            progress_callback=_update_progress,
+        )
+        progress.update(task_id, completed=100.0, description="Athena vocabulary load complete")
 
-        console.print(render_vocab_load_results(report.results))
-        console.print(render_vocab_load_summary(report, dry_run=dry_run))
-    except Exception as exc:
-        handle_error(exc)
+    console.print(render_vocab_load_results(report.results))
+    console.print(render_vocab_load_summary(report, dry_run=dry_run))

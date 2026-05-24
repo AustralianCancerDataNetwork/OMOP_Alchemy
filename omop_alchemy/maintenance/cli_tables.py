@@ -6,7 +6,7 @@ import sqlalchemy as sa
 import typer
 
 from ..backends import resolve_backend, require_backend_support, backend_support_note
-from ._cli_utils import handle_error, resolve_selection, setup_cli_cmd
+from ._cli_utils import omop_command, resolve_selection
 from .tables import (
     TableCategory,
     TableScope,
@@ -376,19 +376,10 @@ def reset_model_sequences(
 app = typer.Typer(rich_markup_mode="rich", help="Manage Database Tables: analyze, truncate, and reset sequences",)
 
 @app.command("analyze-tables")
+@omop_command("analyze-tables", dry_run=True)
 def analyze_tables_command(
-    dotenv: str | None = typer.Option(
-        None,
-        help="Path to a .env file to load before resolving the connection. Overrides the saved DOTENV default.",
-    ),
-    engine_schema: str | None = typer.Option(
-        None,
-        help="Named engine configuration to use (e.g. 'cdm', 'results'). Resolves to the ENGINE_<SCHEMA> environment variable group.",
-    ),
-    db_schema: str | None = typer.Option(
-        None,
-        help="Database schema to target (e.g. 'cdm5', 'vocab'). Sets search_path on PostgreSQL; not supported on SQLite.",
-    ),
+    conn,
+    engine,
     scope: TableScope | None = typer.Option(
         None,
         "--scope",
@@ -405,111 +396,61 @@ def analyze_tables_command(
         "--vacuum",
         help="Use VACUUM ANALYZE instead of plain ANALYZE to also reclaim dead tuples. Not available on all backends.",
     ),
-    dry_run: bool = typer.Option(
-        False,
-        "--dry-run",
-        help="Preview planned actions without applying any changes to the database.",
-    ),
+    dry_run: bool = False,
 ) -> None:
     """Analyse selected ORM-managed tables to update planner statistics."""
     resolved_scope, resolved_tables = resolve_selection(
         scope=scope, tables=table, default_scope=TableScope.ALL
     )
-    try:
-        conn, engine = setup_cli_cmd(
-            console=console,
-            dotenv=dotenv,
-            engine_schema=engine_schema,
-            db_schema=db_schema,
-            command_name="analyze-tables",
-            vocabulary_included=None,
-            mode_label="dry-run" if dry_run else "apply",
+    with console.status("Refreshing planner statistics for selected tables..."):
+        results = analyze_tables(
+            engine,
+            db_schema=conn.db_schema,
+            scope=resolved_scope,
+            table_names=resolved_tables,
+            vacuum=vacuum,
+            dry_run=dry_run,
         )
-        with console.status("Refreshing planner statistics for selected tables..."):
-            results = analyze_tables(
-                engine,
-                db_schema=conn.db_schema,
-                scope=resolved_scope,
-                table_names=resolved_tables,
-                vacuum=vacuum,
-                dry_run=dry_run,
-            )
-        console.print(render_analyze_results(results))
-        console.print(render_analyze_summary(results, dry_run=dry_run))
-        console.print(render_analyze_note())
-    except Exception as exc:
-        handle_error(exc)
+    console.print(render_analyze_results(results))
+    console.print(render_analyze_summary(results, dry_run=dry_run))
+    console.print(render_analyze_note())
 
 
 @app.command(
     "reset-sequences",
     help=f"Reset each owned sequence to MAX(pk) + 1 to prevent insert conflicts after bulk loads. {backend_support_note('find_sequence_name')}",
 )
+@omop_command("reset-sequences", dry_run=True)
 def reset_sequences_command(
-    dotenv: str | None = typer.Option(
-        None,
-        help="Path to a .env file to load before resolving the connection. Overrides the saved DOTENV default.",
-    ),
-    engine_schema: str | None = typer.Option(
-        None,
-        help="Named engine configuration to use (e.g. 'cdm', 'results'). Resolves to the ENGINE_<SCHEMA> environment variable group.",
-    ),
-    db_schema: str | None = typer.Option(
-        None,
-        help="Database schema to target (e.g. 'cdm5', 'vocab'). Sets search_path on PostgreSQL; not supported on SQLite.",
-    ),
+    conn,
+    engine,
     vocabulary_included: bool = typer.Option(
         False,
         "--vocab/--no-vocab",
         help="Include OMOP vocabulary tables in the selection.",
     ),
-    dry_run: bool = typer.Option(
-        False,
-        "--dry-run",
-        help="Preview planned actions without applying any changes to the database.",
-    ),
+    dry_run: bool = False,
 ) -> None:
     """Reset each owned sequence to MAX(pk) + 1 to prevent insert conflicts after bulk loads."""
-    try:
-        conn, engine = setup_cli_cmd(
-            console=console,
-            dotenv=dotenv,
-            engine_schema=engine_schema,
-            db_schema=db_schema,
-            command_name="reset-sequences",
+    with console.status("Resetting PostgreSQL sequences..."):
+        results = reset_model_sequences(
+            engine,
+            db_schema=conn.db_schema,
             vocabulary_included=vocabulary_included,
-            mode_label="dry-run" if dry_run else "apply",
+            dry_run=dry_run,
         )
-        with console.status("Resetting PostgreSQL sequences..."):
-            results = reset_model_sequences(
-                engine,
-                db_schema=conn.db_schema,
-                vocabulary_included=vocabulary_included,
-                dry_run=dry_run,
-            )
-        console.print(render_sequence_reset_results(results))
-        console.print(render_sequence_reset_summary(results, dry_run=dry_run))
-    except Exception as exc:
-        handle_error(exc)
+    console.print(render_sequence_reset_results(results))
+    console.print(render_sequence_reset_summary(results, dry_run=dry_run))
 
 
 @app.command(
     "truncate-tables",
     help=f"Truncate selected ORM-managed OMOP tables; aborts if external FK references would block unless --cascade is set. {backend_support_note('truncate_table_batch')}",
 )
+@omop_command("truncate-tables", dry_run=True)
 def truncate_tables_command(
-    dotenv: str | None = typer.Option(
-        None,
-        help="Path to a .env file to load before resolving the connection. Overrides the saved DOTENV default.",
-    ),
-    engine_schema: str | None = typer.Option(
-        None,
-        help="Named engine configuration to use (e.g. 'cdm', 'results'). Resolves to the ENGINE_<SCHEMA> environment variable group.",
-    ),
-    db_schema: str | None = typer.Option(
-        None,
-        help="Database schema to target (e.g. 'cdm5', 'vocab'). Sets search_path on PostgreSQL; not supported on SQLite.",
-    ),
+    conn,
+    engine,
     scope: TableScope | None = typer.Option(
         None,
         "--scope",
@@ -536,11 +477,7 @@ def truncate_tables_command(
         "--yes",
         help="Confirm the destructive operation. Required when not using --dry-run.",
     ),
-    dry_run: bool = typer.Option(
-        False,
-        "--dry-run",
-        help="Preview planned actions without applying any changes to the database.",
-    ),
+    dry_run: bool = False,
 ) -> None:
     """Truncate selected ORM-managed OMOP tables; aborts if external FK references would block unless --cascade is set."""
     resolved_scope, resolved_tables = resolve_selection(scope=scope, tables=table)
@@ -554,36 +491,23 @@ def truncate_tables_command(
             render_error("Truncation is destructive. Re-run with `--yes`, or use `--dry-run` first.")
         )
         raise typer.Exit(code=1)
-
-    try:
-        conn, engine = setup_cli_cmd(
-            console=console,
-            dotenv=dotenv,
-            engine_schema=engine_schema,
-            db_schema=db_schema,
-            command_name="truncate-tables",
-            vocabulary_included=None,
-            mode_label="dry-run" if dry_run else "apply",
+    with console.status("Truncating selected tables..."):
+        results = truncate_tables(
+            engine,
+            db_schema=conn.db_schema,
+            scope=resolved_scope,
+            table_names=resolved_tables,
+            restart_identities=restart_identities,
+            cascade=cascade,
+            dry_run=dry_run,
         )
-        with console.status("Truncating selected tables..."):
-            results = truncate_tables(
-                engine,
-                db_schema=conn.db_schema,
-                scope=resolved_scope,
-                table_names=resolved_tables,
-                restart_identities=restart_identities,
-                cascade=cascade,
-                dry_run=dry_run,
-            )
-        console.print(render_truncate_results(results))
-        console.print(
-            render_truncate_summary(
-                results,
-                dry_run=dry_run,
-                restart_identities=restart_identities,
-                cascade=cascade,
-            )
+    console.print(render_truncate_results(results))
+    console.print(
+        render_truncate_summary(
+            results,
+            dry_run=dry_run,
+            restart_identities=restart_identities,
+            cascade=cascade,
         )
-        console.print(render_truncate_note())
-    except Exception as exc:
-        handle_error(exc)
+    )
+    console.print(render_truncate_note())

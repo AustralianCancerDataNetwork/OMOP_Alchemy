@@ -38,8 +38,16 @@ def test_truncate_tables_reports_blocking_foreign_key_references(monkeypatch, tm
     assert "--cascade" in message
 
 
-def test_truncate_tables_cli_requires_confirmation():
+def test_truncate_tables_cli_requires_confirmation(monkeypatch):
     """Test truncate tables cli requires confirmation."""
+    monkeypatch.setattr(
+        "omop_alchemy.maintenance._cli_utils.build_engine",
+        lambda *, dotenv, engine_schema: "ENGINE",
+    )
+    monkeypatch.setattr(
+        "omop_alchemy.db.resolve_connection",
+        lambda **kwargs: type("C", (), {"dotenv": None, "engine_schema": None, "db_schema": None, "athena_source": None})(),
+    )
     result = runner.invoke(app, ["truncate-tables", "--scope", "clinical"])
 
     assert result.exit_code == 1

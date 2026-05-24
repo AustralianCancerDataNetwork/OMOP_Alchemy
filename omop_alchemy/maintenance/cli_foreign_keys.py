@@ -7,7 +7,7 @@ import typer
 
 from ..db import build_engine, resolve_connection
 from ..backends import Backend, resolve_backend, require_backend_support, backend_support_note
-from ._cli_utils import handle_error, setup_cli_cmd
+from ._cli_utils import handle_error, omop_command
 from .tables import (
     TableCategory,
     existing_maintenance_tables,
@@ -439,60 +439,35 @@ app = typer.Typer(
 )
 
 @app.command("disable")
+@omop_command("foreign-keys disable", dry_run=True)
 def disable_foreign_keys_command(
-    dotenv: str | None = typer.Option(
-        None,
-        help="Path to a .env file to load before resolving the connection. Overrides the saved DOTENV default.",
-    ),
-    engine_schema: str | None = typer.Option(
-        None,
-        help="Named engine configuration to use (e.g. 'cdm', 'results'). Resolves to the ENGINE_<SCHEMA> environment variable group.",
-    ),
-    db_schema: str | None = typer.Option(
-        None,
-        help="Database schema to target (e.g. 'cdm5', 'vocab'). Sets search_path on PostgreSQL; not supported on SQLite.",
-    ),
+    conn,
+    engine,
     vocabulary_included: bool = typer.Option(
         False,
         "--vocab/--no-vocab",
         help="Include OMOP vocabulary tables in the selection.",
-    ),
-    dry_run: bool = typer.Option(
-        False,
-        "--dry-run",
-        help="Preview planned actions without applying any changes to the database.",
     ),
     strict: bool = typer.Option(
         False,
         "--strict",
         help="Validate all FK relationships and report violations before disabling trigger enforcement.",
     ),
+    dry_run: bool = False,
 ) -> None:
     """Disable PostgreSQL RI trigger enforcement for all participating OMOP tables."""
-    try:
-        conn, engine = setup_cli_cmd(
-            console=console,
-            dotenv=dotenv,
-            engine_schema=engine_schema,
-            db_schema=db_schema,
-            command_name="foreign-keys disable",
+    with console.status("Managing PostgreSQL foreign key trigger enforcement..."):
+        results = manage_foreign_key_triggers(
+            engine,
+            enable=False,
+            db_schema=conn.db_schema,
             vocabulary_included=vocabulary_included,
-            mode_label="dry-run" if dry_run else "apply",
+            dry_run=dry_run,
+            strict=strict,
         )
-        with console.status("Managing PostgreSQL foreign key trigger enforcement..."):
-            results = manage_foreign_key_triggers(
-                engine,
-                enable=False,
-                db_schema=conn.db_schema,
-                vocabulary_included=vocabulary_included,
-                dry_run=dry_run,
-                strict=strict,
-            )
-        console.print(render_foreign_key_results(results))
-        console.print(render_foreign_key_summary(results, dry_run=dry_run))
-        console.print(render_foreign_key_note(enable=False, strict=strict))
-    except Exception as exc:
-        handle_error(exc)
+    console.print(render_foreign_key_results(results))
+    console.print(render_foreign_key_summary(results, dry_run=dry_run))
+    console.print(render_foreign_key_note(enable=False, strict=strict))
 
 
 @app.command("enable")
@@ -560,19 +535,10 @@ def enable_foreign_keys_command(
 
 
 @app.command("status")
+@omop_command("foreign-keys status", mode_label="inspect")
 def foreign_key_status_command(
-    dotenv: str | None = typer.Option(
-        None,
-        help="Path to a .env file to load before resolving the connection. Overrides the saved DOTENV default.",
-    ),
-    engine_schema: str | None = typer.Option(
-        None,
-        help="Named engine configuration to use (e.g. 'cdm', 'results'). Resolves to the ENGINE_<SCHEMA> environment variable group.",
-    ),
-    db_schema: str | None = typer.Option(
-        None,
-        help="Database schema to target (e.g. 'cdm5', 'vocab'). Sets search_path on PostgreSQL; not supported on SQLite.",
-    ),
+    conn,
+    engine,
     vocabulary_included: bool = typer.Option(
         False,
         "--vocab/--no-vocab",
@@ -580,42 +546,21 @@ def foreign_key_status_command(
     ),
 ) -> None:
     """Show the current enabled/disabled state of RI triggers for each participating OMOP table."""
-    try:
-        conn, engine = setup_cli_cmd(
-            console=console,
-            dotenv=dotenv,
-            engine_schema=engine_schema,
-            db_schema=db_schema,
-            command_name="foreign-keys status",
+    with console.status("Inspecting foreign key trigger status..."):
+        results = collect_foreign_key_trigger_status(
+            engine,
+            db_schema=conn.db_schema,
             vocabulary_included=vocabulary_included,
-            mode_label="inspect",
         )
-        with console.status("Inspecting foreign key trigger status..."):
-            results = collect_foreign_key_trigger_status(
-                engine,
-                db_schema=conn.db_schema,
-                vocabulary_included=vocabulary_included,
-            )
-        console.print(render_foreign_key_status_results(results))
-        console.print(render_foreign_key_status_summary(results))
-    except Exception as exc:
-        handle_error(exc)
+    console.print(render_foreign_key_status_results(results))
+    console.print(render_foreign_key_status_summary(results))
 
 
 @app.command("validate")
+@omop_command("foreign-keys validate", mode_label="inspect")
 def foreign_key_validate_command(
-    dotenv: str | None = typer.Option(
-        None,
-        help="Path to a .env file to load before resolving the connection. Overrides the saved DOTENV default.",
-    ),
-    engine_schema: str | None = typer.Option(
-        None,
-        help="Named engine configuration to use (e.g. 'cdm', 'results'). Resolves to the ENGINE_<SCHEMA> environment variable group.",
-    ),
-    db_schema: str | None = typer.Option(
-        None,
-        help="Database schema to target (e.g. 'cdm5', 'vocab'). Sets search_path on PostgreSQL; not supported on SQLite.",
-    ),
+    conn,
+    engine,
     vocabulary_included: bool = typer.Option(
         False,
         "--vocab/--no-vocab",
@@ -623,24 +568,12 @@ def foreign_key_validate_command(
     ),
 ) -> None:
     """Validate FK constraints on selected tables and report any rows that violate referential integrity."""
-    try:
-        conn, engine = setup_cli_cmd(
-            console=console,
-            dotenv=dotenv,
-            engine_schema=engine_schema,
-            db_schema=db_schema,
-            command_name="foreign-keys validate",
+    with console.status("Validating selected foreign key relationships..."):
+        report = validate_foreign_key_constraints(
+            engine,
+            db_schema=conn.db_schema,
             vocabulary_included=vocabulary_included,
-            mode_label="inspect",
         )
-        with console.status("Validating selected foreign key relationships..."):
-            report = validate_foreign_key_constraints(
-                engine,
-                db_schema=conn.db_schema,
-                vocabulary_included=vocabulary_included,
-            )
-        console.print(render_foreign_key_validation_results(report.results))
-        console.print(render_foreign_key_validation_issues(report.violations))
-        console.print(render_foreign_key_validation_summary(report))
-    except Exception as exc:
-        handle_error(exc)
+    console.print(render_foreign_key_validation_results(report.results))
+    console.print(render_foreign_key_validation_issues(report.violations))
+    console.print(render_foreign_key_validation_summary(report))

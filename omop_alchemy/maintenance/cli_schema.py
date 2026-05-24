@@ -16,7 +16,7 @@ from omop_alchemy.backends.resolve import SupportedDialect
 from omop_alchemy.db import get_engine_name
 
 from ..backends import resolve_backend
-from ._cli_utils import handle_error, setup_cli_cmd
+from ._cli_utils import omop_command
 from .cli_config import defaults_path
 from .cli_foreign_keys import (
     ForeignKeyStatusResult,
@@ -1378,19 +1378,10 @@ app = typer.Typer(rich_markup_mode="rich")
 
 
 @app.command("info")
+@omop_command("info", mode_label="inspect")
 def info_command(
-    dotenv: str | None = typer.Option(
-        None,
-        help="Path to a .env file to load before resolving the connection. Overrides the saved DOTENV default.",
-    ),
-    engine_schema: str | None = typer.Option(
-        None,
-        help="Named engine configuration to use (e.g. 'cdm', 'results'). Resolves to the ENGINE_<SCHEMA> environment variable group.",
-    ),
-    db_schema: str | None = typer.Option(
-        None,
-        help="Database schema to target (e.g. 'cdm5', 'vocab'). Sets search_path on PostgreSQL; not supported on SQLite.",
-    ),
+    conn,
+    engine,
     vocabulary_included: bool = typer.Option(
         False,
         "--vocab/--no-vocab",
@@ -1398,48 +1389,26 @@ def info_command(
     ),
 ) -> None:
     """Inspect maintenance CLI readiness, backend compatibility, and current installation state."""
-    try:
-        conn, _ = setup_cli_cmd(
-            console=console,
-            dotenv=dotenv,
-            engine_schema=engine_schema,
-            db_schema=db_schema,    
-            command_name="info",         
+    load_environment(conn.dotenv or "")
+    with console.status("Inspecting maintenance environment..."):
+        info = collect_maintenance_info(
+            dotenv=conn.dotenv,
+            engine_schema=conn.engine_schema,
+            db_schema=conn.db_schema,
             vocabulary_included=vocabulary_included,
-            mode_label="inspect",
-         )
-
-        load_environment(conn.dotenv or "")
-        with console.status("Inspecting maintenance environment..."):
-            info = collect_maintenance_info(
-                dotenv=conn.dotenv,
-                engine_schema=conn.engine_schema,
-                db_schema=conn.db_schema,
-                vocabulary_included=vocabulary_included,
-            )
-        console.print(render_info_environment(info))
-        console.print(render_info_database(info))
-        console.print(render_info_dependencies(info))
-        console.print(render_info_command_support(info.command_support))
-        console.print(render_info_summary(info))
-    except Exception as exc:
-        handle_error(exc)
+        )
+    console.print(render_info_environment(info))
+    console.print(render_info_database(info))
+    console.print(render_info_dependencies(info))
+    console.print(render_info_command_support(info.command_support))
+    console.print(render_info_summary(info))
 
 
 @app.command("doctor")
+@omop_command("doctor", mode_label="inspect")
 def doctor_command(
-    dotenv: str | None = typer.Option(
-        None,
-        help="Path to a .env file to load before resolving the connection. Overrides the saved DOTENV default.",
-    ),
-    engine_schema: str | None = typer.Option(
-        None,
-        help="Named engine configuration to use (e.g. 'cdm', 'results'). Resolves to the ENGINE_<SCHEMA> environment variable group.",
-    ),
-    db_schema: str | None = typer.Option(
-        None,
-        help="Database schema to target (e.g. 'cdm5', 'vocab'). Sets search_path on PostgreSQL; not supported on SQLite.",
-    ),
+    conn,
+    engine,
     vocabulary_included: bool = typer.Option(
         False,
         "--vocab/--no-vocab",
@@ -1452,50 +1421,29 @@ def doctor_command(
     ),
 ) -> None:
     """Run a read-only maintenance health check across connection readiness, schema drift, and FK state."""
-    try:
-        conn, _ = setup_cli_cmd(
-            console=console,
-            dotenv=dotenv,
-            engine_schema=engine_schema,
-            db_schema=db_schema,
-            command_name="doctor",
+    load_environment(conn.dotenv or "")
+    with console.status("Running maintenance doctor checks..."):
+        report = collect_doctor_report(
+            dotenv=conn.dotenv,
+            engine_schema=conn.engine_schema,
+            db_schema=conn.db_schema,
             vocabulary_included=vocabulary_included,
-            mode_label="inspect",
+            deep=deep,
         )
-        load_environment(conn.dotenv or "")
-        with console.status("Running maintenance doctor checks..."):
-            report = collect_doctor_report(
-                dotenv=conn.dotenv,
-                engine_schema=conn.engine_schema,
-                db_schema=conn.db_schema,
-                vocabulary_included=vocabulary_included,
-                deep=deep,
-            )
-        console.print(render_info_environment(report.info))
-        console.print(render_info_database(report.info))
-        console.print(render_doctor_checks(report.checks))
-        if deep and report.foreign_key_validation is not None:
-            console.print(render_foreign_key_validation_issues(report.foreign_key_validation.violations))
-        console.print(render_doctor_recommendations(report.recommendations))
-        console.print(render_doctor_summary(report, deep=deep))
-    except Exception as exc:
-        handle_error(exc)
+    console.print(render_info_environment(report.info))
+    console.print(render_info_database(report.info))
+    console.print(render_doctor_checks(report.checks))
+    if deep and report.foreign_key_validation is not None:
+        console.print(render_foreign_key_validation_issues(report.foreign_key_validation.violations))
+    console.print(render_doctor_recommendations(report.recommendations))
+    console.print(render_doctor_summary(report, deep=deep))
 
 
 @app.command("reconcile-schema")
+@omop_command("reconcile-schema", mode_label="inspect")
 def reconcile_schema_command(
-    dotenv: str | None = typer.Option(
-        None,
-        help="Path to a .env file to load before resolving the connection. Overrides the saved DOTENV default.",
-    ),
-    engine_schema: str | None = typer.Option(
-        None,
-        help="Named engine configuration to use (e.g. 'cdm', 'results'). Resolves to the ENGINE_<SCHEMA> environment variable group.",
-    ),
-    db_schema: str | None = typer.Option(
-        None,
-        help="Database schema to target (e.g. 'cdm5', 'vocab'). Sets search_path on PostgreSQL; not supported on SQLite.",
-    ),
+    conn,
+    engine,
     vocabulary_included: bool = typer.Option(
         False,
         "--vocab/--no-vocab",
@@ -1503,88 +1451,42 @@ def reconcile_schema_command(
     ),
 ) -> None:
     """Compare ORM-managed SQLAlchemy metadata against the current target database schema."""
-    try:
-        conn, engine = setup_cli_cmd(
-            console=console,
-            dotenv=dotenv,
-            engine_schema=engine_schema,
-            db_schema=db_schema,
-            command_name="reconcile-schema",
-            vocabulary_included=vocabulary_included,
-            mode_label="inspect",
-        )
-        with console.status("Reconciling ORM metadata against target database schema..."):
-            report = reconcile_schema(engine, db_schema=conn.db_schema, vocabulary_included=vocabulary_included)
-        console.print(render_reconciliation_results(report.table_results))
-        console.print(render_reconciliation_issues(report.issues))
-        console.print(render_reconciliation_summary(report))
-    except Exception as exc:
-        handle_error(exc)
+    with console.status("Reconciling ORM metadata against target database schema..."):
+        report = reconcile_schema(engine, db_schema=conn.db_schema, vocabulary_included=vocabulary_included)
+    console.print(render_reconciliation_results(report.table_results))
+    console.print(render_reconciliation_issues(report.issues))
+    console.print(render_reconciliation_summary(report))
 
 
 @app.command("create-missing-tables")
+@omop_command("create-missing-tables", dry_run=True)
 def create_missing_tables_command(
-    dotenv: str | None = typer.Option(
-        None,
-        help="Path to a .env file to load before resolving the connection. Overrides the saved DOTENV default.",
-    ),
-    engine_schema: str | None = typer.Option(
-        None,
-        help="Named engine configuration to use (e.g. 'cdm', 'results'). Resolves to the ENGINE_<SCHEMA> environment variable group.",
-    ),
-    db_schema: str | None = typer.Option(
-        None,
-        help="Database schema to target (e.g. 'cdm5', 'vocab'). Sets search_path on PostgreSQL; not supported on SQLite.",
-    ),
+    conn,
+    engine,
     vocabulary_included: bool = typer.Option(
         True,
         "--vocab/--no-vocab",
         help="Include OMOP vocabulary tables in the selection. Enabled by default.",
     ),
-    dry_run: bool = typer.Option(
-        False,
-        "--dry-run",
-        help="Preview planned actions without applying any changes to the database.",
-    ),
+    dry_run: bool = False,
 ) -> None:
     """Create missing ORM-managed OMOP tables from metadata."""
-    try:
-        conn, engine = setup_cli_cmd(
-            console=console,
-            dotenv=dotenv,
-            engine_schema=engine_schema,
-            db_schema=db_schema,
-            command_name="create-missing-tables",
+    with console.status("Creating missing tables..."):
+        results = create_missing_tables(
+            engine,
+            db_schema=conn.db_schema,
             vocabulary_included=vocabulary_included,
-            mode_label="dry-run" if dry_run else "apply",
+            dry_run=dry_run,
         )
-        with console.status("Creating missing tables..."):
-            results = create_missing_tables(
-                engine,
-                db_schema=conn.db_schema,
-                vocabulary_included=vocabulary_included,
-                dry_run=dry_run,
-            )
-        console.print(render_table_creation_results(results))
-        console.print(render_table_creation_summary(results, dry_run=dry_run))
-    except Exception as exc:
-        handle_error(exc)
+    console.print(render_table_creation_results(results))
+    console.print(render_table_creation_summary(results, dry_run=dry_run))
 
 
 @app.command("data-summary")
+@omop_command("data-summary", mode_label="inspect")
 def data_summary_command(
-    dotenv: str | None = typer.Option(
-        None,
-        help="Path to a .env file to load before resolving the connection. Overrides the saved DOTENV default.",
-    ),
-    engine_schema: str | None = typer.Option(
-        None,
-        help="Named engine configuration to use (e.g. 'cdm', 'results'). Resolves to the ENGINE_<SCHEMA> environment variable group.",
-    ),
-    db_schema: str | None = typer.Option(
-        None,
-        help="Database schema to target (e.g. 'cdm5', 'vocab'). Sets search_path on PostgreSQL; not supported on SQLite.",
-    ),
+    conn,
+    engine,
     vocabulary_included: bool = typer.Option(
         False,
         "--vocab/--no-vocab",
@@ -1597,24 +1499,12 @@ def data_summary_command(
     ),
 ) -> None:
     """Summarise ORM-managed OMOP tables present in the target database."""
-    try:
-        conn, engine = setup_cli_cmd(
-            console=console,
-            dotenv=dotenv,
-            engine_schema=engine_schema,
-            db_schema=db_schema,
-            command_name="data-summary",
+    with console.status("Collecting table summary..."):
+        results = collect_data_summary(
+            engine,
+            db_schema=conn.db_schema,
             vocabulary_included=vocabulary_included,
-            mode_label="inspect",
+            existing_only=not include_missing,
         )
-        with console.status("Collecting table summary..."):
-            results = collect_data_summary(
-                engine,
-                db_schema=conn.db_schema,
-                vocabulary_included=vocabulary_included,
-                existing_only=not include_missing,
-            )
-        console.print(render_data_summary_results(results))
-        console.print(render_data_summary_summary(results))
-    except Exception as exc:
-        handle_error(exc)
+    console.print(render_data_summary_results(results))
+    console.print(render_data_summary_summary(results))

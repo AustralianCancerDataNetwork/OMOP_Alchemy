@@ -10,7 +10,7 @@ import sqlalchemy as sa
 import typer
 
 from ..backends import resolve_backend, require_backend_support, backend_support_note
-from ._cli_utils import handle_error, setup_cli_cmd
+from ._cli_utils import omop_command
 from .ui import (
     console,
     render_backup_result,
@@ -151,19 +151,10 @@ app = typer.Typer(
 )
 
 @app.command("backup-database")
+@omop_command("backup-database", dry_run=True)
 def backup_database_command(
-    dotenv: str | None = typer.Option(
-        None,
-        help="Path to a .env file to load before resolving the connection. Overrides the saved DOTENV default.",
-    ),
-    engine_schema: str | None = typer.Option(
-        None,
-        help="Named engine configuration to use (e.g. 'cdm', 'results'). Resolves to the ENGINE_<SCHEMA> environment variable group.",
-    ),
-    db_schema: str | None = typer.Option(
-        None,
-        help="Restrict the backup to a single schema (pg_dump --schema). Only supported on PostgreSQL.",
-    ),
+    conn,
+    engine,
     output_path: str | None = typer.Option(
         None,
         help="Output path for the backup artifact. Defaults to a timestamped file in the current directory.",
@@ -172,82 +163,41 @@ def backup_database_command(
         BackupFormat.CUSTOM,
         help="pg_dump output format. 'custom' produces a binary .dump file; 'plain' produces a plain SQL .sql file.",
     ),
-    dry_run: bool = typer.Option(
-        False,
-        "--dry-run",
-        help="Preview planned actions without applying any changes to the database.",
-    ),
+    dry_run: bool = False,
 ) -> None:
     """Create a database backup that can be restored with `restore-database`."""
-    try:
-        conn, engine = setup_cli_cmd(
-            console=console,
-            dotenv=dotenv,
-            engine_schema=engine_schema,
-            db_schema=db_schema,
-            command_name="backup-database",
-            vocabulary_included=None,
-            mode_label="dry-run" if dry_run else "apply",
+    with console.status("Creating restore-ready database backup..."):
+        result = create_database_backup(
+            engine,
+            output_path=output_path,
+            backup_format=backup_format,
+            db_schema=conn.db_schema,
+            dry_run=dry_run,
         )
-        with console.status("Creating restore-ready database backup..."):
-            result = create_database_backup(
-                engine,
-                output_path=output_path,
-                backup_format=backup_format,
-                db_schema=conn.db_schema,
-                dry_run=dry_run,
-            )
-        console.print(render_backup_result(result))
-        console.print(render_backup_summary(result, dry_run=dry_run))
-    except Exception as exc:
-        handle_error(exc)
+    console.print(render_backup_result(result))
+    console.print(render_backup_summary(result, dry_run=dry_run))
 
 
 @app.command("restore-database")
+@omop_command("restore-database", dry_run=True)
 def restore_database_command(
+    conn,
+    engine,
     input_path: str = typer.Argument(help="Path to the backup artifact (.dump or .sql) to restore."),
-    dotenv: str | None = typer.Option(
-        None,
-        help="Path to a .env file to load before resolving the connection. Overrides the saved DOTENV default.",
-    ),
-    engine_schema: str | None = typer.Option(
-        None,
-        help="Named engine configuration to use (e.g. 'cdm', 'results'). Resolves to the ENGINE_<SCHEMA> environment variable group.",
-    ),
-    db_schema: str | None = typer.Option(
-        None,
-        help="Restrict the restore to a single schema (pg_restore --schema). Only valid for custom-format dumps.",
-    ),
     backup_format: BackupFormat = typer.Option(
         ...,
         help="Format of the artifact to restore. Must match the format used when the backup was created.",
     ),
-    dry_run: bool = typer.Option(
-        False,
-        "--dry-run",
-        help="Preview planned actions without applying any changes to the database.",
-    ),
+    dry_run: bool = False,
 ) -> None:
     """Restore a database backup that was created with `backup-database`."""
-    try:
-        conn, engine = setup_cli_cmd(
-            console=console,
-            dotenv=dotenv,
-            engine_schema=engine_schema,
-            db_schema=db_schema,
-            command_name="restore-database",
-            vocabulary_included=None,
-            mode_label="dry-run" if dry_run else "apply",
+    with console.status("Restoring database backup..."):
+        result = restore_database_backup(
+            engine,
+            input_path=input_path,
+            backup_format=backup_format,
+            db_schema=conn.db_schema,
+            dry_run=dry_run,
         )
-        with console.status("Restoring database backup..."):
-            result = restore_database_backup(
-                engine,
-                input_path=input_path,
-                backup_format=backup_format,
-                db_schema=conn.db_schema,
-                dry_run=dry_run,
-            )
-        console.print(render_restore_result(result))
-        console.print(render_restore_summary(result, dry_run=dry_run))
-    except Exception as exc:
-        handle_error(exc)
+    console.print(render_restore_result(result))
+    console.print(render_restore_summary(result, dry_run=dry_run))

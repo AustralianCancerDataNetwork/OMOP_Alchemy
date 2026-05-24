@@ -9,7 +9,7 @@ import typer
 from omop_alchemy.cdm.base.indexing import OMOP_CLUSTER_INDEX_INFO_KEY
 
 from ..backends import resolve_backend, backend_supports
-from ._cli_utils import handle_error, setup_cli_cmd
+from ._cli_utils import omop_command
 from .tables import (
     MaintenanceTable,
     TableCategory,
@@ -285,102 +285,52 @@ app = typer.Typer(
 
 
 @app.command("disable")
+@omop_command("indexes disable", dry_run=True)
 def disable_indexes_command(
-    dotenv: str | None = typer.Option(
-        None,
-        help="Path to a .env file to load before resolving the connection. Overrides the saved DOTENV default.",
-    ),
-    engine_schema: str | None = typer.Option(
-        None,
-        help="Named engine configuration to use (e.g. 'cdm', 'results'). Resolves to the ENGINE_<SCHEMA> environment variable group.",
-    ),
-    db_schema: str | None = typer.Option(
-        None,
-        help="Database schema to target (e.g. 'cdm5', 'vocab'). Sets search_path on PostgreSQL; not supported on SQLite.",
-    ),
+    conn,
+    engine,
     vocabulary_included: bool = typer.Option(
         False,
         "--vocab/--no-vocab",
         help="Include OMOP vocabulary tables in the selection.",
     ),
-    dry_run: bool = typer.Option(
-        False,
-        "--dry-run",
-        help="Preview planned actions without applying any changes to the database.",
-    ),
+    dry_run: bool = False,
 ) -> None:
     """Drop all ORM-defined secondary indexes from the target database; useful before bulk data loads."""
-    try:
-        conn, engine = setup_cli_cmd(
-            console=console,
-            dotenv=dotenv,
-            engine_schema=engine_schema,
-            db_schema=db_schema,
-            command_name="indexes disable",
+    with console.status("Managing metadata-defined indexes..."):
+        results = manage_indexes(
+            engine,
+            action=IndexAction.DISABLE,
+            db_schema=conn.db_schema,
             vocabulary_included=vocabulary_included,
-            mode_label="dry-run" if dry_run else "apply",
+            dry_run=dry_run,
         )
-        with console.status("Managing metadata-defined indexes..."):
-            results = manage_indexes(
-                engine,
-                action=IndexAction.DISABLE,
-                db_schema=conn.db_schema,
-                vocabulary_included=vocabulary_included,
-                dry_run=dry_run,
-            )
-        console.print(render_index_results(results))
-        console.print(render_index_summary(results, dry_run=dry_run))
-        console.print(render_index_note(IndexAction.DISABLE))
-    except Exception as exc:
-        handle_error(exc)
+    console.print(render_index_results(results))
+    console.print(render_index_summary(results, dry_run=dry_run))
+    console.print(render_index_note(IndexAction.DISABLE))
 
 
 @app.command("enable")
+@omop_command("indexes enable", dry_run=True)
 def enable_indexes_command(
-    dotenv: str | None = typer.Option(
-        None,
-        help="Path to a .env file to load before resolving the connection. Overrides the saved DOTENV default.",
-    ),
-    engine_schema: str | None = typer.Option(
-        None,
-        help="Named engine configuration to use (e.g. 'cdm', 'results'). Resolves to the ENGINE_<SCHEMA> environment variable group.",
-    ),
-    db_schema: str | None = typer.Option(
-        None,
-        help="Database schema to target (e.g. 'cdm5', 'vocab'). Sets search_path on PostgreSQL; not supported on SQLite.",
-    ),
+    conn,
+    engine,
     vocabulary_included: bool = typer.Option(
         False,
         "--vocab/--no-vocab",
         help="Include OMOP vocabulary tables in the selection.",
     ),
-    dry_run: bool = typer.Option(
-        False,
-        "--dry-run",
-        help="Preview planned actions without applying any changes to the database.",
-    ),
+    dry_run: bool = False,
 ) -> None:
     """Recreate all ORM-defined secondary indexes; also CLUSTERs tables on PostgreSQL where metadata specifies it."""
-    try:
-        conn, engine = setup_cli_cmd(
-            console=console,
-            dotenv=dotenv,
-            engine_schema=engine_schema,
-            db_schema=db_schema,
-            command_name="indexes enable",
+    with console.status("Managing metadata-defined indexes..."):
+        results = manage_indexes(
+            engine,
+            action=IndexAction.ENABLE,
+            db_schema=conn.db_schema,
             vocabulary_included=vocabulary_included,
-            mode_label="dry-run" if dry_run else "apply",
+            dry_run=dry_run,
         )
-        with console.status("Managing metadata-defined indexes..."):
-            results = manage_indexes(
-                engine,
-                action=IndexAction.ENABLE,
-                db_schema=conn.db_schema,
-                vocabulary_included=vocabulary_included,
-                dry_run=dry_run,
-            )
-        console.print(render_index_results(results))
-        console.print(render_index_summary(results, dry_run=dry_run))
-        console.print(render_index_note(IndexAction.ENABLE))
-    except Exception as exc:
-        handle_error(exc)
+    console.print(render_index_results(results))
+    console.print(render_index_summary(results, dry_run=dry_run))
+    console.print(render_index_note(IndexAction.ENABLE))
