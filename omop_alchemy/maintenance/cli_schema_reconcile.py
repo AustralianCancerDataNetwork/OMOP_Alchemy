@@ -5,8 +5,7 @@ from dataclasses import dataclass
 import sqlalchemy as sa
 from sqlalchemy.engine.interfaces import ReflectedForeignKeyConstraint, ReflectedIndex
 
-from ..backends.resolve import SupportedDialect
-from ..backends import resolve_backend
+from ..backends import backend_supports, resolve_backend
 from .cli_indexes import _cluster_target_name
 from .tables import (
     TableCategory,
@@ -356,7 +355,7 @@ def reconcile_schema(
                         )
                     )
 
-            if engine.dialect.name == SupportedDialect.POSTGRESQL:
+            if backend_supports(_backend, "get_clustered_index_name"):
                 expected_cluster = _cluster_target_name(maintenance_table)
                 actual_cluster = _backend.get_clustered_index_name(
                     connection,
