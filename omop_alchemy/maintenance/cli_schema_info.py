@@ -1,3 +1,5 @@
+"""Environment inspection domain: package version, dependency status, connection state, and per-command readiness checks."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

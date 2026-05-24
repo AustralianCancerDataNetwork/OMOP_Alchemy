@@ -5,7 +5,6 @@ from omop_alchemy.cdm.base.indexing import OMOP_CLUSTER_INDEX_INFO_KEY, omop_ind
 from omop_alchemy.maintenance.cli import app
 from omop_alchemy.maintenance.cli_schema import create_missing_tables
 from omop_alchemy.maintenance.cli_indexes import (
-    IndexAction,
     IndexManagementResult,
     collect_index_targets,
     manage_indexes,
@@ -81,7 +80,7 @@ def test_manage_indexes_disable_and_enable_on_sqlite(tmp_path):
 
     disabled = manage_indexes(
         engine,
-        action=IndexAction.DISABLE,
+        enable=False,
     )
     assert disabled
 
@@ -94,7 +93,7 @@ def test_manage_indexes_disable_and_enable_on_sqlite(tmp_path):
 
     enabled = manage_indexes(
         engine,
-        action=IndexAction.ENABLE,
+        enable=True,
     )
     assert enabled
     assert any(
@@ -134,13 +133,13 @@ def test_disable_indexes_cli_invokes_management(monkeypatch):
     def fake_manage_indexes(
         engine: object,
         *,
-        action: IndexAction,
+        enable: bool,
         db_schema: str | None = None,
         vocabulary_included: bool = False,
         dry_run: bool = False,
     ) -> list[IndexManagementResult]:
         calls["engine"] = engine
-        calls["action"] = action
+        calls["enable"] = enable
         calls["db_schema"] = db_schema
         calls["vocabulary_included"] = vocabulary_included
         calls["dry_run"] = dry_run
@@ -155,7 +154,7 @@ def test_disable_indexes_cli_invokes_management(monkeypatch):
                 column_names=("gender_concept_id",),
                 unique=False,
                 clustered=False,
-                action=IndexAction.DISABLE,
+                enable=enable,
                 status="planned",
                 detail="metadata-defined index would be dropped",
             )

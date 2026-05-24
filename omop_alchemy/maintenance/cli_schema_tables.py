@@ -1,3 +1,5 @@
+"""Table creation domain: detecting and creating ORM-managed OMOP tables that are absent from the target database."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -59,7 +61,7 @@ def create_missing_tables(
     vocabulary_included: bool = True,
     dry_run: bool = False,
 ) -> list[TableCreationResult]:
-    """Create any ORM-managed tables missing from the target database; skips tables with unresolved FK dependencies."""
+    """Create any ORM-managed tables missing from the target database. Skips tables with unresolved FK dependencies."""
     inspector = sa.inspect(engine)
     missing_tables = collect_missing_tables(
         engine,

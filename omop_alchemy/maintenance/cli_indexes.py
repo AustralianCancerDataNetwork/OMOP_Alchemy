@@ -1,3 +1,5 @@
+"""Index management commands for dropping and recreating ORM-defined secondary indexes."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -97,7 +99,7 @@ def _cluster_column_names(
     table: MaintenanceTable,
     cluster_index_name: str,
 ) -> tuple[str, ...]:
-    """Return the column names of the named cluster index; falls back to the primary key if the index is not found."""
+    """Return the column names of the named cluster index. Falls back to the primary key if the index is not found."""
     for index in table.table.indexes:
         if str(index.name) == cluster_index_name:
             return tuple(column.name for column in index.columns)
@@ -152,7 +154,7 @@ def manage_indexes(
     vocabulary_included: bool = False,
     dry_run: bool = False,
 ) -> list[IndexManagementResult]:
-    """Create or drop all ORM-defined indexes; also CLUSTER tables on PostgreSQL when enabling."""
+    """Create or drop all ORM-defined indexes. Also CLUSTERs tables on PostgreSQL when enabling."""
     backend = resolve_backend(engine)
     inspector = sa.inspect(engine)
     selected_tables = select_omop_tables(vocabulary_included=vocabulary_included)
@@ -288,7 +290,7 @@ def disable_indexes_command(
     ),
     dry_run: bool = False,
 ) -> None:
-    """Drop all ORM-defined secondary indexes from the target database; useful before bulk data loads."""
+    """Drop all ORM-defined secondary indexes from the target database. Useful before bulk data loads."""
     with console.status("Managing metadata-defined indexes..."):
         results = manage_indexes(
             engine,
@@ -314,7 +316,7 @@ def enable_indexes_command(
     ),
     dry_run: bool = False,
 ) -> None:
-    """Recreate all ORM-defined secondary indexes; also CLUSTERs tables on PostgreSQL where metadata specifies it."""
+    """Recreate all ORM-defined secondary indexes. Also CLUSTERs tables on PostgreSQL where metadata specifies it."""
     with console.status("Managing metadata-defined indexes..."):
         results = manage_indexes(
             engine,

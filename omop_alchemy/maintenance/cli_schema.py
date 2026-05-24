@@ -1,3 +1,5 @@
+"""Schema subapp: thin shim re-exporting all domain types and wiring five CLI commands."""
+
 from __future__ import annotations
 
 import typer

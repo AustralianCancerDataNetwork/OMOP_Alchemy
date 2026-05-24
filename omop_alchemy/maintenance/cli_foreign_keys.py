@@ -1,3 +1,5 @@
+"""Foreign key trigger management commands for PostgreSQL RI trigger enforcement."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -316,7 +318,7 @@ def manage_foreign_key_triggers(
     dry_run: bool = False,
     strict: bool = False,
 ) -> list[ForeignKeyManagementResult]:
-    """Enable or disable RI trigger enforcement; with strict=True, aborts on any FK violation."""
+    """Enable or disable RI trigger enforcement. With strict=True, aborts on any FK violation."""
     backend = resolve_backend(engine)
     require_backend_support(backend, "toggle_fk_triggers", "FK trigger management")
 
@@ -500,7 +502,7 @@ def enable_foreign_keys_command(
         help="Preview planned actions without applying any changes to the database.",
     ),
 ) -> None:
-    """Re-enable PostgreSQL RI trigger enforcement; use --strict to abort if any violations exist first."""
+    """Re-enable PostgreSQL RI trigger enforcement. Use --strict to abort if any violations exist first."""
     conn = resolve_connection(dotenv=dotenv, engine_schema=engine_schema, db_schema=db_schema)
     console.print(
         render_command_header(

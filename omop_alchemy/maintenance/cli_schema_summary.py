@@ -1,3 +1,5 @@
+"""Data summary domain: collecting row counts and existence state for ORM-managed OMOP tables."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

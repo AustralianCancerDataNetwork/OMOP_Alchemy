@@ -1,3 +1,5 @@
+"""Backup and restore commands wrapping pg_dump, pg_restore, and psql."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -62,7 +64,7 @@ def create_database_backup(
     db_schema: str | None = None,
     dry_run: bool = False,
 ) -> BackupResult:
-    """Create a database backup artifact at output_path; runs the subprocess unless dry_run is True."""
+    """Create a database backup artifact at output_path. Runs the subprocess unless dry_run is True."""
     backend = resolve_backend(engine)
     require_backend_support(backend, "prepare_backup", "Database backup")
     resolved_output_path = Path(output_path) if output_path is not None else _default_output_path(backup_format)
@@ -107,7 +109,7 @@ def restore_database_backup(
     db_schema: str | None = None,
     dry_run: bool = False,
 ) -> BackupResult:
-    """Restore a database backup; runs the subprocess unless dry_run is True."""
+    """Restore a database backup. Runs the subprocess unless dry_run is True."""
     backend = resolve_backend(engine)
     require_backend_support(backend, "prepare_restore", "Database restore")
     resolved_input_path = Path(input_path).expanduser().resolve()

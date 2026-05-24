@@ -1,3 +1,5 @@
+"""Table operations: ANALYZE statistics refresh, TRUNCATE, and sequence reset commands."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -174,7 +176,7 @@ def truncate_tables(
     cascade: bool = False,
     dry_run: bool = False,
 ) -> list[TruncateTableResult]:
-    """Truncate selected ORM-managed tables; raises if non-selected tables hold blocking FK references."""
+    """Truncate selected ORM-managed tables. Raises if non-selected tables hold blocking FK references."""
     if scope is not None and table_names is not None:
         raise RuntimeError("Use either `scope` or `table_names`, not both.")
     if scope is None and table_names is None:
@@ -479,7 +481,7 @@ def truncate_tables_command(
     ),
     dry_run: bool = False,
 ) -> None:
-    """Truncate selected ORM-managed OMOP tables; aborts if external FK references would block unless --cascade is set."""
+    """Truncate selected ORM-managed OMOP tables. Aborts if external FK references would block unless --cascade is set."""
     resolved_scope, resolved_tables = resolve_selection(scope=scope, tables=table)
     if resolved_scope is None and resolved_tables is None:
         console.print(

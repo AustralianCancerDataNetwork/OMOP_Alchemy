@@ -1,3 +1,5 @@
+"""Entry point that assembles all command subgroups and flat commands into the top-level omop-alchemy Typer app."""
+
 from __future__ import annotations
 
 import typer

@@ -1,3 +1,5 @@
+"""Health check domain: connection readiness, schema drift, FK trigger state, and FK validation checks with prioritised recommendations."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

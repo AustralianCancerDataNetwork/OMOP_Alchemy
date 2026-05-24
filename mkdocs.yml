@@ -56,7 +56,11 @@ nav:
       - Maintenance CLI: getting-started/maintenance.md
       - Quickstart: getting-started/quickstart.md
       - Sessions: getting-started/sessions.md
-  
+
+  - CLI Reference:
+      - Overview: cli/index.md
+      - Command Reference: cli/reference.md
+
   - API Reference: 
       - Overview: api/index.md
       - CDM Base: api/base.md

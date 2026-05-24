@@ -1,3 +1,5 @@
+"""Vocabulary loading command for Athena CDM CSV files."""
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -74,7 +76,7 @@ class VocabularyLoadReport:
 
 @dataclass(frozen=True)
 class VocabularyLoadProgress:
-    """Progress event emitted after each table load phase; drives the CLI progress bar."""
+    """Progress event emitted after each table load phase. Drives the CLI progress bar."""
 
     phase: str
     table_name: str | None
@@ -132,7 +134,7 @@ def _emit_progress(
     total_units: float,
     detail: str,
 ) -> None:
-    """Fire the caller-supplied progress callback with a normalised VocabularyLoadProgress snapshot; no-ops if None."""
+    """Fire the caller-supplied progress callback with a normalised VocabularyLoadProgress snapshot. No-ops if None."""
     if progress_callback is None:
         return
 
@@ -177,7 +179,7 @@ def _load_vocab_model_csv(
     chunksize: int | None = None,
     index_strategy: str = "auto",
 ) -> int:
-    """Call model.load_csv; if the staging table is absent, create it and retry once."""
+    """Call model.load_csv. If the staging table is absent, create it and retry once."""
     load_kwargs: dict[str, object] = {
         "merge_strategy": merge_strategy,
         "quote_mode": quote_mode,
@@ -242,7 +244,7 @@ def _create_missing_vocabulary_tables(
     *,
     db_schema: str | None,
 ) -> int:
-    """Create any vocabulary-category ORM tables that are absent from the target database; returns the count created."""
+    """Create any vocabulary-category ORM tables that are absent from the target database. Returns the count created."""
     vocab_tables = select_maintenance_tables(
         categories=(TableCategory.VOCABULARY,),
     )
@@ -275,7 +277,7 @@ def _configure_loader_connection(
     *,
     db_schema: str | None,
 ) -> None:
-    """Set search_path on PostgreSQL connections when a db_schema is requested; raises on SQLite with a schema."""
+    """Set search_path on PostgreSQL connections when a db_schema is requested. Raises on SQLite with a schema."""
     if db_schema is None:
         return
 
@@ -300,7 +302,7 @@ def load_vocab_source(
     bulk_mode: bool = True,
     progress_callback: VocabularyLoadProgressCallback | None = None,
 ) -> VocabularyLoadReport:
-    """Load all Athena vocabulary CSVs from source_path; with bulk_mode, indexes and FK triggers are toggled around the load."""
+    """Load all Athena vocabulary CSVs from source_path. With bulk_mode, indexes and FK triggers are toggled around the load."""
     resolved_source_path = Path(source_path).expanduser().resolve()
     if not resolved_source_path.exists() or not resolved_source_path.is_dir():
         raise RuntimeError(

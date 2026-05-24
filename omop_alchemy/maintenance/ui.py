@@ -929,9 +929,10 @@ def render_index_summary(results: Iterable[IndexManagementResult], *, dry_run: b
     if skipped:
         grid.add_row("Skipped", str(skipped))
     grid.add_row("Tables", str(len({item.table_name for item in items})))
+    action = ("enable" if items[0].enable else "disable") if items else "manage"
     grid.add_row(
         "Summary",
-        f"{'Planned' if dry_run else 'Applied'} {(items[0].enable if items else 'manage')} on {len(items)} metadata operation(s).",
+        f"{'Planned' if dry_run else 'Applied'} {action} on {len(items)} metadata operation(s).",
     )
     return Panel.fit(grid, title="[bold]Summary[/bold]", border_style="green" if not dry_run else "cyan")
 

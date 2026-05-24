@@ -1,3 +1,5 @@
+"""Full-text search sidecar column commands for PostgreSQL tsvector columns on vocabulary tables."""
+
 from __future__ import annotations
 
 import typer

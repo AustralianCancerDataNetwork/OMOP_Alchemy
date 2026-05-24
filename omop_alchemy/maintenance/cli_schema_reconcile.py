@@ -1,3 +1,5 @@
+"""Schema reconciliation domain: comparing ORM metadata against the live database column types, indexes, FK constraints, and cluster state."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -125,7 +127,7 @@ def reconcile_schema(
     db_schema: str | None = None,
     vocabulary_included: bool = False,
 ) -> SchemaReconciliationReport:
-    """Compare ORM metadata against the live database schema; reports missing columns, indexes, FKs, and cluster state."""
+    """Compare ORM metadata against the live database schema. Reports missing columns, indexes, FKs, and cluster state."""
     excluded_categories: tuple[TableCategory, ...] = (
         () if vocabulary_included else (TableCategory.VOCABULARY,)
     )

@@ -1,3 +1,5 @@
+"""Shared utilities: the @omop_command decorator, error handling, connection resolution, and injected CLI parameter definitions."""
+
 from __future__ import annotations
 
 import functools
@@ -75,7 +77,7 @@ def omop_command(
     and wraps the body in ``try/except handle_error``.
 
     The decorated function must accept ``(conn, engine, ...)`` as its first
-    two positional parameters; the decorator supplies them.  Any
+    two positional parameters. The decorator supplies them.  Any
     ``vocabulary_included`` or ``athena_source`` parameter declared in the
     function is automatically forwarded to :func:`setup_cli_cmd`.
     """

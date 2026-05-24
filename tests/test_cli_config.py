@@ -2,8 +2,7 @@ from typer.testing import CliRunner
 
 from omop_alchemy.maintenance.cli import app
 from omop_alchemy.maintenance.cli_config import defaults_path, ConnectionDefaults
-from omop_alchemy.maintenance.cli_indexes import IndexAction, IndexManagementResult
-from omop_alchemy.maintenance.tables import TableCategory
+from omop_alchemy.maintenance.cli_indexes import IndexManagementResult
 
 
 runner = CliRunner()
@@ -62,13 +61,13 @@ def test_cli_uses_saved_connection_defaults(monkeypatch):
     def fake_manage_indexes(
         engine: object,
         *,
-        action: IndexAction,
+        enable: bool,
         db_schema: str | None = None,
         vocabulary_included: bool = False,
         dry_run: bool = False,
     ) -> list[IndexManagementResult]:
         calls["engine"] = engine
-        calls["action"] = action
+        calls["enable"] = enable
         calls["db_schema"] = db_schema
         calls["vocabulary_included"] = vocabulary_included
         calls["dry_run"] = dry_run
