@@ -1,6 +1,5 @@
 import sqlalchemy as sa
 import sqlalchemy.orm as so
-from typing import Iterable, Any
 from ...model.vocabulary.concept import Concept
 
 

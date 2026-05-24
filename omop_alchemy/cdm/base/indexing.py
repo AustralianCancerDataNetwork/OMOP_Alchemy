@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from hashlib import sha1
 from typing import Union, Mapping, Tuple, TypedDict, Any, cast
-from collections.abc import Mapping
 import sqlalchemy as sa
 
 from sqlalchemy.sql.schema import SchemaItem

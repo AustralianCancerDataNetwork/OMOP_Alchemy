@@ -89,7 +89,7 @@ def test_all_concepts_reference_valid_domain(db_session, athena_vocab):
     invalid = (
         db_session.query(Concept)
         .outerjoin(Domain, Concept.domain_id == Domain.domain_id)
-        .filter(Domain.domain_id == None)
+        .filter(Domain.domain_id.is_(None))
         .count()
     )
 

@@ -1,11 +1,9 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Optional, List, TYPE_CHECKING, Type, Any
-from dataclasses import dataclass
+from typing import Optional, Any
 import sqlalchemy as sa
 import sqlalchemy.orm as so
-from orm_loader.helpers import get_model_by_tablename
 
 
 """

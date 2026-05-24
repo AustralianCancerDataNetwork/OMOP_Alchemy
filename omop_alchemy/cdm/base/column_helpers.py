@@ -1,6 +1,5 @@
 import sqlalchemy as sa
 import sqlalchemy.orm as so
-from typing import Optional
 
 def required_concept_fk(*, index: bool = False):
     """

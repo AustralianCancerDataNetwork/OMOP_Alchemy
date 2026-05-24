@@ -1,6 +1,5 @@
 from .config import load_environment, TEST_PATH, ROOT_PATH
 from .db import get_engine_name, create_engine_with_dependencies
-from .errors import CDMValidationError
 
 
 __all__ = [

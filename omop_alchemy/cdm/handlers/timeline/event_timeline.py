@@ -2,13 +2,11 @@
 from ...model.clinical import Measurement, Person, Condition_Occurrence, Drug_Exposure
 from sqlalchemy.orm import object_session
 from sqlalchemy import select
-from omop_alchemy.cdm.base import HasPersonId
 from datetime import datetime, time, date
-from typing import Optional, Mapping, Any, Type, List
+from typing import Optional, Mapping, Any,  List
 import json
 from dataclasses import dataclass
-from datetime import date, datetime
-from typing import Protocol, Union, Mapping, Any, Optional, Literal
+from typing import Protocol, Union, Literal
 
 
 TemporalKind = Literal["point", "interval"]
