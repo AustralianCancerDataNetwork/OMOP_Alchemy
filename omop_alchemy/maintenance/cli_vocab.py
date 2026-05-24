@@ -28,7 +28,7 @@ from omop_alchemy.cdm.model.vocabulary import (
 from ..backends import resolve_backend
 from ._cli_utils import omop_command
 from .cli_foreign_keys import manage_foreign_key_triggers
-from .cli_indexes import IndexAction, manage_indexes
+from .cli_indexes import manage_indexes
 from .cli_tables import reset_model_sequences
 from .tables import TableCategory, schema_adjusted_metadata, select_maintenance_tables
 from .ui import (
@@ -381,7 +381,7 @@ def load_vocab_source(
         )
         manage_indexes(
             engine,
-            action=IndexAction.DISABLE,
+            enable=False,
             vocabulary_included=True,
             db_schema=db_schema,
             dry_run=False,
@@ -550,7 +550,7 @@ def load_vocab_source(
     if _use_bulk_mode:
         manage_indexes(
             engine,
-            action=IndexAction.ENABLE,
+            enable=True,
             vocabulary_included=True,
             db_schema=db_schema,
             dry_run=False,

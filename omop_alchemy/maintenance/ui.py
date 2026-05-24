@@ -13,12 +13,6 @@ from omop_alchemy.backends.base import FullTextResult
 
 from ..backends.resolve import _DIALECT_TO_BACKEND_MAP, SupportedDialect as _SupportedDialect
 
-
-def __backend_label(dialect_name: str) -> str:
-    try:
-        return _DIALECT_TO_BACKEND_MAP[_SupportedDialect(dialect_name)].name
-    except (ValueError, KeyError):
-        return dialect_name
 from .ascii import render_banner
 from .tables import TableCategory
 
@@ -32,7 +26,7 @@ if TYPE_CHECKING:
         ForeignKeyValidationReport,
         ForeignKeyValidationResult,
     )
-    from .cli_indexes import IndexAction, IndexManagementResult
+    from .cli_indexes import IndexManagementResult
     from .cli_schema import (
         CommandSupport,
         DoctorCheck,
@@ -80,6 +74,13 @@ CATEGORY_STYLES = {
     TableCategory.UNSTRUCTURED: "bright_magenta",
     TableCategory.VOCABULARY: "yellow",
 }
+
+
+def _backend_label(dialect_name: str) -> str:
+    try:
+        return _DIALECT_TO_BACKEND_MAP[_SupportedDialect(dialect_name)].name
+    except (ValueError, KeyError):
+        return dialect_name
 
 
 def _bool_label(value: bool) -> Text:
@@ -897,7 +898,7 @@ def render_index_results(results: Iterable[IndexManagementResult]) -> Renderable
         table.add_row(
             Text(result.status.upper(), style=style),
             result.operation,
-            result.action.value,
+            "Enable" if result.enable else "Disable",
             result.table_name,
             result.index_name,
             _category_label(result.category),
@@ -906,10 +907,10 @@ def render_index_results(results: Iterable[IndexManagementResult]) -> Renderable
     return table
 
 
-def render_index_note(action: IndexAction) -> Panel:
+def render_index_note(enable: bool) -> Panel:
     body = (
         "This command drops SQLAlchemy metadata-defined secondary indexes that currently exist in the database. Primary keys and constraints are not removed."
-        if action == "disable"
+        if not enable
         else "This command recreates SQLAlchemy metadata-defined secondary indexes that are currently missing from the database and applies PostgreSQL clustering declared in ORM metadata when the backend supports it."
     )
     return Panel.fit(body, title="[bold]Note[/bold]", border_style="yellow")
@@ -930,7 +931,7 @@ def render_index_summary(results: Iterable[IndexManagementResult], *, dry_run: b
     grid.add_row("Tables", str(len({item.table_name for item in items})))
     grid.add_row(
         "Summary",
-        f"{'Planned' if dry_run else 'Applied'} {(items[0].action.value if items else 'manage')} on {len(items)} metadata operation(s).",
+        f"{'Planned' if dry_run else 'Applied'} {(items[0].enable if items else 'manage')} on {len(items)} metadata operation(s).",
     )
     return Panel.fit(grid, title="[bold]Summary[/bold]", border_style="green" if not dry_run else "cyan")
 

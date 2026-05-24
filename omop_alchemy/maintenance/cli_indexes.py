@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import StrEnum
 
 import sqlalchemy as sa
 import typer
@@ -22,13 +21,6 @@ from .ui import (
     render_index_results,
     render_index_summary,
 )
-
-
-class IndexAction(StrEnum):
-    """Whether to create or drop ORM-defined secondary indexes."""
-
-    DISABLE = "disable"
-    ENABLE = "enable"
 
 
 @dataclass(frozen=True)
@@ -58,7 +50,7 @@ class IndexManagementResult:
     column_names: tuple[str, ...]
     unique: bool
     clustered: bool
-    action: IndexAction
+    enable: bool
     status: str
     detail: str
 
@@ -155,7 +147,7 @@ def collect_index_targets(
 def manage_indexes(
     engine: sa.Engine,
     *,
-    action: IndexAction,
+    enable: bool,
     db_schema: str | None = None,
     vocabulary_included: bool = False,
     dry_run: bool = False,
@@ -183,9 +175,9 @@ def manage_indexes(
                 index_name = str(metadata_index.name)
                 exists = index_name in existing_index_names
                 should_apply = (
-                    action is IndexAction.DISABLE and exists
+                    not enable and exists
                 ) or (
-                    action is IndexAction.ENABLE and not exists
+                    enable and not exists
                 )
 
                 if not should_apply:
@@ -193,7 +185,7 @@ def manage_indexes(
 
                 schema_index = metadata_indexes[(table.table_name, index_name)]
                 if not dry_run:
-                    if action is IndexAction.DISABLE:
+                    if not enable:
                         schema_index.drop(bind=connection, checkfirst=True)
                     else:
                         schema_index.create(bind=connection, checkfirst=True)
@@ -209,13 +201,13 @@ def manage_indexes(
                         column_names=tuple(column.name for column in metadata_index.columns),
                         unique=bool(metadata_index.unique),
                         clustered=metadata_index.info.get(OMOP_CLUSTER_INDEX_INFO_KEY) is True,
-                        action=action,
+                        enable=enable,
                         status="planned" if dry_run else "applied",
                         detail=(
                             "metadata-defined index would be dropped"
-                            if action is IndexAction.DISABLE and dry_run
+                            if not enable and dry_run
                             else "metadata-defined index dropped"
-                            if action is IndexAction.DISABLE
+                            if not enable
                             else "metadata-defined index would be created"
                             if dry_run
                             else "metadata-defined index created"
@@ -223,7 +215,7 @@ def manage_indexes(
                     )
                 )
 
-            if action is IndexAction.ENABLE:
+            if enable:
                 cluster_index_name = _cluster_target_name(table)
                 if cluster_index_name is None:
                     continue
@@ -241,7 +233,7 @@ def manage_indexes(
                             column_names=cluster_columns,
                             unique=False,
                             clustered=True,
-                            action=action,
+                            enable=enable,
                             status="skipped",
                             detail=(
                                 "cluster metadata present but unsupported on "
@@ -265,7 +257,7 @@ def manage_indexes(
                         column_names=cluster_columns,
                         unique=False,
                         clustered=True,
-                        action=action,
+                        enable=enable,
                         status="planned" if dry_run else "applied",
                         detail=(
                             "table would be clustered using ORM-defined metadata"
@@ -300,14 +292,14 @@ def disable_indexes_command(
     with console.status("Managing metadata-defined indexes..."):
         results = manage_indexes(
             engine,
-            action=IndexAction.DISABLE,
+            enable=False,
             db_schema=conn.db_schema,
             vocabulary_included=vocabulary_included,
             dry_run=dry_run,
         )
     console.print(render_index_results(results))
     console.print(render_index_summary(results, dry_run=dry_run))
-    console.print(render_index_note(IndexAction.DISABLE))
+    console.print(render_index_note(enable=False))
 
 
 @app.command("enable")
@@ -326,11 +318,11 @@ def enable_indexes_command(
     with console.status("Managing metadata-defined indexes..."):
         results = manage_indexes(
             engine,
-            action=IndexAction.ENABLE,
+            enable=True,
             db_schema=conn.db_schema,
             vocabulary_included=vocabulary_included,
             dry_run=dry_run,
         )
     console.print(render_index_results(results))
     console.print(render_index_summary(results, dry_run=dry_run))
-    console.print(render_index_note(IndexAction.ENABLE))
+    console.print(render_index_note(enable=True))

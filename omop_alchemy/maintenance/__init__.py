@@ -17,7 +17,6 @@ from .cli_foreign_keys import (
     validate_foreign_key_constraints,
 )
 from .cli_indexes import (
-    IndexAction,
     IndexManagementResult,
     IndexTarget,
     collect_index_targets,
@@ -83,7 +82,6 @@ __all__ = [
     "ForeignKeyStatusResult",
     "ForeignKeyValidationReport",
     "ForeignKeyValidationResult",
-    "IndexAction",
     "IndexManagementResult",
     "IndexTarget",
     "ConnectionDefaults",
