@@ -9,6 +9,7 @@ from omop_alchemy.cdm.base import (
     ReferenceTable,
     cdm_table,
     CDMTableBase,
+    VocabularySchemaMixin,
     DatedEvent,
     merge_table_args,
     omop_index,
@@ -16,6 +17,7 @@ from omop_alchemy.cdm.base import (
 
 @cdm_table
 class Source_To_Concept_Map(
+    VocabularySchemaMixin,
     DatedEvent,
     CDMTableBase,
     ReferenceTable,

@@ -7,6 +7,7 @@ from orm_loader.helpers import Base
 from omop_alchemy.cdm.base import (
     cdm_table,
     CDMTableBase,
+    ClinicalSchemaMixin,
     optional_concept_fk,
     required_concept_fk,
     PersonScoped,
@@ -24,7 +25,7 @@ if TYPE_CHECKING:
     from ..health_system import Provider, Visit_Occurrence, Visit_Detail
 
 @cdm_table
-class Procedure_Occurrence(CDMTableBase, Base, PersonScoped, HealthSystemContext):
+class Procedure_Occurrence(ClinicalSchemaMixin, CDMTableBase, Base, PersonScoped, HealthSystemContext):
     __tablename__ = "procedure_occurrence"
     __table_args__ = merge_table_args(
         omop_index(__tablename__, "person_id", cluster=True),

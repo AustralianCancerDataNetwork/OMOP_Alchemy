@@ -6,13 +6,14 @@ from orm_loader.helpers import Base
 from omop_alchemy.cdm.base import (
     cdm_table,
     CDMTableBase,
+    HealthEconomicSchemaMixin,
     optional_concept_fk,
     merge_table_args,
     omop_index,
 )
 
 @cdm_table
-class Payer_Plan_Period(CDMTableBase, Base):
+class Payer_Plan_Period(HealthEconomicSchemaMixin, CDMTableBase, Base):
     __tablename__ = "payer_plan_period"
     __table_args__ = merge_table_args(
         omop_index(__tablename__, "person_id", cluster=True),

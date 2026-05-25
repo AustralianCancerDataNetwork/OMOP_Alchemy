@@ -7,12 +7,14 @@ from omop_alchemy.cdm.base import (
     ReferenceTable,
     cdm_table,
     CDMTableBase,
+    VocabularySchemaMixin,
     merge_table_args,
     omop_index,
 )
 
 @cdm_table
 class Drug_Strength(
+    VocabularySchemaMixin,
     CDMTableBase,
     ReferenceTable,
     Base,

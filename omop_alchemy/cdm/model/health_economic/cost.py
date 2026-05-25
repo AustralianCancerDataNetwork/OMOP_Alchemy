@@ -5,6 +5,7 @@ from orm_loader.helpers import Base
 from omop_alchemy.cdm.base import (
     cdm_table,
     CDMTableBase,
+    HealthEconomicSchemaMixin,
     optional_concept_fk,
     required_concept_fk,
     merge_table_args,
@@ -12,7 +13,7 @@ from omop_alchemy.cdm.base import (
 )
 
 @cdm_table
-class Cost(CDMTableBase, Base):
+class Cost(HealthEconomicSchemaMixin, CDMTableBase, Base):
     __tablename__ = "cost"
     __table_args__ = merge_table_args(
         omop_index(__tablename__, "cost_event_id"),

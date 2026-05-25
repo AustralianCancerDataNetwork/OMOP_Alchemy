@@ -11,6 +11,7 @@ from omop_alchemy.cdm.base import (
     ReferenceContext,
     CDMTableBase,
     cdm_table, 
+    ClinicalSchemaMixin,
     ModifierFieldConcepts,
     ModifierTargetMixin,
     merge_table_args,
@@ -23,6 +24,7 @@ if TYPE_CHECKING:
 
 @cdm_table
 class Condition_Occurrence(
+    ClinicalSchemaMixin,
     PersonScoped,
     HealthSystemContext,
     CDMTableBase,

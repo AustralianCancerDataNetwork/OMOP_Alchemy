@@ -7,6 +7,7 @@ from orm_loader.helpers import Base
 from omop_alchemy.cdm.base import (
     CDMTableBase,
     cdm_table,
+    ClinicalSchemaMixin,
     optional_concept_fk,
     ReferenceContext,
     DomainValidationMixin,
@@ -20,7 +21,7 @@ if TYPE_CHECKING:
     from ..clinical import Person, PersonView
 
 @cdm_table
-class Death(CDMTableBase, Base):
+class Death(ClinicalSchemaMixin, CDMTableBase, Base):
     __tablename__ = "death"
     __table_args__ = merge_table_args(
         omop_table_options(cluster_on=omop_primary_key_index_name("death")),

@@ -8,6 +8,7 @@ from orm_loader.helpers import Base
 from omop_alchemy.cdm.base import (
     CDMTableBase,
     cdm_table, 
+    UnstructuredSchemaMixin,
     optional_concept_fk,
     merge_table_args,
     omop_index,
@@ -18,7 +19,7 @@ if TYPE_CHECKING:
 
 @cdm_table
 
-class Note_NLP(CDMTableBase, Base):
+class Note_NLP(UnstructuredSchemaMixin, CDMTableBase, Base):
     __tablename__ = "note_nlp"
     __table_args__ = merge_table_args(
         omop_index(__tablename__, "note_id", cluster=True),

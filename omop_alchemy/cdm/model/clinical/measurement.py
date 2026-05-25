@@ -9,13 +9,14 @@ from orm_loader.helpers import Base
 from omop_alchemy.cdm.base import (
     CDMTableBase,
     cdm_table,
+    ClinicalSchemaMixin,
     ValueMixin,
     merge_table_args,
     omop_index,
 )
 
 @cdm_table
-class Measurement(Base, CDMTableBase, ValueMixin):
+class Measurement(ClinicalSchemaMixin, Base, CDMTableBase, ValueMixin):
     __tablename__ = "measurement"
     __table_args__ = merge_table_args(
         ValueMixin.__table_args__,

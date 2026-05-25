@@ -8,6 +8,7 @@ from orm_loader.helpers import Base
 from omop_alchemy.cdm.base import (
     CDMTableBase,
     cdm_table, 
+    UnstructuredSchemaMixin,
     optional_concept_fk,
     PersonScoped,
     HealthSystemContext,
@@ -26,7 +27,7 @@ if TYPE_CHECKING:
     from ..health_system import Provider, Visit_Occurrence, Visit_Detail
 
 @cdm_table
-class Note(CDMTableBase, Base, PersonScoped, HealthSystemContext):
+class Note(UnstructuredSchemaMixin, CDMTableBase, Base, PersonScoped, HealthSystemContext):
     __tablename__ = "note"
     __table_args__ = merge_table_args(
         omop_index(__tablename__, "person_id", cluster=True),

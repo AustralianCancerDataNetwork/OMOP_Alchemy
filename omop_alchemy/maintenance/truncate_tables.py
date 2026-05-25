@@ -8,6 +8,7 @@ from ..backend_support import Dialect, require_backend
 from .tables import (
     TableCategory,
     TableScope,
+    maintenance_table_schema,
     qualified_table_name,
     resolve_maintenance_tables,
 )
@@ -28,19 +29,35 @@ def _blocking_foreign_key_references(
     inspector: sa.Inspector,
     *,
     db_schema: str | None,
-    selected_table_names: set[str],
+    selected_tables: list,
 ) -> dict[str, set[str]]:
     blockers: dict[str, set[str]] = {}
+    selected_table_names = {table.table_name for table in selected_tables}
 
-    for table_name in inspector.get_table_names(schema=db_schema):
-        if table_name in selected_table_names:
-            continue
+    schemas = sorted(
+        {
+            schema_name
+            for schema_name in (
+                db_schema if db_schema is not None else maintenance_table_schema(table, None)
+                for table in selected_tables
+            )
+            if schema_name is not None
+        }
+    )
 
-        for foreign_key in inspector.get_foreign_keys(table_name, schema=db_schema):
-            referred_table = foreign_key.get("referred_table")
-            if referred_table not in selected_table_names:
+    if not schemas:
+        schemas = [db_schema] if db_schema is not None else [None]
+
+    for schema_name in schemas:
+        for table_name in inspector.get_table_names(schema=schema_name):
+            if table_name in selected_table_names:
                 continue
-            blockers.setdefault(str(referred_table), set()).add(table_name)
+
+            for foreign_key in inspector.get_foreign_keys(table_name, schema=schema_name):
+                referred_table = foreign_key.get("referred_table")
+                if referred_table not in selected_table_names:
+                    continue
+                blockers.setdefault(str(referred_table), set()).add(table_name)
 
     return blockers
 
@@ -92,7 +109,10 @@ def truncate_tables(
 
     with engine.begin() as connection:
         for maintenance_table in selected_tables:
-            if not inspector.has_table(maintenance_table.table_name, schema=db_schema):
+            if not inspector.has_table(
+                maintenance_table.table_name,
+                schema=maintenance_table_schema(maintenance_table, db_schema),
+            ):
                 results.append(
                     TruncateTableResult(
                         table_name=maintenance_table.table_name,
@@ -132,7 +152,9 @@ def truncate_tables(
             blockers = _blocking_foreign_key_references(
                 inspector,
                 db_schema=db_schema,
-                selected_table_names=set(existing_tables),
+                selected_tables=[
+                    table for table in selected_tables if table.table_name in existing_tables
+                ],
             )
             if blockers:
                 raise RuntimeError(_format_blocking_reference_error(blockers))

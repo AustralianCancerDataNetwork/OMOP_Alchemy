@@ -25,6 +25,7 @@ from omop_alchemy.cdm.model.vocabulary import (
 from ..backend_support import Dialect, require_backend
 from .reset_sequences import reset_model_sequences
 from .tables import TableCategory, schema_adjusted_metadata, select_maintenance_tables
+from .tables import maintenance_table_schema
 
 MergeStrategy: TypeAlias = Literal["replace", "upsert", "insert_if_empty"]
 
@@ -230,7 +231,10 @@ def _create_missing_vocabulary_tables(
     missing_tables = [
         table
         for table in vocab_tables
-        if not inspector.has_table(table.table_name, schema=db_schema)
+        if not inspector.has_table(
+            table.table_name,
+            schema=maintenance_table_schema(table, db_schema),
+        )
     ]
     if not missing_tables:
         return 0

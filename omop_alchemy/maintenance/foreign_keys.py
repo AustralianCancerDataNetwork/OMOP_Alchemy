@@ -10,6 +10,7 @@ from .tables import (
     MaintenanceTable,
     TableCategory,
     existing_maintenance_tables,
+    maintenance_table_schema,
     qualified_table_name,
 )
 
@@ -25,6 +26,7 @@ class ForeignKeyTarget:
     category: TableCategory
     model_name: str
     model_module: str
+    schema_name: str | None
     outgoing_constraint_count: int
     incoming_constraint_count: int
 
@@ -125,8 +127,16 @@ def collect_foreign_key_targets(
     incoming_counts = {name: 0 for name in selected_names}
     outgoing_counts = {name: 0 for name in selected_names}
 
+    selected_schema_by_name = {
+        table.table_name: maintenance_table_schema(table, db_schema)
+        for table in selected_tables
+    }
+
     for table_name in selected_names:
-        foreign_keys = inspector.get_foreign_keys(table_name, schema=db_schema)
+        foreign_keys = inspector.get_foreign_keys(
+            table_name,
+            schema=selected_schema_by_name[table_name],
+        )
         relevant_foreign_keys = [
             foreign_key
             for foreign_key in foreign_keys
@@ -152,6 +162,7 @@ def collect_foreign_key_targets(
                 category=table.category,
                 model_name=table.model_name,
                 model_module=table.model_module,
+                schema_name=table.table.schema,
                 outgoing_constraint_count=outgoing_count,
                 incoming_constraint_count=incoming_count,
             )
@@ -173,13 +184,20 @@ def _collect_strict_validation_failures(
         vocabulary_included=vocabulary_included,
     )
     selected_names = {table.table_name for table in selected_tables}
+    selected_schema_by_name = {
+        table.table_name: maintenance_table_schema(table, db_schema)
+        for table in selected_tables
+    }
     failures: dict[str, list[ForeignKeyConstraintViolation]] = {
         table_name: []
         for table_name in selected_names
     }
 
     for table_name in sorted(selected_names):
-        for foreign_key in inspector.get_foreign_keys(table_name, schema=db_schema):
+        for foreign_key in inspector.get_foreign_keys(
+            table_name,
+            schema=selected_schema_by_name[table_name],
+        ):
             referred_table = foreign_key.get("referred_table")
             constrained_columns = foreign_key.get("constrained_columns") or []
             referred_columns = foreign_key.get("referred_columns") or []
@@ -191,8 +209,14 @@ def _collect_strict_validation_failures(
             ):
                 continue
 
-            source_table_name = qualified_table_name(table_name, db_schema)
-            referred_table_name = qualified_table_name(str(referred_table), db_schema)
+            source_table_name = qualified_table_name(
+                table_name,
+                selected_schema_by_name[table_name],
+            )
+            referred_table_name = qualified_table_name(
+                str(referred_table),
+                selected_schema_by_name.get(str(referred_table)),
+            )
             non_null_predicate = " AND ".join(
                 f"src.{column_name} IS NOT NULL"
                 for column_name in constrained_columns
@@ -468,7 +492,7 @@ def collect_foreign_key_trigger_status(
                 query,
                 {
                     "table_name": target.table_name,
-                    "db_schema": db_schema,
+                    "db_schema": db_schema if db_schema is not None else target.schema_name,
                 },
             ).one()
 

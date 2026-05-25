@@ -5,13 +5,14 @@ from orm_loader.helpers import Base
 from omop_alchemy.cdm.base import (
     cdm_table,
     CDMTableBase,
+    DerivedSchemaMixin,
     required_concept_fk,
     merge_table_args,
     omop_index,
 )
 
 @cdm_table
-class Observation_Period(CDMTableBase, Base):
+class Observation_Period(DerivedSchemaMixin, CDMTableBase, Base):
     __tablename__ = "observation_period"
     __table_args__ = merge_table_args(
         omop_index(__tablename__, "person_id", cluster=True),

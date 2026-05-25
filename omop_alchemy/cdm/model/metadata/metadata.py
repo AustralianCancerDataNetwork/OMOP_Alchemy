@@ -7,6 +7,7 @@ from orm_loader.helpers import Base
 from omop_alchemy.cdm.base import (
     cdm_table,
     CDMTableBase,
+    MetadataSchemaMixin,
     required_concept_fk,
     ValueMixin,
     merge_table_args,
@@ -14,7 +15,7 @@ from omop_alchemy.cdm.base import (
 )
 
 @cdm_table
-class Metadata(CDMTableBase, Base, ValueMixin):
+class Metadata(MetadataSchemaMixin, CDMTableBase, Base, ValueMixin):
     __tablename__ = "metadata"
     __table_args__ = merge_table_args(
         ValueMixin.__table_args__,

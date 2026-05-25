@@ -4,7 +4,12 @@ from dataclasses import dataclass
 
 import sqlalchemy as sa
 
-from .tables import TableCategory, qualified_table_name, select_omop_tables
+from .tables import (
+    TableCategory,
+    maintenance_table_schema,
+    qualified_table_name,
+    select_omop_tables,
+)
 
 
 @dataclass(frozen=True)
@@ -29,7 +34,10 @@ def collect_data_summary(
     results: list[TableSummaryResult] = []
     with engine.connect() as connection:
         for table in tables:
-            exists = inspector.has_table(table.table_name, schema=db_schema)
+            exists = inspector.has_table(
+                table.table_name,
+                schema=maintenance_table_schema(table, db_schema),
+            )
             if not exists and existing_only:
                 continue
 

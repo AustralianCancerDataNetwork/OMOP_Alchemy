@@ -59,6 +59,10 @@ Resolution order:
 `engine_schema` selects the configured engine URL (`ENGINE_<SCHEMA>` or `ENGINE`).
 `db_schema` selects the schema inside that database.
 
+Schema-aware ORM tables are configured from environment variables before the model
+package is imported. See [Configuration](../api/configuration.md) for the schema
+env vars and defaults.
+
 ---
 
 ## Backend support at a glance

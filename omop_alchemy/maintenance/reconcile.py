@@ -6,7 +6,12 @@ import sqlalchemy as sa
 
 from ..backend_support import Dialect
 from .indexes import _cluster_target_name
-from .tables import MaintenanceTable, TableCategory, select_maintenance_tables
+from .tables import (
+    MaintenanceTable,
+    TableCategory,
+    maintenance_table_schema,
+    select_maintenance_tables,
+)
 
 
 @dataclass(frozen=True)
@@ -50,13 +55,13 @@ def _selected_tables(
 
 
 def _schema_table(table: sa.Table, db_schema: str | None) -> sa.Table:
-    if db_schema is None:
+    if db_schema is None and table.schema is None:
         return table
 
     metadata = sa.MetaData()
     return table.to_metadata(
         metadata,
-        schema=db_schema,
+        schema=db_schema if db_schema is not None else table.schema,
         referred_schema_fn=(
             lambda _table, to_schema, _constraint, _referred_schema: to_schema
         ),
@@ -152,7 +157,11 @@ def reconcile_schema(
     with engine.connect() as connection:
         for maintenance_table in selected_tables:
             table_issues: list[ReconciliationIssue] = []
-            exists = inspector.has_table(maintenance_table.table_name, schema=db_schema)
+            schema_name = maintenance_table_schema(maintenance_table, db_schema)
+            exists = inspector.has_table(
+                maintenance_table.table_name,
+                schema=schema_name,
+            )
             if not exists:
                 table_issues.append(
                     ReconciliationIssue(
@@ -180,17 +189,17 @@ def reconcile_schema(
                 all_issues.extend(table_issues)
                 continue
 
-            expected_table = _schema_table(maintenance_table.table, db_schema)
+            expected_table = _schema_table(maintenance_table.table, schema_name)
             expected_columns = {
                 column.name: column
                 for column in expected_table.columns
             }
             actual_columns = {
                 str(column["name"]): column
-                for column in inspector.get_columns(maintenance_table.table_name, schema=db_schema)
+                for column in inspector.get_columns(maintenance_table.table_name, schema=schema_name)
             }
             actual_pk_names = tuple(
-                inspector.get_pk_constraint(maintenance_table.table_name, schema=db_schema).get("constrained_columns") or []
+                inspector.get_pk_constraint(maintenance_table.table_name, schema=schema_name).get("constrained_columns") or []
             )
             expected_pk_names = tuple(column.name for column in expected_table.primary_key.columns)
 
@@ -277,7 +286,7 @@ def reconcile_schema(
             actual_foreign_keys = _actual_foreign_keys(
                 inspector,
                 maintenance_table.table_name,
-                db_schema,
+                schema_name,
             )
 
             for signature, constraint in expected_foreign_keys.items():
@@ -316,7 +325,7 @@ def reconcile_schema(
             actual_indexes = _actual_indexes(
                 inspector,
                 maintenance_table.table_name,
-                db_schema,
+                schema_name,
             )
 
             for index_name, index in expected_indexes.items():
@@ -385,7 +394,7 @@ def reconcile_schema(
                 actual_cluster = _actual_cluster_index_name(
                     connection,
                     table_name=maintenance_table.table_name,
-                    db_schema=db_schema,
+                    db_schema=schema_name,
                 )
                 if expected_cluster != actual_cluster:
                     table_issues.append(

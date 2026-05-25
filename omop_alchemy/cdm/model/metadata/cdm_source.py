@@ -7,12 +7,13 @@ from orm_loader.helpers import Base
 from omop_alchemy.cdm.base import (
     cdm_table,
     CDMTableBase,
+    MetadataSchemaMixin,
     merge_table_args,
     omop_index,
 )
 
 @cdm_table
-class CDM_Source(CDMTableBase, Base):
+class CDM_Source(MetadataSchemaMixin, CDMTableBase, Base):
     __tablename__ = "cdm_source"
     __table_args__ = merge_table_args(
         omop_index(__tablename__, "cdm_version_concept_id")

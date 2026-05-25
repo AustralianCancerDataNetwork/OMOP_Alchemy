@@ -7,12 +7,13 @@ from omop_alchemy.cdm.base import (
     ReferenceTable,
     cdm_table,
     CDMTableBase,
+    VocabularySchemaMixin,
     merge_table_args,
     omop_index,
 )
 
 @cdm_table
-class Concept_Relationship(ReferenceTable, CDMTableBase, Base):
+class Concept_Relationship(VocabularySchemaMixin, ReferenceTable, CDMTableBase, Base):
     __tablename__ = "concept_relationship"
     __table_args__ = merge_table_args(
         omop_index(__tablename__, "concept_id_1", cluster=True),

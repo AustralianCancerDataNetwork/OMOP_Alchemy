@@ -11,6 +11,7 @@ from ..backend_support import Dialect, backend_label, supports_backend
 from .tables import (
     MaintenanceTable,
     TableCategory,
+    maintenance_table_schema,
     qualified_table_name,
     schema_adjusted_metadata,
     select_omop_tables,
@@ -106,12 +107,18 @@ def collect_index_targets(
 
     targets: list[IndexTarget] = []
     for table in selected_tables:
-        if not inspector.has_table(table.table_name, schema=db_schema):
+        if not inspector.has_table(
+            table.table_name,
+            schema=maintenance_table_schema(table, db_schema),
+        ):
             continue
 
         existing_index_names = {
             index["name"]
-            for index in inspector.get_indexes(table.table_name, schema=db_schema)
+            for index in inspector.get_indexes(
+                table.table_name,
+                schema=maintenance_table_schema(table, db_schema),
+            )
         }
 
         for metadata_index in sorted(table.table.indexes, key=lambda idx: idx.name or ""):
@@ -154,12 +161,18 @@ def manage_indexes(
 
     with engine.begin() as connection:
         for table in selected_tables:
-            if not inspector.has_table(table.table_name, schema=db_schema):
+            if not inspector.has_table(
+                table.table_name,
+                schema=maintenance_table_schema(table, db_schema),
+            ):
                 continue
 
             existing_index_names = {
                 index["name"]
-                for index in inspector.get_indexes(table.table_name, schema=db_schema)
+                for index in inspector.get_indexes(
+                    table.table_name,
+                    schema=maintenance_table_schema(table, db_schema),
+                )
             }
 
             for metadata_index in sorted(table.table.indexes, key=lambda idx: idx.name or ""):

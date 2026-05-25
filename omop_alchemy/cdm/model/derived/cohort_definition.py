@@ -6,12 +6,13 @@ from orm_loader.helpers import Base
 from omop_alchemy.cdm.base import (
     cdm_table,
     CDMTableBase,
+    DerivedSchemaMixin,
     merge_table_args,
     omop_index,
 )
 
 @cdm_table
-class Cohort_Definition(CDMTableBase, Base):
+class Cohort_Definition(DerivedSchemaMixin, CDMTableBase, Base):
     __tablename__ = "cohort_definition"
     __table_args__ = merge_table_args(
         omop_index(__tablename__, "definition_type_concept_id"),
