@@ -67,7 +67,8 @@ class MaintenanceTable:
 
 def qualified_table_name(table_name: str, db_schema: str | None) -> str:
     if db_schema:
-        return f"{db_schema}.{table_name}"
+        quoted_schema = '"' + db_schema.replace('"', '""') + '"'
+        return f"{quoted_schema}.{table_name}"
     return table_name
 
 

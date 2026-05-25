@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TypeAlias, cast
+from typing import Literal, TypeAlias, cast
 
 import sqlalchemy as sa
 import sqlalchemy.orm as so
@@ -25,6 +25,8 @@ from omop_alchemy.cdm.model.vocabulary import (
 from ..backend_support import Dialect, require_backend
 from .reset_sequences import reset_model_sequences
 from .tables import TableCategory, schema_adjusted_metadata, select_maintenance_tables
+
+MergeStrategy: TypeAlias = Literal["replace", "upsert", "insert_if_empty"]
 
 VocabularyModel: TypeAlias = type[CSVTableProtocol]
 VocabularyLoadProgressCallback: TypeAlias = Callable[["VocabularyLoadProgress"], None]
@@ -48,7 +50,7 @@ class VocabularyLoadReport:
     source_path: str
     backend: str
     db_schema: str | None
-    merge_strategy: str
+    merge_strategy: MergeStrategy
     created_table_count: int
     sequence_reset_count: int
     results: tuple[VocabularyLoadResult, ...]
@@ -149,8 +151,8 @@ def _load_vocab_model_csv(
     *,
     model: VocabularyModel,
     csv_path: Path,
-    merge_strategy: str,
-    quote_mode: str = "csv",
+    merge_strategy: MergeStrategy,
+    quote_mode: str = "auto",
     chunksize: int | None = None,
 ) -> int:
     load_kwargs: dict[str, object] = {
@@ -262,7 +264,8 @@ def _configure_loader_connection(
             "SQLite uses the default database namespace."
         )
 
-    connection.exec_driver_sql(f"SET search_path TO {db_schema}")
+    quoted_schema = '"' + db_schema.replace('"', '""') + '"'
+    connection.exec_driver_sql(f"SET search_path TO {quoted_schema}")
 
 def load_vocab_source(
     engine: sa.Engine,
@@ -270,8 +273,8 @@ def load_vocab_source(
     source_path: str | Path,
     db_schema: str | None = None,
     dry_run: bool = False,
-    merge_strategy: str = "replace",
-    chunksize: int | None = None,
+    merge_strategy: MergeStrategy = "replace",
+    chunksize: int | None = 100_000,
     progress_callback: VocabularyLoadProgressCallback | None = None,
 ) -> VocabularyLoadReport:
     _ensure_supported_backend(engine)
@@ -361,6 +364,7 @@ def load_vocab_source(
             for table_index, item in enumerate(load_items, start=1):
                 model = item.model
                 csv_path = item.csv_path
+                required = item.required
                 current_model_name = model.__tablename__
                 current_csv_path = str(csv_path)
                 if dry_run:
@@ -396,7 +400,7 @@ def load_vocab_source(
                             row_count=None,
                             csv_path=str(csv_path),
                             required=required,
-                            detail="Athena CSV would be loaded via staged ORM CSV loader using tab-delimited input and literal quote mode",
+                            detail="Athena CSV would be loaded via staged ORM CSV loader using tab-delimited input and auto-detected quote mode",
                         )
                     )
                     continue
@@ -405,7 +409,7 @@ def load_vocab_source(
                     "model": model,
                     "csv_path": csv_path,
                     "merge_strategy": merge_strategy,
-                    "quote_mode": "literal",
+                    "quote_mode": "auto",
                 }
                 if chunksize is not None:
                     loader_kwargs["chunksize"] = chunksize
@@ -465,7 +469,7 @@ def load_vocab_source(
                         row_count=row_count,
                         csv_path=str(csv_path),
                         required=required,
-                        detail="Athena CSV loaded via staged ORM CSV loader using tab-delimited input and literal quote mode",
+                        detail="Athena CSV loaded via staged ORM CSV loader using tab-delimited input and auto-detected quote mode",
                     )
                 )
             if not dry_run:

@@ -825,7 +825,7 @@ def render_foreign_key_validation_summary(
         (
             "All selected foreign key relationships passed validation."
             if not failed_tables
-            else "Fix the violating rows, then rerun `omop-maint foreign-keys enable --strict`."
+            else "Fix the violating rows, then rerun `omop-alchemy foreign-keys enable --strict`."
         ),
     )
     return Panel.fit(

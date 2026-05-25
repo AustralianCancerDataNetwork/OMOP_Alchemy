@@ -10,6 +10,7 @@ from omop_alchemy.maintenance.defaults import defaults_path
 from omop_alchemy.maintenance.load_vocab import (
     OPTIONAL_VOCAB_MODELS,
     REQUIRED_VOCAB_MODELS,
+    MergeStrategy,
     _load_vocab_model_csv,
     load_vocab_source,
 )
@@ -67,7 +68,8 @@ def test_load_vocab_source_on_sqlite_creates_tables_and_reports_loaded_results(
         model,
         csv_path,
         merge_strategy,
-        quote_mode="csv",
+        quote_mode="auto",
+        chunksize=None,
     ) -> int:
         loaded_tables.append((model.__tablename__, merge_strategy, quote_mode, csv_path))
         return 1
@@ -88,7 +90,7 @@ def test_load_vocab_source_on_sqlite_creates_tables_and_reports_loaded_results(
     assert all(result_by_name[model.__tablename__].status == "loaded" for model in REQUIRED_VOCAB_MODELS)
     assert all(result_by_name[model.__tablename__].status == "skipped" for model in OPTIONAL_VOCAB_MODELS)
     assert all(merge_strategy == "replace" for _, merge_strategy, _, _ in loaded_tables)
-    assert all(quote_mode == "literal" for _, _, quote_mode, _ in loaded_tables)
+    assert all(quote_mode == "auto" for _, _, quote_mode, _ in loaded_tables)
     assert {table_name for table_name, _, _, _ in loaded_tables} == {
         model.__tablename__
         for model in REQUIRED_VOCAB_MODELS
@@ -102,10 +104,15 @@ def test_load_vocab_source_requires_full_required_athena_fixture(tmp_path):
     """Test load vocab source requires full required athena fixture."""
     engine = sa.create_engine(f"sqlite:///{tmp_path / 'load_vocab_source_missing_required.db'}", future=True)
 
+    # Build a source with only a subset of required models to trigger the missing-files error.
+    partial_source = tmp_path / "partial_athena"
+    partial_source.mkdir()
+    _write_athena_csv(partial_source, REQUIRED_VOCAB_MODELS[0].__tablename__)
+
     with pytest.raises(RuntimeError) as exc_info:
         load_vocab_source(
             engine,
-            source_path=_athena_source_path(),
+            source_path=partial_source,
         )
 
     assert "Missing required Athena vocabulary CSV files" in str(exc_info.value)
@@ -162,7 +169,8 @@ def test_load_vocab_source_cli_uses_saved_athena_source(monkeypatch):
         source_path: str | Path,
         db_schema: str | None = None,
         dry_run: bool = False,
-        merge_strategy: str = "upsert",
+        merge_strategy: MergeStrategy = "replace",
+        chunksize: int | None = None,
         progress_callback=None,
     ):
         from omop_alchemy.maintenance.load_vocab import VocabularyLoadReport, VocabularyLoadResult
@@ -233,7 +241,7 @@ def test_load_vocab_source_cli_uses_saved_athena_source(monkeypatch):
         assert result.exit_code == 0
         assert calls["engine"] == "ENGINE"
         assert calls["source_path"] == expected_source_path
-        assert calls["merge_strategy"] == "upsert"
+        assert calls["merge_strategy"] == "replace"
         assert "load-vocab-source" in result.stdout
         assert "concept" in result.stdout
 
@@ -302,7 +310,8 @@ def test_load_vocab_source_loads_smallest_files_first(monkeypatch, tmp_path):
         model,
         csv_path,
         merge_strategy,
-        quote_mode="csv",
+        quote_mode="auto",
+        chunksize=None,
     ) -> int:
         loaded_order.append(model.__tablename__)
         return 1
@@ -333,7 +342,8 @@ def test_load_vocab_source_reports_weighted_progress(monkeypatch, tmp_path):
         model,
         csv_path,
         merge_strategy,
-        quote_mode="csv",
+        quote_mode="auto",
+        chunksize=None,
     ) -> int:
         return 1
 
@@ -360,7 +370,7 @@ def test_load_vocab_source_wraps_failed_table_load(monkeypatch, tmp_path):
     engine = sa.create_engine(f"sqlite:///{tmp_path / 'load_vocab_source_error.db'}", future=True)
     source_path = _build_required_athena_source(tmp_path)
 
-    def fake_load_vocab_model_csv(session, *, model, csv_path, merge_strategy, quote_mode="csv"):
+    def fake_load_vocab_model_csv(session, *, model, csv_path, merge_strategy, quote_mode="auto", chunksize=None):
         if model.__tablename__ == "domain":
             raise sa.exc.ProgrammingError(
                 "COPY domain FROM STDIN",
@@ -470,3 +480,57 @@ def test_load_vocab_source_cli_surfaces_database_error_detail(monkeypatch):
     assert result.exit_code == 1
     assert "Database operation failed: ProgrammingError." in result.stdout
     assert "value too long for type character varying(255)" in result.stdout
+
+
+def test_load_vocab_source_uses_auto_not_literal_quote_mode(monkeypatch, tmp_path):
+    """Regression: Athena load must use auto quote mode so that quoted concept_name
+    values are not padded with surrounding double-quote characters, which would
+    cause 'value too long for type character varying(255)' on CONCEPT.csv."""
+    engine = sa.create_engine(f"sqlite:///{tmp_path / 'quote_mode_regression.db'}", future=True)
+
+    # Build a tab-delimited CSV where concept_name is exactly 255 chars when
+    # unquoted, but would be 257 chars if the surrounding CSV quotes were kept
+    # as literal characters (the literal-mode bug).
+    source_path = tmp_path / "athena_source"
+    source_path.mkdir()
+
+    long_name = "A" * 255
+    for model in REQUIRED_VOCAB_MODELS:
+        table_name = model.__tablename__.upper()
+        csv_path = source_path / f"{table_name}.csv"
+        if table_name == "CONCEPT":
+            csv_path.write_text(
+                "concept_id\tconcept_name\tdomain_id\tvocabulary_id\t"
+                "concept_class_id\tstandard_concept\tconcept_code\t"
+                "valid_start_date\tvalid_end_date\tinvalid_reason\n"
+                f'4715176\t"{long_name}"\t...\t...\t...\t\t...\t20000101\t20991231\t\n',
+                encoding="utf-8",
+            )
+        else:
+            csv_path.write_text("stub\n", encoding="utf-8")
+
+    received_quote_modes: list[str] = []
+
+    def fake_load_vocab_model_csv(
+        session,
+        *,
+        model,
+        csv_path,
+        merge_strategy,
+        quote_mode="auto",
+        chunksize=None,
+    ) -> int:
+        received_quote_modes.append(quote_mode)
+        return 1
+
+    monkeypatch.setattr(
+        "omop_alchemy.maintenance.load_vocab._load_vocab_model_csv",
+        fake_load_vocab_model_csv,
+    )
+
+    load_vocab_source(engine, source_path=source_path)
+
+    assert all(mode == "auto" for mode in received_quote_modes), (
+        f"Expected all tables to use quote_mode='auto', got: {received_quote_modes}"
+    )
+    assert "literal" not in received_quote_modes

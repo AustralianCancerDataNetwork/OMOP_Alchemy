@@ -92,3 +92,10 @@
 
 ## 0.6.2
 - capped maximum `orm-loader` version to avoid pulling in future breaking changes
+
+## 0.6.3
+- fix CSV quote mode for Athena vocabulary loading: switch from `literal` to `auto` to prevent quoted concept names from overflowing `VARCHAR(255)` database columns
+- make `chunksize=100_000` the default for `load-vocab-source` (was `None`/disabled); pass `--chunksize 0` to disable chunking explicitly
+- **breaking:** `load-vocab-source` CLI now defaults `--merge-strategy` to `replace` (was `upsert`) to match the Python API default and ensure retired concepts are purged on vocabulary refresh; pass `--merge-strategy upsert` to restore the previous behaviour
+- **breaking:** CLI entry point renamed from `omop-maint` to `omop-alchemy`; update any scripts or aliases accordingly (saved `.omop-maint.toml` defaults files are unaffected)
+- remove stale notebooks from repository

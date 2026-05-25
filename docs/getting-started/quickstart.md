@@ -15,13 +15,16 @@ The goal is to provide a fast, reproducible environment for:
 
 When started with the appropriate profile, this stack runs:
 
-- **PostgreSQL** (`cava-database`)
-  - Custom-built image (see `docker/postgres/Dockerfile`)
+- **PostgreSQL** (`postgres`)
+  - Official `postgres:18` image with bulk-load-oriented runtime tuning in compose
   - Persistent storage via Docker volumes
+- **Python workspace** (`python`)
+  - Local OMOP Alchemy source installed into a reusable container image
+  - PostgreSQL client tools included for direct `psql` / `pg_dump` access
 - **pgAdmin** (`pgadmin`)
-  - Web UI for inspecting and querying PostgreSQL
+  - Web UI for inspecting and querying PostgreSQL (optional)
 - **JupyterLab** (`cava-jupyter-notebook`, optional)
-  - Notebook environment wired to the same database
+  - Notebook environment built from the local repo and wired to the same database
 
 All services communicate on a dedicated Docker bridge network (`cava-network`).
 
@@ -48,23 +51,27 @@ POSTGRES_DB=cava
 
 HOST=localhost
 HTTP_TYPE=http
-
-PYTHON_BIND_MOUNT=/absolute/path/to/your/code_or_data
 ```
 
 These credentials are not secure and are intentionally simple for local use.
 
 ### Starting the stack
 
-From the `docker` directory
+From the `docker/` directory.
 
-#### Database + pgAdmin only
+#### Database + Python workspace
 
 ```
-docker compose --profile default up -d
+docker compose up -d
 ```
 
-#### Database + pgAdmin + Jupyter
+#### Database + Python workspace + pgAdmin
+
+```
+docker compose --profile pgadmin up -d
+```
+
+#### Database + Python workspace + Jupyter
 
 ```
 docker compose --profile jupyter up -d

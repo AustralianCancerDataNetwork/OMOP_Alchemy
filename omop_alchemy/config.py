@@ -10,10 +10,12 @@ TEST_PATH = Path(__file__).parent.parent / "tests"
 
 logger = get_logger(__name__)
 
+# from orm-loader 0.4.0 onwards, implicit psycopg2 dependency has been removed in favor of explicit driver modules. 
+# This mapping is used to provide clearer error messages when a required driver is missing.
 POSTGRES_DRIVER_MODULES: Mapping[str, str] = {
-    "postgresql": "psycopg2",
-    "postgresql+psycopg2": "psycopg2",
+    "postgresql": "psycopg",           # bare URL aliased to psycopg
     "postgresql+psycopg": "psycopg",
+    "postgresql+psycopg2": "psycopg2", # retained so missing-driver message is clear
 }
 
 def load_environment(dotenv: str = '') -> None:

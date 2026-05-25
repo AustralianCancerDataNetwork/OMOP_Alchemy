@@ -1,11 +1,15 @@
+import copy
+import time
 from datetime import date
 from pathlib import Path
-
+import os
 import pytest
 import sqlalchemy as sa
 from orm_loader.helpers import bootstrap
 import sqlalchemy.orm as so
 from sqlalchemy.orm import Session, sessionmaker
+
+from typing import Any, Dict, Tuple
 
 from omop_alchemy.maintenance.load_vocab import _load_vocab_model_csv
 from omop_alchemy.cdm.model.clinical import Condition_Occurrence, Person
@@ -32,27 +36,149 @@ ATHENA_LOAD_ORDER = [
     Concept_Relationship,
 ]
 
+# ---------------------------------------------------------------------------
+# In-memory Athena fixture data
+# ---------------------------------------------------------------------------
+# Keyed by ORM __tablename__. Each value is a dict mapping column name →
+# tuple of row values (one entry per row, in the same order).
+# Empty tuples = table has no rows (header-only CSV).
 
-def _athena_source_path() -> Path:
-    """Return the repo-local Athena fixture directory."""
-    return Path(__file__).parent / "fixtures" / "athena_source"
+_ATHENA_FIXTURE_DATA: Dict[str, Dict[str, Tuple[Any, ...]]] = {
+    "concept_ancestor": {
+        "ancestor_concept_id": (),
+        "descendant_concept_id": (),
+        "min_levels_of_separation": (),
+        "max_levels_of_separation": (),
+    },
+    "concept_class": {
+        "concept_class_id": ("Clinical Finding", "Episode", "Ethnicity", "Field", "Gender", "Race", "Type Concept"),
+        "concept_class_name": ("Clinical Finding", "Episode", "Ethnicity", "Field", "Gender", "Race", "Type Concept"),
+        "concept_class_concept_id": (0, 0, 0, 0, 0, 0, 0),
+    },
+    "concept_relationship": {
+        "concept_id_1": (),
+        "concept_id_2": (),
+        "relationship_id": (),
+        "valid_start_date": (),
+        "valid_end_date": (),
+        "invalid_reason": (),
+    },
+    "concept_synonym": {
+        "concept_id": (),
+        "concept_synonym_name": (),
+        "language_concept_id": (),
+    },
+    "concept": {
+        "concept_id": (8507, 8527, 38003564, 32817, 201826, 32546, 1147127),
+        "concept_name": (
+            "MALE",
+            "White",
+            "Not Hispanic or Latino",
+            "EHR",
+            "Type 2 diabetes mellitus",
+            "Disease Episode",
+            "condition_occurrence.condition_occurrence_id",
+        ),
+        "domain_id": ("Gender", "Race", "Ethnicity", "Type Concept", "Condition", "Episode", "Metadata"),
+        "vocabulary_id": ("Gender", "Race", "Ethnicity", "Type Concept", "SNOMED", "Episode", "CDM"),
+        "concept_class_id": (
+            "Gender",
+            "Race",
+            "Ethnicity",
+            "Type Concept",
+            "Clinical Finding",
+            "Episode",
+            "Field",
+        ),
+        "standard_concept": ("S", "S", "S", "S", "S", "S", "S"),
+        "concept_code": (
+            "M",
+            "White",
+            "Not Hispanic or Latino",
+            "EHR",
+            "44054006",
+            "Disease Episode",
+            "condition_occurrence.condition_occurrence_id",
+        ),
+        "valid_start_date": (
+            "19700101",
+            "19700101",
+            "19700101",
+            "19700101",
+            "19700101",
+            "19700101",
+            "19700101",
+        ),
+        "valid_end_date": (
+            "20991231",
+            "20991231",
+            "20991231",
+            "20991231",
+            "20991231",
+            "20991231",
+            "20991231",
+        ),
+        "invalid_reason": (None, None, None, None, None, None, None),
+    },
+    "domain": {
+        "domain_id": ("Condition", "Episode", "Ethnicity", "Gender", "Metadata", "Race", "Type Concept"),
+        "domain_name": ("Condition", "Episode", "Ethnicity", "Gender", "Metadata", "Race", "Type Concept"),
+        "domain_concept_id": (0, 0, 0, 0, 0, 0, 0),
+    },
+    "relationship": {
+        "relationship_id": ("Is a", "Subsumes"),
+        "relationship_name": ("Is a", "Subsumes"),
+        "is_hierarchical": (1, 1),
+        "defines_ancestry": (1, 0),
+        "reverse_relationship_id": ("Subsumes", "Is a"),
+        "relationship_concept_id": (0, 0),
+    },
+    "vocabulary": {
+        "vocabulary_id": ("CDM", "Episode", "Ethnicity", "Gender", "Race", "SNOMED", "Type Concept"),
+        "vocabulary_name": (
+            "Common Data Model",
+            "OMOP Episode",
+            "OMOP Ethnicity",
+            "OMOP Gender",
+            "OMOP Race",
+            "SNOMED-CT",
+            "OMOP Type Concept",
+        ),
+        "vocabulary_reference": ("OHDSI", "OHDSI", "OHDSI", "OHDSI", "OHDSI", "IHTSDO", "OHDSI"),
+        "vocabulary_version": ("v5.4", "v1.0", "v1.0", "v1.0", "v1.0", "SNOMED CT 2023", "v1.0"),
+        "vocabulary_concept_id": (0, 0, 0, 0, 0, 0, 0),
+    },
+}
 
 
-def _load_fixture_vocabulary(engine: sa.Engine) -> None:
-    """Load required Athena vocabulary fixtures into the test database."""
-    base_path = _athena_source_path()
+def _write_fixture_csv(directory: Path, table_name: str, data: Dict[str, Tuple[Any, ...]]) -> Path:
+    """Write an in-memory fixture dict to a tab-separated CSV file."""
+    path = directory / f"{table_name.upper()}.csv"
+    cols = list(data.keys())
+    rows = list(zip(*data.values())) if cols and any(data.values()) else []
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        f.write("\t".join(cols) + "\n")
+        for row in rows:
+            f.write("\t".join("" if v is None else str(v) for v in row) + "\n")
+    return path
+
+
+def _load_fixture_vocabulary(engine: sa.Engine, tmp_dir: Path) -> None:
+    """Write in-memory Athena fixtures to tmp_dir and load them into the test database."""
     with engine.connect() as connection:
         SessionLocal = so.sessionmaker(bind=connection, future=True)
         session = SessionLocal()
         try:
             for model in ATHENA_LOAD_ORDER:
-                csv_path = base_path / f"{model.__tablename__.upper()}.csv"
+                csv_path = _write_fixture_csv(
+                    tmp_dir, model.__tablename__, _ATHENA_FIXTURE_DATA[model.__tablename__]
+                )
                 _load_vocab_model_csv(
                     session,
                     model=model,
                     csv_path=csv_path,
                     merge_strategy="upsert",
-                    quote_mode="literal",
+                    quote_mode="auto",
                 )
                 session.commit()
             connection.commit()
@@ -188,7 +314,7 @@ def engine(tmp_path_factory: pytest.TempPathFactory):
     )
 
     bootstrap(engine, create=True)
-    _load_fixture_vocabulary(engine)
+    _load_fixture_vocabulary(engine, db_dir)
 
     SessionLocal = sessionmaker(bind=engine, future=True, expire_on_commit=False)
     with SessionLocal() as seed_session:
@@ -198,6 +324,62 @@ def engine(tmp_path_factory: pytest.TempPathFactory):
         yield engine
     finally:
         engine.dispose()
+
+
+@pytest.fixture(scope="session")
+def pg_engine():
+    """
+    Session-scoped engine connecting to a local PostgreSQL container.
+
+    Start the container with:
+        docker compose -f tests/docker-compose.yaml up -d
+
+    The fixture retries for up to 20 seconds to allow the container to become ready.
+    """
+    _PG_URL = os.getenv("ENGINE_CDM")
+    if not _PG_URL:
+        pytest.skip("No PostgreSQL engine configured. Set ENGINE_CDM environment variable.")
+    engine = sa.create_engine(_PG_URL, future=True)
+    for attempt in range(20):
+        try:
+            with engine.connect() as conn:
+                conn.execute(sa.text("SELECT 1"))
+            break
+        except Exception:
+            if attempt == 19:
+                engine.dispose()
+                pytest.fail(
+                    "PostgreSQL container not available after 20 attempts. "
+                    "Run: docker compose -f tests/docker-compose.yaml up -d"
+                )
+            time.sleep(1)
+    try:
+        yield engine
+    finally:
+        engine.dispose()
+
+
+@pytest.fixture
+def pg_session(pg_engine):
+    """
+    Function-scoped PostgreSQL session with a clean schema for each test.
+
+    Drops and recreates the public schema before each test to ensure full isolation.
+    """
+    with pg_engine.connect() as conn:
+        conn.execute(sa.text("DROP SCHEMA public CASCADE"))
+        conn.execute(sa.text("CREATE SCHEMA public"))
+        conn.commit()
+
+    bootstrap(pg_engine, create=True)
+
+    SessionLocal = sessionmaker(bind=pg_engine, future=True, expire_on_commit=False)
+    session = SessionLocal()
+    try:
+        yield session
+    finally:
+        session.rollback()
+        session.close()
 
 
 @pytest.fixture(scope="function")
@@ -220,3 +402,74 @@ def session(engine) -> Session:  # type: ignore
         session.rollback()
     finally:
         session.close()
+
+
+# ---------------------------------------------------------------------------
+# In-memory Athena vocabulary fixtures
+# ---------------------------------------------------------------------------
+# Each fixture returns a mutable copy of the module-level constant so tests
+# can append rows without cross-contaminating other tests.
+
+
+@pytest.fixture(scope="function")
+def athena_fixtures() -> Dict[str, Dict[str, Tuple[Any, ...]]]:
+    """All Athena vocabulary tables as a single dict keyed by ORM table name."""
+    return {k: dict(v) for k, v in _ATHENA_FIXTURE_DATA.items()}
+
+
+@pytest.fixture(scope="function")
+def athena_source_dir(tmp_path: Path) -> Path:
+    """Write in-memory Athena fixtures to a temp directory and return the path."""
+    source = tmp_path / "athena_source"
+    source.mkdir()
+    for table_name, data in _ATHENA_FIXTURE_DATA.items():
+        _write_fixture_csv(source, table_name, data)
+    return source
+
+
+@pytest.fixture(scope="function")
+def concept_ancestor() -> Dict[str, Tuple[Any, ...]]:
+    """Mutable copy of the concept_ancestor fixture data."""
+    return copy.deepcopy(_ATHENA_FIXTURE_DATA["concept_ancestor"])
+
+
+@pytest.fixture(scope="function")
+def concept_class() -> Dict[str, Tuple[Any, ...]]:
+    """Mutable copy of the concept_class fixture data."""
+    return copy.deepcopy(_ATHENA_FIXTURE_DATA["concept_class"])
+
+
+@pytest.fixture(scope="function")
+def concept_relationship() -> Dict[str, Tuple[Any, ...]]:
+    """Mutable copy of the concept_relationship fixture data."""
+    return copy.deepcopy(_ATHENA_FIXTURE_DATA["concept_relationship"])
+
+
+@pytest.fixture(scope="function")
+def concept_synonym() -> Dict[str, Tuple[Any, ...]]:
+    """Mutable copy of the concept_synonym fixture data."""
+    return copy.deepcopy(_ATHENA_FIXTURE_DATA["concept_synonym"])
+
+
+@pytest.fixture(scope="function")
+def concept() -> Dict[str, Tuple[Any, ...]]:
+    """Mutable copy of the concept fixture data."""
+    return copy.deepcopy(_ATHENA_FIXTURE_DATA["concept"])
+
+
+@pytest.fixture(scope="function")
+def domain() -> Dict[str, Tuple[Any, ...]]:
+    """Mutable copy of the domain fixture data."""
+    return copy.deepcopy(_ATHENA_FIXTURE_DATA["domain"])
+
+
+@pytest.fixture(scope="function")
+def relationship() -> Dict[str, Tuple[Any, ...]]:
+    """Mutable copy of the relationship fixture data."""
+    return copy.deepcopy(_ATHENA_FIXTURE_DATA["relationship"])
+
+
+@pytest.fixture(scope="function")
+def vocabulary() -> Dict[str, Tuple[Any, ...]]:
+    """Mutable copy of the vocabulary fixture data."""
+    return copy.deepcopy(_ATHENA_FIXTURE_DATA["vocabulary"])

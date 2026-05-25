@@ -98,7 +98,7 @@ def _psql_path() -> str:
 
 def _default_output_path(format: BackupFormat) -> Path:
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    return Path.cwd() / f"omop-maint-backup-{timestamp}{FORMAT_SUFFIXES[format]}"
+    return Path.cwd() / f"omop-alchemy-backup-{timestamp}{FORMAT_SUFFIXES[format]}"
 
 
 def _libpq_connection_uri(url: sa.engine.URL) -> str:

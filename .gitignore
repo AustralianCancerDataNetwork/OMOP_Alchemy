@@ -52,6 +52,9 @@ RELATIONSHIP.csv
 DOMAIN.csv
 CONCEPT_ANCESTOR.csv
 CONCEPT_SYNONYM.csv
+# Allow committed test fixtures (minimal CSVs, not real Athena downloads)
+!tests/fixtures/athena_source/
+!tests/fixtures/athena_source/*.csv
 data/
 *.db-journal
 vocabulary_files/
@@ -67,3 +70,6 @@ _temp/
 temp/
 *.dump
 *.bak
+notebooks/
+.dockerignore
+docker/

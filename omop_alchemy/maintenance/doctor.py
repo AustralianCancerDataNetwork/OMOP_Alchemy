@@ -63,7 +63,7 @@ def _build_recommendations(
             DoctorRecommendation(
                 status="warning",
                 summary=f"{info.missing_table_count} ORM-managed table(s) are missing from the target database.",
-                action="Run `omop-maint create-missing-tables` before attempting bulk operations.",
+                action="Run `omop-alchemy create-missing-tables` before attempting bulk operations.",
             )
         )
 
@@ -72,7 +72,7 @@ def _build_recommendations(
             DoctorRecommendation(
                 status="warning",
                 summary=f"Schema reconciliation found {len(reconciliation.issues)} difference(s) against ORM metadata.",
-                action="Review `omop-maint reconcile-schema` output before continuing with ETL or maintenance work.",
+                action="Review `omop-alchemy reconcile-schema` output before continuing with ETL or maintenance work.",
             )
         )
 
@@ -84,7 +84,7 @@ def _build_recommendations(
             DoctorRecommendation(
                 status="warning",
                 summary="Some PostgreSQL RI triggers are currently disabled.",
-                action="If loading is complete, run `omop-maint foreign-keys validate` and then `omop-maint foreign-keys enable --strict`.",
+                action="If loading is complete, run `omop-alchemy foreign-keys validate` and then `omop-alchemy foreign-keys enable --strict`.",
             )
         )
 
@@ -96,7 +96,7 @@ def _build_recommendations(
             DoctorRecommendation(
                 status="failed",
                 summary="Foreign key validation found violating rows.",
-                action="Fix the reported rows, then rerun `omop-maint foreign-keys enable --strict`.",
+                action="Fix the reported rows, then rerun `omop-alchemy foreign-keys enable --strict`.",
             )
         )
 
@@ -105,7 +105,7 @@ def _build_recommendations(
             DoctorRecommendation(
                 status="warning",
                 summary="`pg_dump` is not on PATH, so backup-database is unavailable from this machine.",
-                action="Install PostgreSQL client tools on the machine running `omop-maint`.",
+                action="Install PostgreSQL client tools on the machine running `omop-alchemy`.",
             )
         )
 
@@ -118,7 +118,7 @@ def _build_recommendations(
             DoctorRecommendation(
                 status="warning",
                 summary="Neither `pg_restore` nor `psql` is on PATH, so restore-database is unavailable from this machine.",
-                action="Install PostgreSQL client tools on the machine running `omop-maint`.",
+                action="Install PostgreSQL client tools on the machine running `omop-alchemy`.",
             )
         )
 
@@ -207,7 +207,7 @@ def collect_doctor_report(
                     DoctorCheck(
                         name="schema drift",
                         status="skipped",
-                        detail="Run `omop-maint doctor --deep` to reconcile ORM metadata against the target database.",
+                        detail="Run `omop-alchemy doctor --deep` to reconcile ORM metadata against the target database.",
                     )
                 )
 
@@ -261,7 +261,7 @@ def collect_doctor_report(
                         DoctorCheck(
                             name="foreign key validation",
                             status="skipped",
-                            detail="Run `omop-maint doctor --deep` to validate selected foreign key relationships.",
+                            detail="Run `omop-alchemy doctor --deep` to validate selected foreign key relationships.",
                         )
                     )
             else:
