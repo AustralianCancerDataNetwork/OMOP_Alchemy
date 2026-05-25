@@ -292,14 +292,13 @@ def test_load_vocab_model_csv_passes_quote_mode(monkeypatch, tmp_path):
     assert calls["quote_mode"] == "literal"
 
 
-def test_load_vocab_source_loads_smallest_files_first(monkeypatch, tmp_path):
-    """Test load vocab source loads smallest files first."""
+def test_load_vocab_source_loads_in_fk_dependency_order(monkeypatch, tmp_path):
+    """Tables must be loaded in REQUIRED_VOCAB_MODELS order to respect FK dependencies."""
     engine = sa.create_engine(f"sqlite:///{tmp_path / 'load_vocab_source_order.db'}", future=True)
     source_path = _build_required_athena_source(tmp_path)
 
-    for model in REQUIRED_VOCAB_MODELS:
-        _write_csv_with_size(source_path, model.__tablename__, 500)
-
+    # Give domain a tiny file and concept_class a large one — if size-sorting were still in place
+    # concept_class would come before vocabulary, but FK order requires domain → vocabulary → concept_class.
     _write_csv_with_size(source_path, "domain", 10)
     _write_csv_with_size(source_path, "vocabulary", 200)
     _write_csv_with_size(source_path, "concept_class", 50)
@@ -326,7 +325,8 @@ def test_load_vocab_source_loads_smallest_files_first(monkeypatch, tmp_path):
 
     load_vocab_source(engine, source_path=source_path)
 
-    assert loaded_order[:3] == ["domain", "concept_class", "vocabulary"]
+    expected_order = [m.__tablename__ for m in REQUIRED_VOCAB_MODELS]
+    assert loaded_order[: len(expected_order)] == expected_order
 
 
 def test_load_vocab_source_reports_weighted_progress(monkeypatch, tmp_path):

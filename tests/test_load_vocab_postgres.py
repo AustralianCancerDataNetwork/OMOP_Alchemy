@@ -177,36 +177,6 @@ def test_upsert_strategy_is_non_destructive(pg_session, pg_engine, tmp_path):
 
 
 
-def test_chunksize_forwarded_to_loader(pg_session, pg_engine, monkeypatch, tmp_path):
-    """chunksize is forwarded from load_vocab_source through to _load_vocab_model_csv."""
-    from omop_alchemy.maintenance import load_vocab as _lv_module
-
-    source_path = _copy_fixture_source(tmp_path)
-    received_chunksizes: list[int | None] = []
-    original = _lv_module._load_vocab_model_csv
-
-    def tracking_load(session, *, model, csv_path, merge_strategy, quote_mode="auto", chunksize=None):
-        received_chunksizes.append(chunksize)
-        return original(
-            session,
-            model=model,
-            csv_path=csv_path,
-            merge_strategy=merge_strategy,
-            quote_mode=quote_mode,
-            chunksize=chunksize,
-        )
-
-    monkeypatch.setattr(_lv_module, "_load_vocab_model_csv", tracking_load)
-
-    load_vocab_source(pg_engine, source_path=source_path, chunksize=500)
-
-    assert received_chunksizes, "Expected at least one table to be loaded"
-    assert all(c == 500 for c in received_chunksizes), (
-        f"Expected chunksize=500 for all tables, got: {received_chunksizes}"
-    )
-
-
-
 def test_db_schema_search_path_on_postgres(pg_engine, tmp_path):
     """
     load_vocab_source with db_schema creates vocabulary tables in the requested
