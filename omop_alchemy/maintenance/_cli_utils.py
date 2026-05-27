@@ -1,64 +1,32 @@
-"""Shared utilities: the @omop_command decorator, error handling, connection resolution, and injected CLI parameter definitions."""
+"""Shared utilities: the @omop_command decorator, error handling, and injected CLI parameter definitions."""
 
 from __future__ import annotations
 
 import functools
 import inspect
-from typing import Any, Callable, Optional, TypeVar
+from dataclasses import dataclass
+from typing import Any, Callable, TypeVar
 
 import typer
 from sqlalchemy.exc import SQLAlchemyError
 
+from oa_configurator import Resolver, load_stack_config
+
 from .tables import TableScope
 from .ui import console, render_error, render_command_header
-from ..db import build_engine, resolve_connection
 from ..backends import BackendNotSupportedError
 
 
 _F = TypeVar("_F", bound=Callable[..., Any])
 
-# ── Shared injected CLI params ────────────────────────────────────────────────
-# Built once and reused so every decorated command gets identical help text.
 
-_DOTENV_PARAM = inspect.Parameter(
-    "dotenv",
-    inspect.Parameter.POSITIONAL_OR_KEYWORD,
-    default=typer.Option(
-        None,
-        help="Path to a .env file to load before resolving the connection. Overrides the saved DOTENV default.",
-    ),
-    annotation=Optional[str],
-)
-_ENGINE_SCHEMA_PARAM = inspect.Parameter(
-    "engine_schema",
-    inspect.Parameter.POSITIONAL_OR_KEYWORD,
-    default=typer.Option(
-        None,
-        help="Named engine configuration to use (e.g. 'cdm', 'results'). Resolves to the ENGINE_<SCHEMA> environment variable group.",
-    ),
-    annotation=Optional[str],
-)
-_DB_SCHEMA_PARAM = inspect.Parameter(
-    "db_schema",
-    inspect.Parameter.POSITIONAL_OR_KEYWORD,
-    default=typer.Option(
-        None,
-        help="Database schema to target (e.g. 'cdm5', 'vocab'). Sets search_path on PostgreSQL; not supported on SQLite.",
-    ),
-    annotation=Optional[str],
-)
-_DRY_RUN_PARAM = inspect.Parameter(
-    "dry_run",
-    inspect.Parameter.POSITIONAL_OR_KEYWORD,
-    default=typer.Option(
-        False,
-        "--dry-run",
-        help="Preview planned actions without applying any changes to the database.",
-    ),
-    annotation=bool,
-)
-
-_INJECTED_NAMES = {"dotenv", "engine_schema", "db_schema"}
+@dataclass(frozen=True)
+class _ConnContext:
+    """Connection context derived from the oa_configurator resolved resource."""
+    db_schema: str | None
+    engine_schema: str = "default"
+    dotenv: None = None  # kept so existing conn.dotenv references compile
+    athena_source: str | None = None  # from OmopAlchemyConfig.athena_source_path
 
 
 # ── Decorator ─────────────────────────────────────────────────────────────────
@@ -72,31 +40,27 @@ def omop_command(
 ) -> Callable[[_F], _F]:
     """Decorator that eliminates CLI boilerplate for every omop-alchemy command.
 
-    Injects ``dotenv``, ``engine_schema``, ``db_schema`` (and optionally
-    ``dry_run``) into the Typer CLI signature, calls :func:`setup_cli_cmd`,
-    and wraps the body in ``try/except handle_error``.
+    Resolves the database connection from oa_configurator, calls
+    :func:`render_command_header`, and wraps the body in ``try/except handle_error``.
 
-    The decorated function must accept ``(conn, engine, ...)`` as its first
-    two positional parameters. The decorator supplies them.  Any
-    ``vocabulary_included`` or ``athena_source`` parameter declared in the
-    function is automatically forwarded to :func:`setup_cli_cmd`.
+    The decorated function must accept ``(conn, engine, ...)`` as its first two
+    positional parameters. The decorator supplies them.
     """
     def decorator(func: _F) -> _F:
         @functools.wraps(func)
         def wrapper(**kwargs: Any) -> Any:
-            dotenv = kwargs.pop("dotenv", None)
-            engine_schema = kwargs.pop("engine_schema", None)
-            db_schema = kwargs.pop("db_schema", None)
-            athena_source = kwargs.pop("athena_source", None)
             _dry_run = kwargs.pop("dry_run", False) if dry_run else False
             _vocab = kwargs.get("vocabulary_included", vocabulary_included)
             _mode = mode_label if mode_label is not None else ("dry-run" if _dry_run else "apply")
             try:
-                conn = resolve_connection(
-                    dotenv=dotenv,
-                    engine_schema=engine_schema,
-                    db_schema=db_schema,
-                    athena_source=athena_source,
+                from ..config import get_config
+                resolver = Resolver(load_stack_config())
+                resolved = resolver.resolve_resource("default")
+                pkg_config = get_config()
+                engine = resolved.create_engine()
+                conn = _ConnContext(
+                    db_schema=resolved.cdm_schema,
+                    athena_source=pkg_config.athena_source_path,
                 )
                 console.print(
                     render_command_header(
@@ -107,7 +71,6 @@ def omop_command(
                         mode_label=_mode,
                     )
                 )
-                engine = build_engine(dotenv=conn.dotenv, engine_schema=conn.engine_schema)
                 if dry_run:
                     return func(conn, engine, dry_run=_dry_run, **kwargs)  # type: ignore[arg-type]
                 return func(conn, engine, **kwargs)  # type: ignore[arg-type]
@@ -116,17 +79,26 @@ def omop_command(
 
         # Rebuild the Typer-visible signature:
         # • skip conn/engine (decorator supplies them)
-        # • skip dotenv/engine_schema/db_schema (decorator injects them)
-        # • skip dry_run if the decorator owns it (to avoid duplication)
+        # • skip dry_run if the decorator owns it
         orig_params = list(inspect.signature(func).parameters.values())
         func_params = [
             p for p in orig_params[2:]
-            if p.name not in _INJECTED_NAMES
-            and not (dry_run and p.name == "dry_run")
+            if not (dry_run and p.name == "dry_run")
         ]
-        new_params = [_DOTENV_PARAM, _ENGINE_SCHEMA_PARAM, _DB_SCHEMA_PARAM] + func_params
+        new_params = func_params[:]
         if dry_run:
-            new_params.append(_DRY_RUN_PARAM)
+            new_params.append(
+                inspect.Parameter(
+                    "dry_run",
+                    inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                    default=typer.Option(
+                        False,
+                        "--dry-run",
+                        help="Preview planned actions without applying any changes to the database.",
+                    ),
+                    annotation=bool,
+                )
+            )
         wrapper.__signature__ = inspect.signature(func).replace(parameters=new_params)  # type: ignore[attr-defined]
 
         return wrapper  # type: ignore[return-value]
@@ -164,4 +136,3 @@ def resolve_selection(
     if selected is not None:
         return None, selected
     return scope or default_scope, None
-

@@ -1,21 +1,27 @@
-from dotenv import load_dotenv
-from pathlib import Path
+from __future__ import annotations
 
-from orm_loader.helpers import get_logger
+from pathlib import Path
+from typing import ClassVar
+
+from pydantic import Field
+from oa_configurator import PackageConfigBase, Resolver, load_stack_config
 
 ROOT_PATH = Path(__file__).parent
 TEST_PATH = Path(__file__).parent.parent / "tests"
 
-logger = get_logger(__name__)
 
-def load_environment(dotenv: str = '') -> None:
-    """
-    Explicitly load environment variables for the application.
-    Safe: does not log sensitive values.
-    """
-    # Dotenv values should take precedence over inherited shell env vars.
-    if load_dotenv(dotenv, override=True) or load_dotenv(override=True):
-        logger.info("Environment variables loaded from .env file")
-    else:
-        logger.debug("No .env file loaded")
+class OmopAlchemyConfig(PackageConfigBase):
+    tool_name: ClassVar[str] = "omop_alchemy"
 
+    athena_source_path: str | None = Field(
+        default=None,
+        description="Path to Athena vocabulary CSV files.",
+    )
+
+
+def get_resolver() -> Resolver:
+    return Resolver(load_stack_config())
+
+
+def get_config() -> OmopAlchemyConfig:
+    return OmopAlchemyConfig.from_stack(load_stack_config())

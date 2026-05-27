@@ -198,12 +198,22 @@ def test_fulltext_management_requires_postgresql(tmp_path, fn_name):
 
 def test_fulltext_install_cli_passes_options(monkeypatch):
     """CLI forwards install options to the fulltext handler implementation."""
+    from oa_configurator import StackConfig
+
     calls: dict[str, object] = {}
 
-    def fake_build_engine(*, dotenv: str | None, engine_schema: str | None):
-        calls["dotenv"] = dotenv
-        calls["engine_schema"] = engine_schema
-        return "ENGINE"
+    cfg = StackConfig.for_session(
+        connections={"db": {"dialect": "sqlite", "database": ":memory:"}},
+        resources={"default": {"primary_db": "db", "cdm_schema": "public"}},
+    )
+    monkeypatch.setattr(
+        "omop_alchemy.maintenance._cli_utils.load_stack_config",
+        lambda: cfg,
+    )
+    monkeypatch.setattr(
+        "omop_alchemy.config.load_stack_config",
+        lambda: cfg,
+    )
 
     def fake_install_fulltext_columns(
         engine: object,
@@ -232,10 +242,6 @@ def test_fulltext_install_cli_passes_options(monkeypatch):
         )
 
     monkeypatch.setattr(
-        "omop_alchemy.maintenance._cli_utils.build_engine",
-        fake_build_engine,
-    )
-    monkeypatch.setattr(
         "omop_alchemy.maintenance.cli_fulltext.install_fulltext_columns",
         fake_install_fulltext_columns,
     )
@@ -246,14 +252,11 @@ def test_fulltext_install_cli_passes_options(monkeypatch):
             "fulltext",
             "install",
             "--dry-run",
-            "--db-schema",
-            "public",
             "--fastupdate",
         ],
     )
 
     assert result.exit_code == 0
-    assert calls["engine"] == "ENGINE"
     assert calls["db_schema"] == "public"
     assert calls["fastupdate"] is True
     assert calls["dry_run"] is True

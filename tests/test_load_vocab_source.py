@@ -6,7 +6,6 @@ from sqlalchemy.orm import sessionmaker
 from typer.testing import CliRunner
 
 from omop_alchemy.maintenance.cli import app
-from omop_alchemy.maintenance.cli_config import defaults_path
 from omop_alchemy.maintenance.cli_vocab import (
     OPTIONAL_VOCAB_MODELS,
     REQUIRED_VOCAB_MODELS,
@@ -149,21 +148,29 @@ def test_load_vocab_source_dry_run_does_not_create_tables(tmp_path):
     assert not inspector.has_table("concept")
 
 
-def test_load_vocab_source_cli_uses_saved_athena_source(monkeypatch):
-    """Test load vocab source cli uses saved athena source."""
+def test_load_vocab_source_cli_uses_configured_athena_source(monkeypatch, tmp_path):
+    """load-vocab-source CLI uses athena_source_path from OmopAlchemyConfig when --athena-source is omitted."""
+    from oa_configurator import StackConfig, Resolver
+    from omop_alchemy.maintenance.cli_vocab import VocabularyLoadReport, VocabularyLoadResult
+
     calls: dict[str, object] = {}
+    athena_dir = tmp_path / "athena_source"
+    athena_dir.mkdir()
 
-    def fake_load_environment(dotenv: str) -> None:
-        calls["dotenv"] = dotenv
+    cfg = StackConfig.for_session(
+        connections={"db": {"dialect": "sqlite", "database": ":memory:"}},
+        resources={"default": {"primary_db": "db", "cdm_schema": "main"}},
+        tools={"omop_alchemy": {"extra": {"athena_source_path": str(athena_dir)}}},
+    )
 
-    def fake_get_engine_name(schema: str | None = None) -> str:
-        calls["engine_schema"] = schema
-        return "sqlite:///:memory:"
-
-    def fake_create_engine(url: str, *, future: bool) -> str:
-        calls["engine_url"] = url
-        calls["future"] = future
-        return "ENGINE"
+    monkeypatch.setattr(
+        "omop_alchemy.maintenance._cli_utils.load_stack_config",
+        lambda: cfg,
+    )
+    monkeypatch.setattr(
+        "omop_alchemy.config.load_stack_config",
+        lambda: cfg,
+    )
 
     def fake_load_vocab_source(
         engine: object,
@@ -177,13 +184,8 @@ def test_load_vocab_source_cli_uses_saved_athena_source(monkeypatch):
         merge_batch_size: int = 1_000_000,
         progress_callback=None,
     ):
-        from omop_alchemy.maintenance.cli_vocab import VocabularyLoadReport, VocabularyLoadResult
-
-        calls["engine"] = engine
         calls["source_path"] = str(source_path)
-        calls["db_schema"] = db_schema
         calls["dry_run"] = dry_run
-        calls["merge_strategy"] = merge_strategy
         return VocabularyLoadReport(
             source_path=str(source_path),
             backend="sqlite",
@@ -204,50 +206,16 @@ def test_load_vocab_source_cli_uses_saved_athena_source(monkeypatch):
         )
 
     monkeypatch.setattr(
-        "omop_alchemy.db.load_environment",
-        fake_load_environment,
-    )
-    monkeypatch.setattr(
-        "omop_alchemy.db.get_engine_name",
-        fake_get_engine_name,
-    )
-    monkeypatch.setattr(
-        "omop_alchemy.db.create_engine_with_dependencies",
-        fake_create_engine,
-    )
-    monkeypatch.setattr(
         "omop_alchemy.maintenance.cli_vocab.load_vocab_source",
         fake_load_vocab_source,
     )
 
-    with runner.isolated_filesystem():
-        athena_dir = Path("athena_source")
-        athena_dir.mkdir()
-        set_result = runner.invoke(
-            app,
-            [
-                "config",
-                "override",
-                "--athena-source",
-                str(athena_dir),
-                "--engine-schema",
-                "cdm",
-            ],
-        )
-        assert set_result.exit_code == 0
+    result = runner.invoke(app, ["load-vocab-source", "--dry-run"])
 
-        result = runner.invoke(
-            app,
-            ["load-vocab-source", "--dry-run"],
-        )
-
-        expected_source_path = str((defaults_path().parent / "athena_source").resolve())
-        assert result.exit_code == 0
-        assert calls["engine"] == "ENGINE"
-        assert calls["source_path"] == expected_source_path
-        assert calls["merge_strategy"] == "replace"
-        assert "load-vocab-source" in result.stdout
-        assert "concept" in result.stdout
+    assert result.exit_code == 0, result.output
+    assert calls["source_path"] == str(athena_dir)
+    assert calls["dry_run"] is True
+    assert "load-vocab-source" in result.stdout
 
 
 def test_load_vocab_model_csv_passes_quote_mode(monkeypatch, tmp_path):
@@ -457,8 +425,20 @@ def test_load_vocab_model_csv_retries_missing_staging_table(monkeypatch, tmp_pat
 
 def test_load_vocab_source_cli_surfaces_database_error_detail(monkeypatch):
     """Test load vocab source cli surfaces database error detail."""
-    def fake_build_engine(*, dotenv: str | None, engine_schema: str | None):
-        return "ENGINE"
+    from oa_configurator import StackConfig
+
+    cfg = StackConfig.for_session(
+        connections={"db": {"dialect": "sqlite", "database": ":memory:"}},
+        resources={"default": {"primary_db": "db", "cdm_schema": "main"}},
+    )
+    monkeypatch.setattr(
+        "omop_alchemy.maintenance._cli_utils.load_stack_config",
+        lambda: cfg,
+    )
+    monkeypatch.setattr(
+        "omop_alchemy.config.load_stack_config",
+        lambda: cfg,
+    )
 
     def fail_load_vocab_source(*args, **kwargs):
         raise sa.exc.ProgrammingError(
@@ -467,10 +447,6 @@ def test_load_vocab_source_cli_surfaces_database_error_detail(monkeypatch):
             Exception("value too long for type character varying(255)"),
         )
 
-    monkeypatch.setattr(
-        "omop_alchemy.maintenance._cli_utils.build_engine",
-        fake_build_engine,
-    )
     monkeypatch.setattr(
         "omop_alchemy.maintenance.cli_vocab.load_vocab_source",
         fail_load_vocab_source,

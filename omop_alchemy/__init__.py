@@ -1,11 +1,12 @@
-from .config import load_environment, TEST_PATH, ROOT_PATH
-from .db import get_engine_name, create_engine_with_dependencies
+from .config import ROOT_PATH, TEST_PATH, OmopAlchemyConfig, get_resolver, get_config
+from .db import create_engine_with_dependencies
 
 
 __all__ = [
+    "OmopAlchemyConfig",
     "create_engine_with_dependencies",
-    "load_environment",
-    "get_engine_name",
-    "TEST_PATH",
+    "get_config",
+    "get_resolver",
     "ROOT_PATH",
+    "TEST_PATH",
 ]

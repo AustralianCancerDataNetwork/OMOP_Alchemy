@@ -72,26 +72,19 @@ def test_validate_foreign_key_constraints_is_safe_on_sqlite(tmp_path):
 
 def test_disable_foreign_keys_cli_fails_gracefully_for_sqlite(monkeypatch):
     """Test disable foreign keys cli fails gracefully for sqlite."""
-    def fake_load_environment(dotenv: str) -> None:
-        return None
+    from oa_configurator import StackConfig
 
-    def fake_get_engine_name(schema: str | None = None) -> str:
-        return "sqlite:///:memory:"
-
-    def fake_create_engine(url: str, *, future: bool) -> sa.Engine:
-        return sa.create_engine(url, future=future)
-
-    monkeypatch.setattr(
-        "omop_alchemy.db.load_environment",
-        fake_load_environment,
+    cfg = StackConfig.for_session(
+        connections={"db": {"dialect": "sqlite", "database": ":memory:"}},
+        resources={"default": {"primary_db": "db", "cdm_schema": "main"}},
     )
     monkeypatch.setattr(
-        "omop_alchemy.db.get_engine_name",
-        fake_get_engine_name,
+        "omop_alchemy.maintenance._cli_utils.load_stack_config",
+        lambda: cfg,
     )
     monkeypatch.setattr(
-        "omop_alchemy.db.create_engine_with_dependencies",
-        fake_create_engine,
+        "omop_alchemy.config.load_stack_config",
+        lambda: cfg,
     )
 
     result = runner.invoke(
@@ -252,19 +245,22 @@ def test_manage_foreign_key_triggers_strict_enables_when_validation_passes(monke
 
 def test_enable_foreign_keys_strict_cli_invokes_strict_management(monkeypatch):
     """Test enable foreign keys strict cli invokes strict management."""
+    from oa_configurator import StackConfig
+
     calls: dict[str, object] = {}
 
-    def fake_load_environment(dotenv: str) -> None:
-        calls["dotenv"] = dotenv
-
-    def fake_get_engine_name(schema: str | None = None) -> str:
-        calls["engine_schema"] = schema
-        return "postgresql+psycopg://example"
-
-    def fake_create_engine(url: str, *, future: bool) -> str:
-        calls["engine_url"] = url
-        calls["future"] = future
-        return "ENGINE"
+    cfg = StackConfig.for_session(
+        connections={"db": {"dialect": "sqlite", "database": ":memory:"}},
+        resources={"default": {"primary_db": "db", "cdm_schema": "main"}},
+    )
+    monkeypatch.setattr(
+        "omop_alchemy.maintenance.cli_foreign_keys.load_stack_config",
+        lambda: cfg,
+    )
+    monkeypatch.setattr(
+        "omop_alchemy.config.load_stack_config",
+        lambda: cfg,
+    )
 
     def fake_manage_foreign_key_triggers(
         engine: object,
@@ -283,18 +279,6 @@ def test_enable_foreign_keys_strict_cli_invokes_strict_management(monkeypatch):
         calls["strict"] = strict
         return []
 
-    monkeypatch.setattr(
-        "omop_alchemy.db.load_environment",
-        fake_load_environment,
-    )
-    monkeypatch.setattr(
-        "omop_alchemy.db.get_engine_name",
-        fake_get_engine_name,
-    )
-    monkeypatch.setattr(
-        "omop_alchemy.db.create_engine_with_dependencies",
-        fake_create_engine,
-    )
     monkeypatch.setattr(
         "omop_alchemy.maintenance.cli_foreign_keys.manage_foreign_key_triggers",
         fake_manage_foreign_key_triggers,
@@ -374,19 +358,22 @@ def test_validate_foreign_key_constraints_reports_failures(monkeypatch):
 
 def test_foreign_keys_validate_cli_invokes_validation(monkeypatch):
     """Test foreign keys validate cli invokes validation."""
+    from oa_configurator import StackConfig
+
     calls: dict[str, object] = {}
 
-    def fake_load_environment(dotenv: str) -> None:
-        calls["dotenv"] = dotenv
-
-    def fake_get_engine_name(schema: str | None = None) -> str:
-        calls["engine_schema"] = schema
-        return "postgresql+psycopg://example"
-
-    def fake_create_engine(url: str, *, future: bool) -> str:
-        calls["engine_url"] = url
-        calls["future"] = future
-        return "ENGINE"
+    cfg = StackConfig.for_session(
+        connections={"db": {"dialect": "sqlite", "database": ":memory:"}},
+        resources={"default": {"primary_db": "db", "cdm_schema": "main"}},
+    )
+    monkeypatch.setattr(
+        "omop_alchemy.maintenance._cli_utils.load_stack_config",
+        lambda: cfg,
+    )
+    monkeypatch.setattr(
+        "omop_alchemy.config.load_stack_config",
+        lambda: cfg,
+    )
 
     def fake_validate_foreign_key_constraints(
         engine: object,
@@ -430,18 +417,6 @@ def test_foreign_keys_validate_cli_invokes_validation(monkeypatch):
         )
 
     monkeypatch.setattr(
-        "omop_alchemy.db.load_environment",
-        fake_load_environment,
-    )
-    monkeypatch.setattr(
-        "omop_alchemy.db.get_engine_name",
-        fake_get_engine_name,
-    )
-    monkeypatch.setattr(
-        "omop_alchemy.db.create_engine_with_dependencies",
-        fake_create_engine,
-    )
-    monkeypatch.setattr(
         "omop_alchemy.maintenance.cli_foreign_keys.validate_foreign_key_constraints",
         fake_validate_foreign_key_constraints,
     )
@@ -452,7 +427,6 @@ def test_foreign_keys_validate_cli_invokes_validation(monkeypatch):
     )
 
     assert result.exit_code == 0
-    assert calls["engine"] == "ENGINE"
     assert "foreign-keys validate" in result.stdout
     assert "Violations" in result.stdout
     assert "visit_occurrence" in result.stdout

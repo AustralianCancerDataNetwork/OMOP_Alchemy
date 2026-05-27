@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+from typing import Annotated
+
 import typer
 
 from . import (
     cli_backup as backup,
-    cli_config as config,
     cli_foreign_keys as foreign_keys,
     cli_fulltext as fulltext,
     cli_indexes as indexes,
@@ -28,7 +29,6 @@ app = typer.Typer(
 )
 
 # Subgroups
-app.add_typer(config.app, name="config")
 app.add_typer(foreign_keys.app, name="foreign-keys")
 app.add_typer(indexes.app, name="indexes")
 app.add_typer(fulltext.app, name="fulltext")
@@ -40,8 +40,13 @@ for _sub in (schema.app, vocab.app, tables.app, backup.app):
 
 
 @app.callback()
-def app_callback() -> None:
-    configure_logging()
+def app_callback(
+    verbose: Annotated[
+        int,
+        typer.Option("--verbose", "-v", count=True, help="Increase verbosity: -v=INFO, -vv=DEBUG"),
+    ] = 0,
+) -> None:
+    configure_logging(verbose)
 
 
 def main() -> None:

@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import typer
 
-from omop_alchemy import load_environment
-
 from ._cli_utils import omop_command
 from .cli_schema_doctor import (
     DoctorCheck as DoctorCheck,
@@ -74,14 +72,8 @@ def info_command(
     ),
 ) -> None:
     """Inspect maintenance CLI readiness, backend compatibility, and current installation state."""
-    load_environment(conn.dotenv or "")
     with console.status("Inspecting maintenance environment..."):
-        info = collect_maintenance_info(
-            dotenv=conn.dotenv,
-            engine_schema=conn.engine_schema,
-            db_schema=conn.db_schema,
-            vocabulary_included=vocabulary_included,
-        )
+        info = collect_maintenance_info(vocabulary_included=vocabulary_included)
     console.print(render_info_environment(info))
     console.print(render_info_database(info))
     console.print(render_info_dependencies(info))
@@ -106,15 +98,8 @@ def doctor_command(
     ),
 ) -> None:
     """Run a read-only maintenance health check across connection readiness, schema drift, and FK state."""
-    load_environment(conn.dotenv or "")
     with console.status("Running maintenance doctor checks..."):
-        report = collect_doctor_report(
-            dotenv=conn.dotenv,
-            engine_schema=conn.engine_schema,
-            db_schema=conn.db_schema,
-            vocabulary_included=vocabulary_included,
-            deep=deep,
-        )
+        report = collect_doctor_report(vocabulary_included=vocabulary_included, deep=deep)
     console.print(render_info_environment(report.info))
     console.print(render_info_database(report.info))
     console.print(render_doctor_checks(report.checks))

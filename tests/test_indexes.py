@@ -116,19 +116,22 @@ def test_manage_indexes_disable_and_enable_on_sqlite(tmp_path):
 
 def test_disable_indexes_cli_invokes_management(monkeypatch):
     """Test disable indexes cli invokes management."""
+    from oa_configurator import StackConfig
+
     calls: dict[str, object] = {}
 
-    def fake_load_environment(dotenv: str) -> None:
-        calls["dotenv"] = dotenv
-
-    def fake_get_engine_name(schema: str | None = None) -> str:
-        calls["engine_schema"] = schema
-        return "postgresql+psycopg://example"
-
-    def fake_create_engine(url: str, *, future: bool) -> str:
-        calls["engine_url"] = url
-        calls["future"] = future
-        return "ENGINE"
+    cfg = StackConfig.for_session(
+        connections={"db": {"dialect": "sqlite", "database": ":memory:"}},
+        resources={"default": {"primary_db": "db", "cdm_schema": "main"}},
+    )
+    monkeypatch.setattr(
+        "omop_alchemy.maintenance._cli_utils.load_stack_config",
+        lambda: cfg,
+    )
+    monkeypatch.setattr(
+        "omop_alchemy.config.load_stack_config",
+        lambda: cfg,
+    )
 
     def fake_manage_indexes(
         engine: object,
@@ -161,18 +164,6 @@ def test_disable_indexes_cli_invokes_management(monkeypatch):
         ]
 
     monkeypatch.setattr(
-        "omop_alchemy.db.load_environment",
-        fake_load_environment,
-    )
-    monkeypatch.setattr(
-        "omop_alchemy.db.get_engine_name",
-        fake_get_engine_name,
-    )
-    monkeypatch.setattr(
-        "omop_alchemy.db.create_engine_with_dependencies",
-        fake_create_engine,
-    )
-    monkeypatch.setattr(
         "omop_alchemy.maintenance.cli_indexes.manage_indexes",
         fake_manage_indexes,
     )
@@ -182,10 +173,6 @@ def test_disable_indexes_cli_invokes_management(monkeypatch):
         [
             "indexes",
             "disable",
-            "--dotenv",
-            ".env.test",
-            "--engine-schema",
-            "cdm",
             "--dry-run",
         ],
     )

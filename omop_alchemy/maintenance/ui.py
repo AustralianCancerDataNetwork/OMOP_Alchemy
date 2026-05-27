@@ -18,7 +18,6 @@ from .tables import TableCategory
 
 if TYPE_CHECKING:
     from .cli_backup import BackupResult
-    from .cli_config import ConnectionDefaults
     from .cli_foreign_keys import (
         ForeignKeyConstraintViolation,
         ForeignKeyManagementResult,
@@ -140,20 +139,6 @@ def render_error(message: str, *, title: str = "Error") -> Panel:
     )
 
 
-def render_connection_defaults(
-    defaults: ConnectionDefaults,
-    *,
-    path: str,
-    title: str = "Connection Defaults",
-) -> Panel:
-    grid = Table.grid(padding=(0, 2))
-    grid.add_column(style="bold cyan")
-    grid.add_column()
-    grid.add_row("File", path)
-    for param, value in defaults.to_dict().items():
-        grid.add_row(param.replace("_", " ").title(), value or "-")
-    return Panel.fit(grid, title=f"[bold]{title}[/bold]", border_style="blue")
-
 
 def _status_text(status: str) -> Text:
     return Text(status.upper(), style=STATUS_STYLES.get(status, "white"))
@@ -187,16 +172,14 @@ def render_info_environment(info: MaintenanceInfo) -> Panel:
     grid.add_row("pg_restore", info.pg_restore_path or "not on PATH")
     grid.add_row("psql", info.psql_path or "not on PATH")
     grid.add_row(
-        "Defaults file",
+        "Config file",
         Text(
-            info.defaults_file,
-            style="green" if info.defaults_exists else "yellow",
+            info.config_file,
+            style="green" if info.config_exists else "yellow",
         ),
     )
-    grid.add_row("dotenv", info.dotenv_path or "-")
-    grid.add_row("dotenv exists", _optional_bool_label(info.dotenv_exists))
-    grid.add_row("engine_schema", info.engine_schema or "-")
-    grid.add_row("db_schema", info.db_schema or "default search_path")
+    grid.add_row("Resource", info.resource_name)
+    grid.add_row("CDM schema", info.db_schema or "default search_path")
     return Panel.fit(grid, title="[bold]Environment[/bold]", border_style="magenta")
 
 

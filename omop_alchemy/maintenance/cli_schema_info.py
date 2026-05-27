@@ -5,17 +5,16 @@ from __future__ import annotations
 from dataclasses import dataclass
 import importlib.metadata
 import importlib.util
-import os
 import shutil
 
 import sqlalchemy as sa
 from sqlalchemy.exc import SQLAlchemyError
 
-from omop_alchemy import create_engine_with_dependencies, load_environment
+from oa_configurator import Resolver, load_stack_config
+from oa_configurator.loader import DEFAULT_CONFIG_PATH
 from omop_alchemy.backends.resolve import SupportedDialect
-from omop_alchemy.db import get_engine_name
+from omop_alchemy.db import create_engine_with_dependencies
 
-from .cli_config import defaults_path
 from .cli_schema_tables import collect_missing_tables
 from .tables import (
     TableCategory,
@@ -63,11 +62,9 @@ class MaintenanceInfo:
     pg_dump_path: str | None
     pg_restore_path: str | None
     psql_path: str | None
-    defaults_file: str
-    defaults_exists: bool
-    dotenv_path: str | None
-    dotenv_exists: bool | None
-    engine_schema: str | None
+    config_file: str
+    config_exists: bool
+    resource_name: str
     db_schema: str | None
     engine_url: str | None
     backend: str | None
@@ -306,17 +303,13 @@ def _command_support_for_backend(
 
 def collect_maintenance_info(
     *,
-    engine_schema: str | None = None,
-    db_schema: str | None = None,
-    dotenv: str | None = None,
     vocabulary_included: bool = True,
 ) -> MaintenanceInfo:
     """Probe the current environment: resolve config, attempt a connection, and assess per-command readiness."""
-    load_environment(dotenv or "")
     pg_dump_path = shutil.which("pg_dump")
     pg_restore_path = shutil.which("pg_restore")
     psql_path = shutil.which("psql")
-    defaults_file = defaults_path()
+    config_file = DEFAULT_CONFIG_PATH
     dependencies = (
         _dependency_status("sqlalchemy", "sqlalchemy"),
         _dependency_status("typer", "typer"),
@@ -331,9 +324,9 @@ def collect_maintenance_info(
         exclude_categories=(() if vocabulary_included else (TableCategory.VOCABULARY,))
     )
     cli_path = shutil.which("omop-alchemy")
-    dotenv_exists = None if dotenv is None else os.path.exists(dotenv)
 
-    engine_name: str | None = None
+    resource_name = "default"
+    db_schema: str | None = None
     engine_url: str | None = None
     backend: str | None = None
     engine_created = False
@@ -344,41 +337,37 @@ def collect_maintenance_info(
     missing_table_count: int | None = None
 
     try:
-        engine_name = get_engine_name(engine_schema)
-        url = sa.engine.make_url(engine_name)
-        engine_url = url.render_as_string(hide_password=True)
-        backend = url.get_backend_name()
+        resolver = Resolver(load_stack_config())
+        resolved = resolver.resolve_resource(resource_name)
+        db_schema = resolved.cdm_schema
+        raw_url = sa.engine.make_url(resolved.primary_db.url)
+        engine_url = raw_url.render_as_string(hide_password=True)
+        backend = raw_url.get_backend_name()
+        engine = resolved.create_engine()
+        engine_created = True
     except RuntimeError as exc:
         engine_error = str(exc)
     except Exception as exc:
         engine_error = f"Could not resolve engine configuration: {exc}"
 
-    if engine_name is not None:
+    if engine_created:
         try:
-            engine = create_engine_with_dependencies(engine_name, future=True)
-            engine_created = True
-        except RuntimeError as exc:
-            engine_error = str(exc)
+            with engine.connect() as connection:
+                connection.exec_driver_sql("SELECT 1")
+            connection_ready = True
+            missing_tables = collect_missing_tables(
+                engine,
+                db_schema=db_schema,
+                vocabulary_included=vocabulary_included,
+            )
+            missing_table_count = len(missing_tables)
+            existing_table_count = len(managed_tables) - missing_table_count
+        except SQLAlchemyError as exc:
+            connection_error = f"{exc.__class__.__name__}: {exc}"
         except Exception as exc:
-            engine_error = f"Could not create engine: {exc}"
-        else:
-            try:
-                with engine.connect() as connection:
-                    connection.exec_driver_sql("SELECT 1")
-                connection_ready = True
-                missing_tables = collect_missing_tables(
-                    engine,
-                    db_schema=db_schema,
-                    vocabulary_included=vocabulary_included,
-                )
-                missing_table_count = len(missing_tables)
-                existing_table_count = len(managed_tables) - missing_table_count
-            except SQLAlchemyError as exc:
-                connection_error = f"{exc.__class__.__name__}: {exc}"
-            except Exception as exc:
-                connection_error = str(exc)
-            finally:
-                engine.dispose()
+            connection_error = str(exc)
+        finally:
+            engine.dispose()
 
     if backend is None:
         command_support = _command_support_for_unavailable_engine(
@@ -402,11 +391,9 @@ def collect_maintenance_info(
         pg_dump_path=pg_dump_path,
         pg_restore_path=pg_restore_path,
         psql_path=psql_path,
-        defaults_file=str(defaults_file),
-        defaults_exists=defaults_file.exists(),
-        dotenv_path=dotenv,
-        dotenv_exists=dotenv_exists,
-        engine_schema=engine_schema,
+        config_file=str(config_file),
+        config_exists=config_file.exists(),
+        resource_name=resource_name,
         db_schema=db_schema,
         engine_url=engine_url,
         backend=backend,

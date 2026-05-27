@@ -33,75 +33,9 @@ with so.Session(engine) as session:
     session.commit()
 ```
 
-## Connecting with OMOP_Alchemy-specific helpers
+**Database configuration** is handled by oa_configurator. See [Configuration](configuration.md) for how to set up `~/.config/omop/config.toml`.
 
-### Environment-based config
-
-```python
-def load_environment(dotenv: str = '') -> None:
-```
-
-Loads environment variables from a .env file into the process environment.
-
-* If a specific .env path is provided, it is loaded first
-* Otherwise, a default .env file is searched for
-
-```python
-load_environment()
-
-load_environment("/etc/myapp/.env")
-```
-
-### Database engine resolution
-
-
-```python
-def get_engine_name(schema: str | None = None) -> str:
-```
-Resolves a SQLAlchemy database engine URI from environment variables.
-
-If a `schema` is provided, resolution proceeds as follows:
-
-1. `ENGINE_<SCHEMA>`
-2. `ENGINE` as fallback (if only one)
-
-Single DB .env example:
-
-```
-ENGINE=postgresql+psycopg://user:password@localhost:5432/omop
-
-engine_url = get_engine_name()
-```
-
-Multi-schema routing
-
-```
-ENGINE_CDM=postgresql+psycopg://user:password@localhost:5432/cdm
-ENGINE_SOURCE=postgresql+psycopg://user:password@localhost:5432/source
-ENGINE=postgresql+psycopg://user:password@localhost:5432/default
-
-cdm_engine = get_engine_name("cdm")
-source_engine = get_engine_name("source")
-default_engine = get_engine_name()
-```
-
-### Recommended patterns
-
-```python
-from orm_loader.helpers import configure_logging, bootstrap
-from omop_alchemy import get_engine_name, load_environment
-import sqlalchemy as sa
-
-configure_logging()
-load_environment()
-
-engine_string = get_engine_name('cdm')
-engine = sa.create_engine(engine_string, future=True, echo=False)
-
-bootstrap(engine, create=True)
-```
-
-### Session & Engine Management for Bulk Operations
+## Session & Engine Management for Bulk Operations
 
 ORM-loader module provides context managers for safely relaxing database constraints during high-volume operations such as CSV loads, staging-table merges, and backfills.
 

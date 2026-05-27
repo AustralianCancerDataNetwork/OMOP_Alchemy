@@ -579,15 +579,16 @@ def load_vocab_source_command(
     dry_run: bool = False,
 ) -> None:
     """Load all Athena vocabulary CSVs from the configured source path, optionally toggling indexes and FK triggers for speed."""
-    if conn.athena_source is None:
-            console.print(
-                render_error(
-                    "No Athena vocabulary source path is configured. "
-                    "Set it with `omop-alchemy config override --athena-source <path>` "
-                    "or pass `--athena-source`."
-                )
+    effective_athena_source = athena_source or conn.athena_source
+    if effective_athena_source is None:
+        console.print(
+            render_error(
+                "No Athena vocabulary source path is configured. "
+                "Set it with `omop-config configure omop_alchemy` "
+                "or pass `--athena-source`."
             )
-            raise typer.Exit(code=1)
+        )
+        raise typer.Exit(code=1)
 
     with Progress(
         SpinnerColumn(),
@@ -618,7 +619,7 @@ def load_vocab_source_command(
 
         report = load_vocab_source(
             engine,
-            source_path=conn.athena_source,
+            source_path=effective_athena_source,
             db_schema=conn.db_schema,
             dry_run=dry_run,
             merge_strategy=merge_strategy,

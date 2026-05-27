@@ -7,7 +7,8 @@ from dataclasses import dataclass
 import sqlalchemy as sa
 import typer
 
-from ..db import build_engine, resolve_connection
+from oa_configurator import Resolver, load_stack_config
+from ._cli_utils import _ConnContext
 from ..backends import Backend, resolve_backend, require_backend_support, backend_support_note
 from ._cli_utils import handle_error, omop_command
 from .tables import (
@@ -474,18 +475,6 @@ def disable_foreign_keys_command(
 
 @app.command("enable")
 def enable_foreign_keys_command(
-    dotenv: str | None = typer.Option(
-        None,
-        help="Path to a .env file to load before resolving the connection. Overrides the saved DOTENV default.",
-    ),
-    engine_schema: str | None = typer.Option(
-        None,
-        help="Named engine configuration to use (e.g. 'cdm', 'results'). Resolves to the ENGINE_<SCHEMA> environment variable group.",
-    ),
-    db_schema: str | None = typer.Option(
-        None,
-        help="Database schema to target (e.g. 'cdm5', 'vocab'). Sets search_path on PostgreSQL; not supported on SQLite.",
-    ),
     vocabulary_included: bool = typer.Option(
         False,
         "--vocab/--no-vocab",
@@ -503,7 +492,14 @@ def enable_foreign_keys_command(
     ),
 ) -> None:
     """Re-enable PostgreSQL RI trigger enforcement. Use --strict to abort if any violations exist first."""
-    conn = resolve_connection(dotenv=dotenv, engine_schema=engine_schema, db_schema=db_schema)
+    try:
+        resolver = Resolver(load_stack_config())
+        resolved = resolver.resolve_resource("default")
+        conn = _ConnContext(db_schema=resolved.cdm_schema)
+        engine = resolved.create_engine()
+    except Exception as exc:
+        handle_error(exc)
+        return
     console.print(
         render_command_header(
             command_name="foreign-keys enable --strict" if strict else "foreign-keys enable",
@@ -514,7 +510,6 @@ def enable_foreign_keys_command(
         )
     )
     try:
-        engine = build_engine(dotenv=conn.dotenv, engine_schema=conn.engine_schema)
         status_msg = (
             "Validating and enabling PostgreSQL foreign key trigger enforcement..."
             if strict

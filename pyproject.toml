@@ -33,7 +33,7 @@ dependencies = [
   "sqlalchemy>=2.0.45",
   "pandas>=2.0",
   "pyyaml>=6.0",
-  "python-dotenv>=1.2.2",
+  "oa-configurator>=0.2.0",
   "typer>=0.12",
   "rich>=13.0",
   "orm-loader>=0.4.1",
@@ -69,6 +69,9 @@ Issues = "https://github.com/AustralianCancerDataNetwork/OMOP_Alchemy/issues"
 
 [project.scripts]
 omop-alchemy = "omop_alchemy.maintenance.cli:main"
+
+[project.entry-points."omop.config"]
+omop_alchemy = "omop_alchemy.config:OmopAlchemyConfig"
 
 
 [build-system]

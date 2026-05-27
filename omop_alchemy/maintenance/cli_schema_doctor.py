@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from omop_alchemy import create_engine_with_dependencies, load_environment
+from oa_configurator import Resolver, load_stack_config
 from omop_alchemy.backends.resolve import SupportedDialect
-from omop_alchemy.db import get_engine_name
+from omop_alchemy.db import create_engine_with_dependencies
 
 from .cli_foreign_keys import (
     ForeignKeyStatusResult,
@@ -155,20 +155,11 @@ def _build_recommendations(
 
 def collect_doctor_report(
     *,
-    engine_schema: str | None = None,
-    db_schema: str | None = None,
-    dotenv: str | None = None,
     vocabulary_included: bool = True,
     deep: bool = False,
 ) -> DoctorReport:
     """Run all maintenance health checks and return a prioritised report with recommendations."""
-    load_environment(dotenv or "")
-    info = collect_maintenance_info(
-        engine_schema=engine_schema,
-        db_schema=db_schema,
-        dotenv=dotenv,
-        vocabulary_included=vocabulary_included,
-    )
+    info = collect_maintenance_info(vocabulary_included=vocabulary_included)
 
     checks = [
         DoctorCheck(
@@ -187,7 +178,10 @@ def collect_doctor_report(
     foreign_key_validation: ForeignKeyValidationReport | None = None
 
     if info.connection_ready:
-        engine = create_engine_with_dependencies(get_engine_name(engine_schema), future=True)
+        resolver = Resolver(load_stack_config())
+        resolved = resolver.resolve_resource("default")
+        engine = resolved.create_engine()
+        db_schema = resolved.cdm_schema
         try:
             missing_table_count = info.missing_table_count or 0
             checks.append(

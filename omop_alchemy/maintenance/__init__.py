@@ -2,10 +2,6 @@ from .cli_backup import (
     BackupFormat,
     BackupResult,
 )
-from .cli_config import (
-    ConnectionDefaults,
-    defaults_path,
-)
 from .cli_foreign_keys import (
     ForeignKeyConstraintViolation,
     ForeignKeyManagementResult,
@@ -73,7 +69,6 @@ __all__ = [
     "reset_model_sequences",
     "select_maintenance_tables",
     "truncate_tables",
-    "defaults_path",
     "AnalyzeTableResult",
     "BackupFormat",
     "BackupResult",
@@ -84,7 +79,6 @@ __all__ = [
     "ForeignKeyValidationResult",
     "IndexManagementResult",
     "IndexTarget",
-    "ConnectionDefaults",
     "CommandSupport",
     "DoctorCheck",
     "DoctorRecommendation",
