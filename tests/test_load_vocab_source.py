@@ -71,6 +71,7 @@ def test_load_vocab_source_on_sqlite_creates_tables_and_reports_loaded_results(
         quote_mode="auto",
         chunksize=None,
         index_strategy="auto",
+        merge_batch_size: int = 1_000_000,
     ) -> int:
         loaded_tables.append((model.__tablename__, merge_strategy, quote_mode, csv_path))
         return 1
@@ -173,6 +174,7 @@ def test_load_vocab_source_cli_uses_saved_athena_source(monkeypatch):
         merge_strategy: MergeStrategy = "replace",
         chunksize: int | None = None,
         bulk_mode: bool = True,
+        merge_batch_size: int = 1_000_000,
         progress_callback=None,
     ):
         from omop_alchemy.maintenance.cli_vocab import VocabularyLoadReport, VocabularyLoadResult
@@ -269,7 +271,7 @@ def test_load_vocab_model_csv_passes_quote_mode(monkeypatch, tmp_path):
 
     calls: dict[str, object] = {}
 
-    def fake_load_csv(session, path, *, merge_strategy, quote_mode, index_strategy="auto"):
+    def fake_load_csv(session, path, *, merge_strategy, quote_mode, index_strategy="auto", merge_batch_size: int = 1_000_000):
         calls["merge_strategy"] = merge_strategy
         calls["quote_mode"] = quote_mode
         calls["path"] = path
@@ -314,6 +316,7 @@ def test_load_vocab_source_loads_in_fk_dependency_order(monkeypatch, tmp_path):
         quote_mode="auto",
         chunksize=None,
         index_strategy="auto",
+        merge_batch_size: int = 1_000_000,
     ) -> int:
         loaded_order.append(model.__tablename__)
         return 1
@@ -348,6 +351,7 @@ def test_load_vocab_source_reports_weighted_progress(monkeypatch, tmp_path):
         quote_mode="auto",
         chunksize=None,
         index_strategy="auto",
+        merge_batch_size: int = 1_000_000,
     ) -> int:
         return 1
 
@@ -374,7 +378,7 @@ def test_load_vocab_source_wraps_failed_table_load(monkeypatch, tmp_path):
     engine = sa.create_engine(f"sqlite:///{tmp_path / 'load_vocab_source_error.db'}", future=True)
     source_path = _build_required_athena_source(tmp_path)
 
-    def fake_load_vocab_model_csv(session, *, model, csv_path, merge_strategy, quote_mode="auto", chunksize=None, index_strategy="auto"):
+    def fake_load_vocab_model_csv(session, *, model, csv_path, merge_strategy, quote_mode="auto", chunksize=None, index_strategy="auto", merge_batch_size: int = 1_000_000):
         if model.__tablename__ == "domain":
             raise sa.exc.ProgrammingError(
                 "COPY domain FROM STDIN",
@@ -421,7 +425,7 @@ def test_load_vocab_model_csv_retries_missing_staging_table(monkeypatch, tmp_pat
 
     calls = {"load_csv": 0, "create_staging_table": 0}
 
-    def fake_load_csv(session, path, *, merge_strategy, quote_mode, index_strategy="auto"):
+    def fake_load_csv(session, path, *, merge_strategy, quote_mode, index_strategy="auto", merge_batch_size: int = 1_000_000):
         calls["load_csv"] += 1
         if calls["load_csv"] == 1:
             raise sa.exc.ProgrammingError(
@@ -524,6 +528,7 @@ def test_load_vocab_source_uses_auto_not_literal_quote_mode(monkeypatch, tmp_pat
         quote_mode="auto",
         chunksize=None,
         index_strategy="auto",
+        merge_batch_size: int = 1_000_000,
     ) -> int:
         received_quote_modes.append(quote_mode)
         return 1

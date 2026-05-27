@@ -163,91 +163,71 @@ def manage_indexes(
 
     results: list[IndexManagementResult] = []
 
-    with engine.begin() as connection:
-        for table in selected_tables:
-            if not inspector.has_table(table.table_name, schema=db_schema):
+    for table in selected_tables:
+        if not inspector.has_table(table.table_name, schema=db_schema):
+            continue
+
+        existing_index_names = {
+            index["name"]
+            for index in inspector.get_indexes(table.table_name, schema=db_schema)
+        }
+
+        for metadata_index in sorted(table.table.indexes, key=lambda idx: idx.name or ""):
+            index_name = str(metadata_index.name)
+            exists = index_name in existing_index_names
+            should_apply = (
+                not enable and exists
+            ) or (
+                enable and not exists
+            )
+
+            if not should_apply:
                 continue
 
-            existing_index_names = {
-                index["name"]
-                for index in inspector.get_indexes(table.table_name, schema=db_schema)
-            }
-
-            for metadata_index in sorted(table.table.indexes, key=lambda idx: idx.name or ""):
-                index_name = str(metadata_index.name)
-                exists = index_name in existing_index_names
-                should_apply = (
-                    not enable and exists
-                ) or (
-                    enable and not exists
-                )
-
-                if not should_apply:
-                    continue
-
-                schema_index = metadata_indexes[(table.table_name, index_name)]
-                if not dry_run:
+            schema_index = metadata_indexes[(table.table_name, index_name)]
+            if not dry_run:
+                # Each index gets its own transaction so WAL is committed and
+                # checkpointable before the next index build begins. One large
+                # transaction for all indexes would accumulate 5+ GB of WAL
+                # on vocabulary tables before any checkpoint can reclaim it.
+                with engine.begin() as connection:
                     if not enable:
                         schema_index.drop(bind=connection, checkfirst=True)
                     else:
                         schema_index.create(bind=connection, checkfirst=True)
 
-                results.append(
-                    IndexManagementResult(
-                        operation="index",
-                        table_name=table.table_name,
-                        category=table.category,
-                        model_name=table.model_name,
-                        model_module=table.model_module,
-                        index_name=index_name,
-                        column_names=tuple(column.name for column in metadata_index.columns),
-                        unique=bool(metadata_index.unique),
-                        clustered=metadata_index.info.get(OMOP_CLUSTER_INDEX_INFO_KEY) is True,
-                        enable=enable,
-                        status="planned" if dry_run else "applied",
-                        detail=(
-                            "metadata-defined index would be dropped"
-                            if not enable and dry_run
-                            else "metadata-defined index dropped"
-                            if not enable
-                            else "metadata-defined index would be created"
-                            if dry_run
-                            else "metadata-defined index created"
-                        ),
-                    )
+            results.append(
+                IndexManagementResult(
+                    operation="index",
+                    table_name=table.table_name,
+                    category=table.category,
+                    model_name=table.model_name,
+                    model_module=table.model_module,
+                    index_name=index_name,
+                    column_names=tuple(column.name for column in metadata_index.columns),
+                    unique=bool(metadata_index.unique),
+                    clustered=metadata_index.info.get(OMOP_CLUSTER_INDEX_INFO_KEY) is True,
+                    enable=enable,
+                    status="planned" if dry_run else "applied",
+                    detail=(
+                        "metadata-defined index would be dropped"
+                        if not enable and dry_run
+                        else "metadata-defined index dropped"
+                        if not enable
+                        else "metadata-defined index would be created"
+                        if dry_run
+                        else "metadata-defined index created"
+                    ),
                 )
+            )
 
-            if enable:
-                cluster_index_name = _cluster_target_name(table)
-                if cluster_index_name is None:
-                    continue
+        if enable:
+            cluster_index_name = _cluster_target_name(table)
+            if cluster_index_name is None:
+                continue
 
-                cluster_columns = _cluster_column_names(table, cluster_index_name)
-                if not clustering_supported:
-                    results.append(
-                        IndexManagementResult(
-                            operation="cluster",
-                            table_name=table.table_name,
-                            category=table.category,
-                            model_name=table.model_name,
-                            model_module=table.model_module,
-                            index_name=cluster_index_name,
-                            column_names=cluster_columns,
-                            unique=False,
-                            clustered=True,
-                            enable=enable,
-                            status="skipped",
-                            detail=(
-                                "cluster metadata present but unsupported on "
-                                f"{backend.name}"
-                            ),
-                        )
-                    )
-                    continue
-
-                if not dry_run:
-                    backend.cluster_table(connection, table.table_name, cluster_index_name, db_schema)
-
+            cluster_columns = _cluster_column_names(table, cluster_index_name)
+            if not clustering_supported:
                 results.append(
                     IndexManagementResult(
                         operation="cluster",
@@ -260,14 +240,39 @@ def manage_indexes(
                         unique=False,
                         clustered=True,
                         enable=enable,
-                        status="planned" if dry_run else "applied",
+                        status="skipped",
                         detail=(
-                            "table would be clustered using ORM-defined metadata"
-                            if dry_run
-                            else "table clustered using ORM-defined metadata"
+                            "cluster metadata present but unsupported on "
+                            f"{backend.name}"
                         ),
                     )
                 )
+                continue
+
+            if not dry_run:
+                with engine.begin() as connection:
+                    backend.cluster_table(connection, table.table_name, cluster_index_name, db_schema)
+
+            results.append(
+                IndexManagementResult(
+                    operation="cluster",
+                    table_name=table.table_name,
+                    category=table.category,
+                    model_name=table.model_name,
+                    model_module=table.model_module,
+                    index_name=cluster_index_name,
+                    column_names=cluster_columns,
+                    unique=False,
+                    clustered=True,
+                    enable=enable,
+                    status="planned" if dry_run else "applied",
+                    detail=(
+                        "table would be clustered using ORM-defined metadata"
+                        if dry_run
+                        else "table clustered using ORM-defined metadata"
+                    ),
+                )
+            )
 
     return results
 
