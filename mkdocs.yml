@@ -66,9 +66,7 @@ nav:
       - Architecture: api/architecture.md
       - CDM Base: api/base.md
       - Columns: api/columns.md
-      - Configuration: api/configuration.md
       - Relationships: api/relationships.md
-      - Typing: api/typing.md
 
   - Object-Relational Mappings:
       - Overview: models/index.md
@@ -126,7 +124,4 @@ nav:
   - Advanced:
       - Overview: advanced/index.md
       - Backends: advanced/backends.md
-      - Views & Analytics: advanced/views.md
-      - Event Timelines: advanced/timelines.md
       - PostgreSQL Full-Text Search: advanced/fulltext.md
-      - Querying Tips: advanced/query_patterns.md

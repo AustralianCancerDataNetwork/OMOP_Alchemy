@@ -6,7 +6,18 @@ OMOP_Alchemy reads all database connection and schema settings from
 
 ## Minimal config
 
-Create `~/.config/omop/config.toml` with at least one connection and one resource:
+Run the interactive configure command to set up the CDM database connection and write
+`~/.config/omop/config.toml`:
+
+```bash
+omop-config configure omop_alchemy
+```
+
+This prompts for connection details (host, dialect, credentials) and schema names, then
+saves them under the canonical resource name `cdm_db` that all OMOP stack packages
+recognise.
+
+The resulting TOML looks like:
 
 ```toml
 [connections.cdm]
@@ -17,12 +28,12 @@ user      = "omop"
 password  = "changeme"
 database  = "omop_cdm"
 
-[resources.default]
+[resources.cdm_db]
 primary_db = "cdm"
 cdm_schema = "omop"
 ```
 
-Run `omop-config init` to create this file interactively, or write it manually.
+You can also write or edit this file manually.
 
 ## Vocabulary loading
 

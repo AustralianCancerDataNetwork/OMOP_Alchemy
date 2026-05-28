@@ -53,10 +53,13 @@ def omop_command(
             _vocab = kwargs.get("vocabulary_included", vocabulary_included)
             _mode = mode_label if mode_label is not None else ("dry-run" if _dry_run else "apply")
             try:
-                from ..config import get_config
-                resolver = Resolver(load_stack_config())
-                resolved = resolver.resolve_resource("default")
-                pkg_config = get_config()
+                from ..config import OmopAlchemyConfig, get_config
+                stack = load_stack_config()
+                pkg_config = get_config()  # validates required_resources — raises ConfigurationError if missing
+                tool = stack.tools.get("omop_alchemy")
+                resource_name = (tool.default_resource if tool else None) or OmopAlchemyConfig.required_resources[0]
+                resolver = Resolver(stack)
+                resolved = resolver.resolve_resource(resource_name)
                 engine = resolved.create_engine()
                 conn = _ConnContext(
                     db_schema=resolved.cdm_schema,

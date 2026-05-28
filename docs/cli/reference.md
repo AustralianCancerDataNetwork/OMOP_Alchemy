@@ -1,6 +1,6 @@
 # Command Reference
 
-Every command listed here also accepts `--dotenv`, `--engine-schema`, and `--db-schema`. These are injected by the `@omop_command` decorator and control connection resolution. See the [CLI Overview](index.md) for a full description of those flags.
+Connection and schema configuration comes from `~/.config/omop/config.toml` — no per-command connection flags are needed. See the [CLI Overview](index.md) for how the `@omop_command` decorator resolves the connection, and [Configuration](../getting-started/configuration.md) for setup.
 
 ---
 
@@ -250,21 +250,4 @@ Restore a database backup that was created with `backup-database`.
 
 ## Configuration
 
-### `config show`
-
-Display current saved connection defaults from the nearest `.omop-maint.toml` file.
-
-No additional options beyond the connection flags.
-
----
-
-### `config override`
-
-Persist one or more connection overrides to `.omop-maint.toml` for future CLI invocations.
-
-| Flag | Type / Choices | Default | Description |
-|---|---|---|---|
-| `--dotenv` | str (optional) | (none) | Path to a `.env` file. Saved relative to `.omop-maint.toml` and resolved back to absolute on load. |
-| `--engine-schema` | str (optional) | (none) | Named engine configuration to use (e.g. `cdm`, `results`). |
-| `--db-schema` | str (optional) | (none) | Database schema to target (e.g. `cdm5`, `vocab`). |
-| `--athena-source` | str (optional) | (none) | Path to the unzipped Athena vocabulary CSV directory. Used by `load-vocab-source` when `--athena-source` is omitted. |
+Connection and schema settings are managed via `omop-config` (oa_configurator). Use `omop-config init` to create `~/.config/omop/config.toml` and `omop-config configure omop_alchemy` to set package-specific options such as `athena_source_path`. See [Configuration](../getting-started/configuration.md).

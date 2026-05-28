@@ -8,6 +8,7 @@ import sqlalchemy as sa
 import typer
 
 from oa_configurator import Resolver, load_stack_config
+from omop_alchemy.config import OmopAlchemyConfig
 from ._cli_utils import _ConnContext
 from ..backends import Backend, resolve_backend, require_backend_support, backend_support_note
 from ._cli_utils import handle_error, omop_command
@@ -493,8 +494,11 @@ def enable_foreign_keys_command(
 ) -> None:
     """Re-enable PostgreSQL RI trigger enforcement. Use --strict to abort if any violations exist first."""
     try:
-        resolver = Resolver(load_stack_config())
-        resolved = resolver.resolve_resource("default")
+        stack = load_stack_config()
+        tool = stack.tools.get("omop_alchemy")
+        resource_name = (tool.default_resource if tool else None) or OmopAlchemyConfig.required_resources[0]
+        resolver = Resolver(stack)
+        resolved = resolver.resolve_resource(resource_name)
         conn = _ConnContext(db_schema=resolved.cdm_schema)
         engine = resolved.create_engine()
     except Exception as exc:

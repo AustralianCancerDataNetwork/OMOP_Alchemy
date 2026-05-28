@@ -25,7 +25,6 @@ omop-alchemy --help
 | `fulltext install` / `populate` / `drop` | Manage tsvector sidecar columns on vocabulary tables |
 | `backup-database` | Create a pg_dump backup artifact |
 | `restore-database` | Restore a pg_dump or psql backup artifact |
-| `config show` / `override` | View and persist saved connection defaults |
 
 See the [Command Reference](reference.md) for full parameter details.
 
@@ -37,42 +36,41 @@ Most commands are decorated with `@omop_command`. This decorator handles all con
 
 ### What it injects
 
-Every decorated command receives three additional CLI flags, wired to identical Typer `Option` definitions across all commands:
+Every decorated command receives:
 
-| Flag | Type | Description |
-|---|---|---|
-| `--dotenv` | `str` (optional) | Path to a `.env` file loaded before connection resolution. Overrides the saved `DOTENV` default. |
-| `--engine-schema` | `str` (optional) | Named engine configuration (e.g. `cdm`, `results`). Resolves to the `ENGINE_<SCHEMA>` environment variable group. |
-| `--db-schema` | `str` (optional) | Database schema to target (e.g. `cdm5`, `vocab`). Sets `search_path` on PostgreSQL. Not supported on SQLite. |
+- `conn` — a `_ConnContext` dataclass (see below)
+- `engine` — a SQLAlchemy `Engine` ready to use
+- `--dry-run` — injected on commands that support preview mode
 
-Commands that support preview mode also receive `--dry-run` via the decorator.
+No connection flags are injected; all configuration comes from oa_configurator.
 
 ### What it does behind the scenes
 
 When a decorated command is invoked:
 
-1. The decorator pops `dotenv`, `engine_schema`, and `db_schema` from the Typer kwargs.
-2. It calls `resolve_connection(...)` to produce a `conn` object carrying those values merged with any saved defaults.
-3. It prints a header showing the command name, engine schema, database schema, and mode label (apply / dry-run / inspect).
-4. It calls `build_engine(...)` to create a SQLAlchemy `Engine`.
-5. It calls the original function body with `(conn, engine, **remaining_kwargs)`.
-6. Any `RuntimeError`, `SQLAlchemyError`, or `BackendNotSupportedError` raised by the body is caught and rendered as a formatted error, then exits with code 1.
+1. Loads `~/.config/omop/config.toml` via `load_stack_config()`.
+2. Calls `OmopAlchemyConfig.from_stack(config)` to read package-specific settings and validate that the required `cdm_db` resource (or the `[tools.omop_alchemy] default_resource` override) is present. Raises `ConfigurationError` with a helpful message if it is missing.
+3. Resolves the resource: `Resolver(config).resolve_resource("cdm_db")`.
+4. Calls `.create_engine()` to build a SQLAlchemy engine with `schema_translate_map` applied.
+5. Prints a command header showing the resource name, CDM schema, and run mode.
+6. Calls the original function body with `(conn, engine, ...)`.
+7. Catches `RuntimeError`, `SQLAlchemyError`, and `BackendNotSupportedError`; renders them as formatted errors and exits with code 1.
 
 ### Before and after
 
 Without the decorator, every command would need this boilerplate:
 
 ```python
-def my_command(
-    dotenv: str | None = typer.Option(None, help="..."),
-    engine_schema: str | None = typer.Option(None, help="..."),
-    db_schema: str | None = typer.Option(None, help="..."),
-) -> None:
-    conn = resolve_connection(dotenv=dotenv, engine_schema=engine_schema, db_schema=db_schema)
-    console.print(render_command_header(...))
+def my_command() -> None:
+    stack = load_stack_config()
+    tool = stack.tools.get("omop_alchemy")
+    resource_name = (tool.default_resource if tool else None) or "cdm_db"
+    resolved = Resolver(stack).resolve_resource(resource_name)
+    engine = resolved.create_engine()
     try:
-        engine = build_engine(dotenv=conn.dotenv, engine_schema=conn.engine_schema)
         # actual work here
+        results = do_work(engine, db_schema=resolved.cdm_schema)
+        console.print(render_results(results))
     except Exception as exc:
         handle_error(exc)
 ```
@@ -83,7 +81,6 @@ With the decorator, the function body is all that matters:
 @app.command("my-command")
 @omop_command("my-command")
 def my_command(conn, engine) -> None:
-    # conn and engine are ready to use
     results = do_work(engine, db_schema=conn.db_schema)
     console.print(render_results(results))
 ```
@@ -92,23 +89,9 @@ def my_command(conn, engine) -> None:
 
 ## The `conn` object
 
-`conn` is a `ConnectionDefaults` instance. It exposes:
+`conn` is a `_ConnContext` dataclass. It exposes:
 
 | Attribute | Description |
 |---|---|
-| `conn.dotenv` | Resolved dotenv path (from CLI flag or saved default) |
-| `conn.engine_schema` | Resolved engine schema name |
-| `conn.db_schema` | Resolved database schema name |
-| `conn.athena_source` | Resolved Athena vocabulary CSV directory path |
-
----
-
-## Connection resolution order
-
-When the CLI resolves a connection parameter, it uses this precedence (highest to lowest):
-
-1. Explicit CLI flag (e.g. `--db-schema cdm5`)
-2. Saved default in the nearest `.omop-maint.toml` file
-3. Command default (e.g. `vocabulary_included` defaults to `False` on most commands)
-
-Use `omop-alchemy config override` to persist defaults so you do not need to repeat connection flags on every invocation.
+| `conn.db_schema` | CDM schema name from the resolved resource (e.g. `"omop"`) |
+| `conn.athena_source` | Athena vocabulary CSV directory from `[tools.omop_alchemy.extra]`; `None` if not configured |

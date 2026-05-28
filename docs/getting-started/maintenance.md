@@ -13,52 +13,7 @@ use for the ORM.
 
 ## Connection setup
 
-Every command accepts three connection flags:
-
-| Flag | Purpose |
-| --- | --- |
-| `--dotenv <file>` | Load a `.env` file before building the engine |
-| `--engine-schema <name>` | Select the engine by name (see below) |
-| `--db-schema <name>` | Override the target schema inside the database |
-
-**Engine schema selection.** OMOP Alchemy supports multiple named engine configurations.
-The `--engine-schema` value maps to an environment variable `ENGINE_<UPPER_NAME>`.
-For example, `--engine-schema cdm` looks for `ENGINE_CDM`. With no `--engine-schema`,
-it falls back to the bare `ENGINE` variable.
-
-**Database schema (`--db-schema`).** On PostgreSQL this sets the `search_path` for ORM
-CSV loading and qualifies table references for schema-aware operations. On SQLite it
-is ignored by most commands.
-
-### Saving defaults
-
-Instead of typing the same flags on every command, save your defaults once:
-
-```bash
-omop-alchemy config set-overrides \
-  --dotenv .env \
-  --engine-schema cdm \
-  --db-schema public \
-  --athena-source ./athena_files
-```
-
-This writes `.omop-alchemy.toml` into your project root (the nearest ancestor directory
-containing `pyproject.toml`). If no project root is found, it writes to the current
-directory. You can override the location with `OMOP_MAINT_DEFAULTS_FILE`.
-
-Inspect or clear saved defaults:
-
-```bash
-omop-alchemy config show
-omop-alchemy config clear-overrides          # clears everything
-omop-alchemy config clear-overrides --db-schema  # clears one field
-```
-
-**Resolution order for each flag:**
-
-1. Explicit CLI flag (highest priority)
-2. Saved `.omop-alchemy.toml` default
-3. Command-level fallback (lowest priority)
+Database connection and CDM schema come from [oa_configurator](../getting-started/configuration.md) — no per-command flags needed. Run `omop-config init` once to create `~/.config/omop/config.toml`, then every `omop-alchemy` command picks it up automatically.
 
 ---
 
