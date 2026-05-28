@@ -13,7 +13,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from oa_configurator import Resolver, load_stack_config
 from oa_configurator.loader import DEFAULT_CONFIG_PATH
 from omop_alchemy.backends.resolve import SupportedDialect
-from omop_alchemy.db import create_engine_with_dependencies
+from omop_alchemy.config import OmopAlchemyConfig
 
 from .cli_schema_tables import collect_missing_tables
 from .tables import (
@@ -325,10 +325,10 @@ def collect_maintenance_info(
     )
     cli_path = shutil.which("omop-alchemy")
 
-    resource_name = "default"
     db_schema: str | None = None
     engine_url: str | None = None
     backend: str | None = None
+    engine: sa.engine.Engine | None = None
     engine_created = False
     engine_error: str | None = None
     connection_ready = False
@@ -336,8 +336,12 @@ def collect_maintenance_info(
     existing_table_count: int | None = None
     missing_table_count: int | None = None
 
+    resource_name = OmopAlchemyConfig.required_resources[0]
     try:
-        resolver = Resolver(load_stack_config())
+        stack = load_stack_config()
+        tool = stack.tools.get(OmopAlchemyConfig.tool_name)
+        resource_name = (tool.default_resource if tool else None) or resource_name
+        resolver = Resolver(stack)
         resolved = resolver.resolve_resource(resource_name)
         db_schema = resolved.cdm_schema
         raw_url = sa.engine.make_url(resolved.primary_db.url)
@@ -350,7 +354,7 @@ def collect_maintenance_info(
     except Exception as exc:
         engine_error = f"Could not resolve engine configuration: {exc}"
 
-    if engine_created:
+    if engine is not None:
         try:
             with engine.connect() as connection:
                 connection.exec_driver_sql("SELECT 1")

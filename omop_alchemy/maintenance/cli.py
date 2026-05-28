@@ -8,6 +8,7 @@ import typer
 
 from . import (
     cli_backup as backup,
+    cli_config as config,
     cli_foreign_keys as foreign_keys,
     cli_fulltext as fulltext,
     cli_indexes as indexes,
@@ -34,7 +35,7 @@ app.add_typer(indexes.app, name="indexes")
 app.add_typer(fulltext.app, name="fulltext")
 
 # Flat root-level commands lifted from each domain module
-for _sub in (schema.app, vocab.app, tables.app, backup.app):
+for _sub in (schema.app, vocab.app, tables.app, backup.app, config.app):
     for _cmd in _sub.registered_commands:
         app.registered_commands.append(_cmd)
 

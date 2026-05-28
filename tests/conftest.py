@@ -326,20 +326,73 @@ def engine(tmp_path_factory: pytest.TempPathFactory):
         engine.dispose()
 
 
+_TEST_RESOURCE = "test_cdm_db"
+
+
 @pytest.fixture(scope="session")
 def pg_engine():
     """
-    Session-scoped engine connecting to a local PostgreSQL container.
+    Session-scoped engine connecting to a PostgreSQL database.
 
-    Start the container with:
-        docker compose -f tests/docker-compose.yaml up -d
-
-    The fixture retries for up to 20 seconds to allow the container to become ready.
+    Configuration is resolved in order:
+      1. ENGINE_CDM environment variable (used by CI)
+      2. oa_configurator resource 'test_cdm_db' in ~/.config/omop/config.toml
+         (local dev — run: omop-alchemy configure-test-db)
     """
-    _PG_URL = os.getenv("ENGINE_CDM")
-    if not _PG_URL:
-        pytest.skip("No PostgreSQL engine configured. Set ENGINE_CDM environment variable.")
-    engine = sa.create_engine(_PG_URL, future=True)
+    from oa_configurator import Resolver, load_stack_config
+    from oa_configurator.package_base import ConfigurationError
+
+    engine: sa.engine.Engine | None = None
+    _from_env = False
+    _stack = None
+    _resolved = None
+
+    url = os.getenv("ENGINE_CDM")
+    if url:
+        engine = sa.create_engine(url, future=True)
+        _from_env = True
+
+    if engine is None:
+        try:
+            _stack = load_stack_config()
+            _resolved = Resolver(_stack).resolve_resource(_TEST_RESOURCE)
+            engine = _resolved.create_engine()
+        except FileNotFoundError:
+            pass
+        except (KeyError, ConfigurationError):
+            pass
+
+    if engine is None:
+        pytest.skip(
+            f"No PostgreSQL test database configured.\n"
+            f"  Option 1: set ENGINE_CDM to a connection URL.\n"
+            f"  Option 2: run 'omop-alchemy configure-test-db' to register a dedicated test DB."
+        )
+
+    # Safety guard: refuse to run if test_cdm_db resolves to the same DB as any other resource.
+    # DROP SCHEMA public CASCADE would destroy production data.
+    if _stack is not None and _resolved is not None:
+        try:
+            test_url = sa.engine.make_url(_resolved.primary_db.url)
+            for res_name in _stack.resources:
+                if res_name == _TEST_RESOURCE:
+                    continue
+                try:
+                    other = Resolver(_stack).resolve_resource(res_name)
+                    other_url = sa.engine.make_url(other.primary_db.url)
+                    if (test_url.host, test_url.port, test_url.database) == (
+                        other_url.host, other_url.port, other_url.database
+                    ):
+                        pytest.fail(
+                            f"SAFETY ABORT: test_cdm_db points to the same database as"
+                            f" '{res_name}'. Tests would DROP SCHEMA public CASCADE on your"
+                            f" production database."
+                        )
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
     for attempt in range(20):
         try:
             with engine.connect() as conn:
@@ -348,10 +401,14 @@ def pg_engine():
         except Exception:
             if attempt == 19:
                 engine.dispose()
-                pytest.fail(
-                    "PostgreSQL container not available after 20 attempts. "
-                    "Run: docker compose -f tests/docker-compose.yaml up -d"
-                )
+                if _from_env:
+                    pytest.fail("PostgreSQL not reachable after 20 attempts. Check CI configuration.")
+                else:
+                    db_url = engine.url.render_as_string(hide_password=True)
+                    pytest.skip(
+                        f"PostgreSQL test database not reachable: {db_url}\n"
+                        f"Ensure the database is running or re-run 'omop-alchemy configure-test-db'."
+                    )
             time.sleep(1)
     try:
         yield engine

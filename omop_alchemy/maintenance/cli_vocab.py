@@ -287,6 +287,18 @@ def load_vocab_source(
     # use. No stale pooled connections survive between tables, which prevents
     # "connection in recovery mode" failures on subsequent tables after a heavy load.
     load_engine = sa.create_engine(engine.url, poolclass=NullPool)
+    if db_schema is not None:
+        # NullPool discards the DBAPI connection on every commit, so a one-time
+        # SET search_path on the first checkout doesn't survive into the next
+        # checkout (e.g. after create_staging_table's commit). Re-apply on every
+        # new connection via an engine-level connect event so COPY and raw-cursor
+        # operations always target the right schema.
+        _quoted_schema = '"' + db_schema.replace('"', '""') + '"'
+        @sa.event.listens_for(load_engine, "connect")
+        def _set_search_path(dbapi_conn, _record):
+            cur = dbapi_conn.cursor()
+            cur.execute(f"SET search_path TO {_quoted_schema}")
+            cur.close()
 
     all_models = REQUIRED_VOCAB_MODELS + OPTIONAL_VOCAB_MODELS
     table_count = sum(

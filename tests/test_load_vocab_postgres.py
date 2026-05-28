@@ -121,7 +121,7 @@ def test_load_vocab_model_csv_on_postgres(pg_session, tmp_path):
 
     row_count = _load_vocab_model_csv(
         pg_session,
-        model=Concept,
+        model=Concept,  # type: ignore[arg-type]
         csv_path=csv_path,
         merge_strategy="replace",
     )
