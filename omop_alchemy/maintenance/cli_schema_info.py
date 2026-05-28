@@ -347,7 +347,8 @@ def collect_maintenance_info(
         raw_url = sa.engine.make_url(resolved.primary_db.url)
         engine_url = raw_url.render_as_string(hide_password=True)
         backend = raw_url.get_backend_name()
-        engine = resolved.create_engine()
+        from omop_alchemy.config import create_cdm_engine
+        engine = create_cdm_engine(resolved)
         engine_created = True
     except RuntimeError as exc:
         engine_error = str(exc)

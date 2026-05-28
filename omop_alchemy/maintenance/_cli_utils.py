@@ -50,9 +50,9 @@ def omop_command(
             _vocab = kwargs.get("vocabulary_included", vocabulary_included)
             _mode = mode_label if mode_label is not None else ("dry-run" if _dry_run else "apply")
             try:
-                from ..config import get_cdm_context
+                from ..config import create_cdm_engine, get_cdm_context
                 pkg_config, resolved = get_cdm_context()
-                engine = resolved.create_engine()
+                engine = create_cdm_engine(resolved)
                 conn = _ConnContext(
                     db_schema=resolved.cdm_schema,
                     engine_url=engine.url.render_as_string(hide_password=True),

@@ -492,9 +492,9 @@ def enable_foreign_keys_command(
 ) -> None:
     """Re-enable PostgreSQL RI trigger enforcement. Use --strict to abort if any violations exist first."""
     try:
-        from omop_alchemy.config import get_cdm_context
+        from omop_alchemy.config import create_cdm_engine, get_cdm_context
         pkg_config, resolved = get_cdm_context()
-        engine = resolved.create_engine()
+        engine = create_cdm_engine(resolved)
         conn = _ConnContext(
             db_schema=resolved.cdm_schema,
             engine_url=engine.url.render_as_string(hide_password=True),

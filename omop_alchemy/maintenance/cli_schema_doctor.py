@@ -176,9 +176,9 @@ def collect_doctor_report(
     foreign_key_validation: ForeignKeyValidationReport | None = None
 
     if info.connection_ready:
-        from omop_alchemy.config import get_cdm_context
+        from omop_alchemy.config import create_cdm_engine, get_cdm_context
         _, resolved = get_cdm_context()
-        engine = resolved.create_engine()
+        engine = create_cdm_engine(resolved)
         db_schema = resolved.cdm_schema
         try:
             missing_table_count = info.missing_table_count or 0

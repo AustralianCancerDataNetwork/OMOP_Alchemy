@@ -1,16 +1,16 @@
 """
-Tests for omop_alchemy.config driver-selection logic.
+Tests for driver-selection logic in omop_alchemy.config.
 
 These tests do not require a database; they exercise the driver-mapping
-constants, _missing_driver_message(), and create_engine_with_dependencies()
+constants, _missing_driver_message(), and create_cdm_engine()
 using mock exceptions to simulate missing packages.
 """
 import pytest
 
-from omop_alchemy.db import (
-    POSTGRES_DRIVER_MODULES,
+from omop_alchemy.config import (
+    _POSTGRES_DRIVER_MODULES as POSTGRES_DRIVER_MODULES,
     _missing_driver_message,
-    create_engine_with_dependencies,
+    create_cdm_engine,
 )
 
 
@@ -88,21 +88,25 @@ def test_missing_driver_message_returns_none_for_sqlite_url():
 # ---------------------------------------------------------------------------
 
 def test_sqlite_url_not_intercepted():
-    """create_engine_with_dependencies should work for sqlite without wrapping errors."""
-    engine = create_engine_with_dependencies("sqlite:///:memory:", future=True)
+    """create_cdm_engine should work for sqlite without wrapping errors."""
+    from oa_configurator.resolver import ResolvedDatabaseTarget
+    target = ResolvedDatabaseTarget(name="test", url="sqlite:///:memory:", safe_url="sqlite:///:memory:")
+    from unittest.mock import MagicMock
+    resolved = MagicMock()
+    resolved.create_engine.return_value = target.create_engine()
+    resolved.primary_db.url = "sqlite:///:memory:"
+    engine = create_cdm_engine(resolved)
     engine.dispose()
 
 
 def test_create_engine_raises_runtime_for_missing_postgres_driver(monkeypatch):
-    """When psycopg is missing, create_engine_with_dependencies raises RuntimeError with install hint."""
-    import sqlalchemy as sa
-
+    """When psycopg is missing, create_cdm_engine raises RuntimeError with install hint."""
+    from unittest.mock import MagicMock
     exc = _make_module_not_found("psycopg")
 
-    def raising_create_engine(url, **kwargs):
-        raise exc
-
-    monkeypatch.setattr(sa, "create_engine", raising_create_engine)
+    resolved = MagicMock()
+    resolved.create_engine.side_effect = exc
+    resolved.primary_db.url = "postgresql+psycopg://host/db"
 
     with pytest.raises(RuntimeError, match="psycopg"):
-        create_engine_with_dependencies("postgresql+psycopg://host/db")
+        create_cdm_engine(resolved)
