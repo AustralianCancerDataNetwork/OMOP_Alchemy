@@ -14,6 +14,7 @@ from omop_alchemy.maintenance.cli_vocab import (
     load_vocab_source,
 )
 from omop_alchemy.cdm.model.vocabulary import Drug_Strength
+from omop_alchemy.config import TOOL_NAME
 
 
 runner = CliRunner()
@@ -160,7 +161,7 @@ def test_load_vocab_source_cli_uses_configured_athena_source(monkeypatch, tmp_pa
     cfg = StackConfig.for_session(
         connections={"db": {"dialect": "sqlite", "database": ":memory:"}},
         resources={"cdm_db": {"primary_db": "db", "cdm_schema": "main"}},
-        tools={"omop_alchemy": {"extra": {"athena_source_path": str(athena_dir)}}},
+        tools={TOOL_NAME: {"extra": {"athena_source_path": str(athena_dir)}}},
     )
 
     monkeypatch.setattr(

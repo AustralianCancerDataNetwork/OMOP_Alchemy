@@ -61,9 +61,10 @@ When a decorated command is invoked:
 Without the decorator, every command would need this boilerplate:
 
 ```python
+from omop_alchemy.config import TOOL_NAME
 def my_command() -> None:
     stack = load_stack_config()
-    tool = stack.tools.get("omop_alchemy")
+    tool = stack.tools.get(TOOL_NAME)
     resource_name = (tool.default_resource if tool else None) or "cdm_db"
     resolved = Resolver(stack).resolve_resource(resource_name)
     engine = resolved.create_engine()

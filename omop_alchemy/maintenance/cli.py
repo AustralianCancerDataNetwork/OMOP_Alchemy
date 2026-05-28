@@ -16,7 +16,7 @@ from . import (
     cli_tables as tables,
     cli_vocab as vocab,
 )
-from ..logger_config import configure_logging
+from ..config import configure_logging
 from .help import install_help_customizations
 
 install_help_customizations()

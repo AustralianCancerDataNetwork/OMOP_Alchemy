@@ -1,19 +1,17 @@
 from __future__ import annotations
 
-from pathlib import Path
 from typing import ClassVar, Final
 
 from pydantic import Field
 from oa_configurator import PackageConfigBase, ResourceSpec, Resolver, ResolvedResource, load_stack_config
-
-ROOT_PATH = Path(__file__).parent
-TEST_PATH = Path(__file__).parent.parent / "tests"
+from oa_configurator import configure_logging as _configure_logging
 
 CDM_DB_RESOURCE: Final[str] = "cdm_db"
+TOOL_NAME: Final[str] = "omop_alchemy"
 
 
 class OmopAlchemyConfig(PackageConfigBase):
-    tool_name: ClassVar[str] = "omop_alchemy"
+    tool_name: ClassVar[str] = TOOL_NAME
     required_resources: ClassVar[tuple[str, ...]] = (CDM_DB_RESOURCE,)
     owned_resources: ClassVar[tuple[ResourceSpec, ...]] = (
         ResourceSpec(
@@ -46,3 +44,7 @@ def get_cdm_context() -> tuple[OmopAlchemyConfig, ResolvedResource]:
     resource_name = (tool.default_resource if tool else None) or CDM_DB_RESOURCE
     resolved = Resolver(stack).resolve_resource(resource_name)
     return pkg_config, resolved
+
+
+def configure_logging(verbosity: int = 0) -> None:
+    _configure_logging(verbosity=verbosity, extra_namespaces=[TOOL_NAME])
