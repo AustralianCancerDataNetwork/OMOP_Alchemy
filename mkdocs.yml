@@ -67,6 +67,7 @@ nav:
       - CDM Base: api/base.md
       - Columns: api/columns.md
       - Relationships: api/relationships.md
+      - Typing: api/typing.md
 
   - Object-Relational Mappings:
       - Overview: models/index.md
@@ -124,4 +125,5 @@ nav:
   - Advanced:
       - Overview: advanced/index.md
       - Backends: advanced/backends.md
+      - Patient Timelines: advanced/timelines.md
       - PostgreSQL Full-Text Search: advanced/fulltext.md

@@ -61,10 +61,9 @@ Object- and model-level validation utilities that help maintain semantic clarity
 
 Patterns and techniques for more complex analytical work.
 
-- [Views](advanced/views.md)
 - [Timelines & longitudinal analysis](advanced/timelines.md)
-- [Query patterns](advanced/query_patterns.md)
 - [Backend considerations](advanced/backends.md)
+- [PostgreSQL Full-Text Search](advanced/fulltext.md)
 
 ---
 

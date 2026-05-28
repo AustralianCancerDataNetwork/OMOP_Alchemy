@@ -13,7 +13,7 @@ use for the ORM.
 
 ## Connection setup
 
-Database connection and CDM schema come from [oa_configurator](../getting-started/configuration.md) — no per-command flags needed. Run `omop-config init` once to create `~/.config/omop/config.toml`, then every `omop-alchemy` command picks it up automatically.
+Database connection and CDM schema come from [oa_configurator](../getting-started/configuration.md) — no per-command flags needed. Run `omop-config configure omop_alchemy` once to create `~/.config/omop/config.toml`, then every `omop-alchemy` command picks it up automatically.
 
 ---
 
@@ -239,14 +239,12 @@ be installed and on `PATH`.
 ```bash
 # Create a backup (custom format is recommended — smaller and restorable in parallel)
 omop-alchemy backup-database \
-  --engine-schema source \
   --output-path ./cdm-backup.dump \
   --format custom
 
 # Restore into a target database (the DB must already exist and be empty)
 omop-alchemy restore-database ./cdm-backup.dump \
-  --format custom \
-  --engine-schema target
+  --format custom
 ```
 
 **Format comparison:**
@@ -258,8 +256,8 @@ omop-alchemy restore-database ./cdm-backup.dump \
 
 **Restore caveats:**
 - The target database must already exist. The CLI does not create or drop databases.
-- For `plain` format, `--db-schema` has no effect; the schema is embedded in the SQL.
-- For `custom` format, `--db-schema` restricts the restore to the named schema only.
+- For `plain` format, the schema is embedded in the SQL dump; no selective schema restore is possible.
+- For `custom` format, `pg_restore` can be invoked manually with `-n <schema>` for selective schema restore.
 
 Use `--dry-run` on `backup-database` to see the `pg_dump` command that would be run
 without executing it.
@@ -319,7 +317,7 @@ it touches and the old/new sequence positions.
 
 | Command | Purpose | Key options | Backend |
 | --- | --- | --- | --- |
-| `info` | Inspect CLI readiness, backend, and dependency state | `--engine-schema` | All |
+| `info` | Inspect CLI readiness, backend, and dependency state | `--vocab` | All |
 | `doctor` | Read-only health check: connection, schema, FK state | `--deep`, `--vocab` | All (`--deep` PostgreSQL-focused) |
 | `data-summary` | Show managed tables and row counts | `--vocab`, `--include-missing` | All |
 | `reconcile-schema` | Compare ORM metadata vs live schema | `--vocab`, `--dry-run` | All |
@@ -337,8 +335,5 @@ it touches and the old/new sequence positions.
 | `fulltext install` | Add tsvector sidecar columns to vocabulary tables | `--regconfig`, `--no-create-indexes` | PostgreSQL |
 | `fulltext populate` | Populate sidecar tsvector vectors | `--regconfig` | PostgreSQL |
 | `fulltext drop` | Remove tsvector sidecar columns and indexes | | PostgreSQL |
-| `backup-database` | Create a `pg_dump` backup artifact | `--output-path`, `--format`, `--db-schema`, `--dry-run` | PostgreSQL |
-| `restore-database` | Restore a backup artifact into the target DB | `--format` (required), `--db-schema`, `--dry-run` | PostgreSQL |
-| `config show` | Print current saved defaults | | All |
-| `config set-overrides` | Save connection defaults | `--dotenv`, `--engine-schema`, `--db-schema`, `--athena-source` | All |
-| `config clear-overrides` | Remove saved defaults | per-field flags | All |
+| `backup-database` | Create a `pg_dump` backup artifact | `--output-path`, `--format`, `--dry-run` | PostgreSQL |
+| `restore-database` | Restore a backup artifact into the target DB | `--format` (required), `--dry-run` | PostgreSQL |
