@@ -10,6 +10,8 @@ from rich.console import Console
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
+from omop_alchemy.config import CDM_DB_RESOURCE
+
 console = Console()
 err_console = Console(stderr=True)
 
@@ -46,7 +48,7 @@ def _get_admin_engine(*, yes: bool) -> sa.engine.Engine:
     suggested_url: str | None = None
     try:
         stack = load_stack_config()
-        resolved = Resolver(stack).resolve_resource("cdm_db")
+        resolved = Resolver(stack).resolve_resource(CDM_DB_RESOURCE)
         suggested_url = resolved.primary_db.url
     except Exception:
         pass
