@@ -96,7 +96,7 @@ def _category_label(category: TableCategory) -> Text:
 def render_command_header(
     *,
     command_name: str,
-    engine_schema: str | None,
+    engine_url: str | None,
     db_schema: str | None,
     vocabulary_included: bool | None,
     mode_label: str,
@@ -109,7 +109,7 @@ def render_command_header(
     grid.add_column(style="bold cyan")
     grid.add_column()
     grid.add_row("Command", command_name)
-    grid.add_row("Engine", engine_schema or "default ENGINE")
+    grid.add_row("Connection", engine_url or "(none)")
     grid.add_row("DB schema", db_schema or "default search_path")
     if vocabulary_included is not None:
         grid.add_row("Vocabulary", _bool_label(vocabulary_included))

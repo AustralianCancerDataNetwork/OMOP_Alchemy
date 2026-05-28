@@ -10,8 +10,6 @@ from typing import Any, Callable, TypeVar
 import typer
 from sqlalchemy.exc import SQLAlchemyError
 
-from oa_configurator import Resolver, load_stack_config
-
 from .tables import TableScope
 from .ui import console, render_error, render_command_header
 from ..backends import BackendNotSupportedError
@@ -24,8 +22,7 @@ _F = TypeVar("_F", bound=Callable[..., Any])
 class _ConnContext:
     """Connection context derived from the oa_configurator resolved resource."""
     db_schema: str | None
-    engine_schema: str = "default"
-    dotenv: None = None  # kept so existing conn.dotenv references compile
+    engine_url: str = ""
     athena_source: str | None = None  # from OmopAlchemyConfig.athena_source_path
 
 
@@ -53,22 +50,18 @@ def omop_command(
             _vocab = kwargs.get("vocabulary_included", vocabulary_included)
             _mode = mode_label if mode_label is not None else ("dry-run" if _dry_run else "apply")
             try:
-                from ..config import OmopAlchemyConfig, get_config
-                stack = load_stack_config()
-                pkg_config = get_config()  # validates required_resources — raises ConfigurationError if missing
-                tool = stack.tools.get("omop_alchemy")
-                resource_name = (tool.default_resource if tool else None) or OmopAlchemyConfig.required_resources[0]
-                resolver = Resolver(stack)
-                resolved = resolver.resolve_resource(resource_name)
+                from ..config import get_cdm_context
+                pkg_config, resolved = get_cdm_context()
                 engine = resolved.create_engine()
                 conn = _ConnContext(
                     db_schema=resolved.cdm_schema,
+                    engine_url=engine.url.render_as_string(hide_password=True),
                     athena_source=pkg_config.athena_source_path,
                 )
                 console.print(
                     render_command_header(
                         command_name=command_name,
-                        engine_schema=conn.engine_schema,
+                        engine_url=conn.engine_url,
                         db_schema=conn.db_schema,
                         vocabulary_included=_vocab,
                         mode_label=_mode,

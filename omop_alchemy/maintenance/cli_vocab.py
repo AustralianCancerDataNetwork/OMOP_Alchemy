@@ -11,6 +11,7 @@ from typing import Literal, TypeAlias, cast
 from enum import StrEnum
 import sqlalchemy as sa
 import sqlalchemy.orm as so
+import sqlalchemy.event as sae
 from sqlalchemy.exc import OperationalError
 import typer
 from sqlalchemy.pool import NullPool
@@ -294,7 +295,7 @@ def load_vocab_source(
         # new connection via an engine-level connect event so COPY and raw-cursor
         # operations always target the right schema.
         _quoted_schema = '"' + db_schema.replace('"', '""') + '"'
-        @sa.event.listens_for(load_engine, "connect")
+        @sae.listens_for(load_engine, "connect")
         def _set_search_path(dbapi_conn, _record):
             cur = dbapi_conn.cursor()
             cur.execute(f"SET search_path TO {_quoted_schema}")

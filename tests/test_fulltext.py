@@ -207,7 +207,7 @@ def test_fulltext_install_cli_passes_options(monkeypatch):
         resources={"cdm_db": {"primary_db": "db", "cdm_schema": "public"}},
     )
     monkeypatch.setattr(
-        "omop_alchemy.maintenance._cli_utils.load_stack_config",
+        "omop_alchemy.config.load_stack_config",
         lambda: cfg,
     )
     monkeypatch.setattr(

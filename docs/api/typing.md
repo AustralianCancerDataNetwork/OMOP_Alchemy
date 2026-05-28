@@ -19,6 +19,10 @@ These live in two modules:
 Satisfied by any object with an integer `concept_id` attribute.
 
 ::: omop_alchemy.cdm.base.typing.HasConceptId
+    options:
+        heading_level: 4
+        show_root_heading: false
+        members: true
 
 ---
 
@@ -27,6 +31,10 @@ Satisfied by any object with an integer `concept_id` attribute.
 Satisfied by any object with an integer `person_id` attribute.
 
 ::: omop_alchemy.cdm.base.typing.HasPersonId
+    options:
+        heading_level: 4
+        show_root_heading: false
+        members: true
 
 ---
 
@@ -35,6 +43,10 @@ Satisfied by any object with an integer `person_id` attribute.
 Satisfied by any object with an integer `episode_id` attribute.
 
 ::: omop_alchemy.cdm.base.typing.HasEpisodeId
+    options:
+        heading_level: 4
+        show_root_heading: false
+        members: true
 
 ---
 
@@ -45,6 +57,10 @@ satisfies this protocol if it has `__tablename__`, `__mapper__`, `__expected_dom
 and a `collect_domain_rules()` classmethod.
 
 ::: omop_alchemy.cdm.base.typing.DomainSemanticTable
+    options:
+        heading_level: 4
+        show_root_heading: false
+        members: true
 
 ---
 
@@ -60,6 +76,10 @@ utilities that operate across multiple CDM tables.
     structural interface; the mixin there is the implementation.
 
 ::: omop_alchemy.cdm.base.typing.ClinicalEvent
+    options:
+        heading_level: 4
+        show_root_heading: false
+        members: true
 
 ---
 
@@ -68,7 +88,8 @@ utilities that operate across multiple CDM tables.
 Protocol for objects that can look up whether a set of concept IDs are standard.
 
 ::: omop_alchemy.cdm.base.typing.ConceptResolver
-
+    options:
+        heading_level: 4
 ---
 
 ## Typed row containers (`cdm.model.typing`)
@@ -79,3 +100,7 @@ A frozen dataclass representing the core fields of a concept lookup row. Used wh
 lightweight, hashable concept record is preferable to a full ORM object.
 
 ::: omop_alchemy.cdm.model.typing.ConceptRow
+    options:
+        heading_level: 4
+        show_root_heading: false
+        members: true

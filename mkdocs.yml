@@ -13,6 +13,19 @@ theme:
     - navigation.top
     - content.code.copy
     - content.code.annotate
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: blue
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: light-blue
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
 
 markdown_extensions:
   - admonition
@@ -28,6 +41,7 @@ markdown_extensions:
           format: !!python/name:mermaid2.fence_mermaid
   - toc:
       permalink: true
+      toc_depth: 3
 
 extra_javascript:
   - https://unpkg.com/mermaid@10/dist/mermaid.min.js

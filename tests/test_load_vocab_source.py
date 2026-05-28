@@ -164,7 +164,7 @@ def test_load_vocab_source_cli_uses_configured_athena_source(monkeypatch, tmp_pa
     )
 
     monkeypatch.setattr(
-        "omop_alchemy.maintenance._cli_utils.load_stack_config",
+        "omop_alchemy.config.load_stack_config",
         lambda: cfg,
     )
     monkeypatch.setattr(
@@ -432,7 +432,7 @@ def test_load_vocab_source_cli_surfaces_database_error_detail(monkeypatch):
         resources={"cdm_db": {"primary_db": "db", "cdm_schema": "main"}},
     )
     monkeypatch.setattr(
-        "omop_alchemy.maintenance._cli_utils.load_stack_config",
+        "omop_alchemy.config.load_stack_config",
         lambda: cfg,
     )
     monkeypatch.setattr(

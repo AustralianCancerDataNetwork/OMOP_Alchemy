@@ -79,7 +79,7 @@ def test_disable_foreign_keys_cli_fails_gracefully_for_sqlite(monkeypatch):
         resources={"cdm_db": {"primary_db": "db", "cdm_schema": "main"}},
     )
     monkeypatch.setattr(
-        "omop_alchemy.maintenance._cli_utils.load_stack_config",
+        "omop_alchemy.config.load_stack_config",
         lambda: cfg,
     )
     monkeypatch.setattr(
@@ -254,7 +254,7 @@ def test_enable_foreign_keys_strict_cli_invokes_strict_management(monkeypatch):
         resources={"cdm_db": {"primary_db": "db", "cdm_schema": "main"}},
     )
     monkeypatch.setattr(
-        "omop_alchemy.maintenance.cli_foreign_keys.load_stack_config",
+        "omop_alchemy.config.load_stack_config",
         lambda: cfg,
     )
     monkeypatch.setattr(
@@ -367,7 +367,7 @@ def test_foreign_keys_validate_cli_invokes_validation(monkeypatch):
         resources={"cdm_db": {"primary_db": "db", "cdm_schema": "main"}},
     )
     monkeypatch.setattr(
-        "omop_alchemy.maintenance._cli_utils.load_stack_config",
+        "omop_alchemy.config.load_stack_config",
         lambda: cfg,
     )
     monkeypatch.setattr(

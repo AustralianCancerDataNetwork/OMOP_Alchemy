@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import ClassVar, Final
 
 from pydantic import Field
-from oa_configurator import PackageConfigBase, ResourceSpec, Resolver, load_stack_config
+from oa_configurator import PackageConfigBase, ResourceSpec, Resolver, ResolvedResource, load_stack_config
 
 ROOT_PATH = Path(__file__).parent
 TEST_PATH = Path(__file__).parent.parent / "tests"
@@ -36,3 +36,13 @@ def get_resolver() -> Resolver:
 
 def get_config() -> OmopAlchemyConfig:
     return OmopAlchemyConfig.from_stack(load_stack_config())
+
+
+def get_cdm_context() -> tuple[OmopAlchemyConfig, ResolvedResource]:
+    """Load config once and return (pkg_config, resolved_cdm_resource)."""
+    stack = load_stack_config()
+    pkg_config = OmopAlchemyConfig.from_stack(stack)
+    tool = stack.tools.get(OmopAlchemyConfig.tool_name)
+    resource_name = (tool.default_resource if tool else None) or CDM_DB_RESOURCE
+    resolved = Resolver(stack).resolve_resource(resource_name)
+    return pkg_config, resolved

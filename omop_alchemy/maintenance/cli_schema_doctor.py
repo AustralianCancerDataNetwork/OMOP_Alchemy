@@ -4,10 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from oa_configurator import Resolver, load_stack_config
-from omop_alchemy.config import OmopAlchemyConfig
 from omop_alchemy.backends.resolve import SupportedDialect
-from omop_alchemy.db import create_engine_with_dependencies
 
 from .cli_foreign_keys import (
     ForeignKeyStatusResult,
@@ -179,11 +176,8 @@ def collect_doctor_report(
     foreign_key_validation: ForeignKeyValidationReport | None = None
 
     if info.connection_ready:
-        stack = load_stack_config()
-        tool = stack.tools.get("omop_alchemy")
-        resource_name = (tool.default_resource if tool else None) or OmopAlchemyConfig.required_resources[0]
-        resolver = Resolver(stack)
-        resolved = resolver.resolve_resource(resource_name)
+        from omop_alchemy.config import get_cdm_context
+        _, resolved = get_cdm_context()
         engine = resolved.create_engine()
         db_schema = resolved.cdm_schema
         try:
