@@ -66,7 +66,11 @@ def get_config() -> OmopAlchemyConfig:
 
 
 def get_cdm_context() -> tuple[OmopAlchemyConfig, ResolvedResource]:
-    """Load config once and return (pkg_config, resolved_cdm_resource)."""
+    """Return (pkg_config, resolved_cdm_resource), loading config once.
+
+    The resource is taken from tools.omop_alchemy.default_resource when set;
+    otherwise falls back to the canonical CDM_DB_RESOURCE alias ("cdm_db").
+    """
     stack = load_stack_config()
     pkg_config = OmopAlchemyConfig.from_stack(stack)
     tool = stack.tools.get(OmopAlchemyConfig.tool_name)
