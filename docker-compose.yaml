@@ -1,0 +1,48 @@
+services:
+  omop-cdm-db:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: ${OMOP_CDM_DB_USER:-omop}
+      POSTGRES_PASSWORD: ${OMOP_CDM_DB_PASSWORD:-omop}
+      POSTGRES_DB: ${OMOP_CDM_DB_NAME:-omop_cdm}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - omop-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${OMOP_CDM_DB_USER:-omop}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  python-alchemy:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      omop-cdm-db:
+        condition: service_healthy
+    volumes:
+      - ${HOME}/.config/omop:/root/.config/omop
+    networks:
+      - omop-net
+    command: >
+      bash -c "
+        omop-config configure omop_alchemy --skip-if-configured
+          --conn-name cdm --dialect postgresql+psycopg
+          --host omop-cdm-db --port 5432
+          --user ${OMOP_CDM_DB_USER:-omop}
+          --password ${OMOP_CDM_DB_PASSWORD:-omop}
+          --database ${OMOP_CDM_DB_NAME:-omop_cdm} --cdm-schema omop &&
+        sleep infinity
+      "
+
+networks:
+  omop-net:
+    name: omop-net
+
+volumes:
+  db_data:

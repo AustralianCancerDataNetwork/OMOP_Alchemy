@@ -77,3 +77,42 @@ The API is stabilising, but some modules may change as real-world use cases expa
 
 This work builds on earlier research and tooling presented at the 2023 OHDSI APAC Symposium
 > see [background paper](https://github.com/AustralianCancerDataNetwork/OMOP_Alchemy/blob/main/notebooks/ORMforResearchReadyData_APAC2023.pdf).
+
+---
+
+## Configuration
+
+OMOP Alchemy reads all database connection and schema settings from
+[oa-configurator](https://github.com/AustralianCancerDataNetwork/oa-configurator).
+No `.env` files or `ENGINE` environment variables are needed.
+
+Run once after installation:
+
+```bash
+omop-config init
+omop-config configure omop_alchemy
+```
+
+See [Configuration](docs/getting-started/configuration.md) for full details.
+
+---
+
+## Docker Compose
+
+The included `docker-compose.yaml` provides a PostgreSQL database and a Python
+container with the `[postgres]` extra pre-installed. Default credentials work out of the box:
+
+```bash
+docker compose up
+```
+
+The `python-alchemy` service runs `omop-config configure` at startup and writes
+`~/.config/omop/config.toml` on the host on first start; subsequent starts skip
+configuration automatically.
+
+To override credentials, copy `.env.example` to `.env` and edit before starting:
+
+```bash
+cp .env.example .env
+docker compose up
+```
