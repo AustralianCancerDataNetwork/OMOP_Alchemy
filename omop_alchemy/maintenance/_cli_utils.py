@@ -7,6 +7,7 @@ import inspect
 from dataclasses import dataclass
 from typing import Any, Callable, TypeVar
 
+import sqlalchemy as sa
 import typer
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -102,6 +103,19 @@ def omop_command(
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
+def ensure_schema(engine: sa.Engine, schema: str | None) -> None:
+    """Create the schema in the database if it does not already exist.
+
+    No-op when schema is None or ``"public"`` (PostgreSQL's default schema
+    always exists and cannot be created via ``CREATE SCHEMA``).
+    """
+    if not schema or schema == "public":
+        return
+    with engine.connect() as conn:
+        conn.execute(sa.text(f'CREATE SCHEMA IF NOT EXISTS "{schema}"'))
+        conn.commit()
+
 
 def handle_error(exc: Exception) -> None:
     if isinstance(exc, BackendNotSupportedError):

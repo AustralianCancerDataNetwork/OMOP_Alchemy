@@ -33,7 +33,7 @@ from omop_alchemy.cdm.model.vocabulary import (
 )
 
 from ..backends import resolve_backend
-from ._cli_utils import omop_command
+from ._cli_utils import ensure_schema, omop_command
 from .cli_foreign_keys import manage_foreign_key_triggers
 from .cli_indexes import manage_indexes
 from .cli_tables import reset_model_sequences
@@ -283,6 +283,9 @@ def load_vocab_source(
             "Missing required Athena vocabulary CSV files: "
             + ", ".join(sorted(missing_required))
         )
+
+    if not dry_run:
+        ensure_schema(engine, db_schema)
 
     # NullPool: each session/connection is opened fresh and closed immediately after
     # use. No stale pooled connections survive between tables, which prevents
