@@ -103,11 +103,15 @@ To configure a second CDM database (e.g. for production), use `--resource-name`:
 omop-config configure omop_alchemy --resource-name cdm_db_prod
 ```
 
-This creates `cdm_db_prod` without touching the existing `cdm_db`. Re-run without
-`--resource-name` afterwards to select which one omop_alchemy uses by default:
+This creates `cdm_db_prod` without touching the existing `cdm_db`. Because two
+resources now exist, configure automatically prompts you to choose the default at
+the end of the same run — no second invocation needed.
 
-```bash
-omop-config configure omop_alchemy   # prompts for default_resource
+To change the default later, set `default_resource` directly in `config.toml`:
+
+```toml
+[tools.omop_alchemy]
+default_resource = "cdm_db_prod"
 ```
 
 See the [oa-configurator integration guide](https://AustralianCancerDataNetwork.github.io/oa-configurator/integration/#multiple-environments) for the full multi-environment guide.
