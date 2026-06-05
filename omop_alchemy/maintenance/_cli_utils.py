@@ -13,7 +13,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from .tables import TableScope
 from .ui import console, render_error, render_command_header
-from ..backends import BackendNotSupportedError
+from ..backends import BackendNotSupportedError, resolve_backend
 
 
 _F = TypeVar("_F", bound=Callable[..., Any])
@@ -107,13 +107,15 @@ def omop_command(
 def ensure_schema(engine: sa.Engine, schema: str | None) -> None:
     """Create the schema in the database if it does not already exist.
 
-    No-op when schema is None or ``"public"`` (PostgreSQL's default schema
-    always exists and cannot be created via ``CREATE SCHEMA``).
+    Delegates to the active backend so behaviour is correct for each dialect.
+    No-op when schema is None or ``"public"``, or on backends that don't
+    support named schemas (e.g. SQLite).
     """
     if not schema or schema == "public":
         return
+    backend = resolve_backend(engine)
     with engine.connect() as conn:
-        conn.execute(sa.text(f'CREATE SCHEMA IF NOT EXISTS "{schema}"'))
+        backend.ensure_schema(conn, schema)
         conn.commit()
 
 

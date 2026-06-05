@@ -205,6 +205,16 @@ class PostgresBackend(Backend):
         quoted = '"' + db_schema.replace('"', '""') + '"'
         conn.exec_driver_sql(f"SET search_path TO {quoted}")
 
+    def ensure_schema(
+        self,
+        conn: sa.Connection,
+        schema: str | None,
+    ) -> None:
+        if not schema or schema == "public":
+            return
+        quoted = '"' + schema.replace('"', '""') + '"'
+        conn.exec_driver_sql(f"CREATE SCHEMA IF NOT EXISTS {quoted}")
+
     # ── Full-text search ─────────────────────────────────────────────────────
 
     @property

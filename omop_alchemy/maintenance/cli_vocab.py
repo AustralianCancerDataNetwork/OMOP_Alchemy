@@ -32,7 +32,6 @@ from omop_alchemy.cdm.model.vocabulary import (
     Vocabulary,
 )
 
-from ..backends import resolve_backend
 from ._cli_utils import ensure_schema, omop_command
 from .cli_foreign_keys import manage_foreign_key_triggers
 from .cli_indexes import manage_indexes
@@ -247,17 +246,6 @@ def _create_missing_vocabulary_tables(
     return len(missing_tables)
 
 
-def _configure_loader_connection(
-    connection: sa.Connection,
-    *,
-    db_schema: str | None,
-) -> None:
-    """Apply schema context to a connection when db_schema is requested. Delegates to the active backend."""
-    if db_schema is None:
-        return
-    resolve_backend(connection.engine).configure_schema_context(connection, db_schema)
-
-
 def load_vocab_source(
     engine: sa.Engine,
     *,
@@ -286,6 +274,7 @@ def load_vocab_source(
 
     if not dry_run:
         ensure_schema(engine, db_schema)
+        ensure_schema(engine, "staging")
 
     # NullPool: each session/connection is opened fresh and closed immediately after
     # use. No stale pooled connections survive between tables, which prevents
@@ -301,7 +290,7 @@ def load_vocab_source(
         @sae.listens_for(load_engine, "connect")
         def _set_search_path(dbapi_conn, _record):
             cur = dbapi_conn.cursor()
-            cur.execute(f"SET search_path TO {_quoted_schema}")
+            cur.execute(f"SET search_path TO staging, {_quoted_schema}")
             cur.close()
 
     all_models = REQUIRED_VOCAB_MODELS + OPTIONAL_VOCAB_MODELS
@@ -348,6 +337,16 @@ def load_vocab_source(
             db_schema=db_schema,
             dry_run=False,
         )
+        # --- DEBUG: remove after diagnosis ---
+        with load_engine.connect() as _c:
+            _n = _c.execute(sa.text(
+                "SELECT count(*) FROM pg_trigger t"
+                " JOIN pg_class c ON c.oid=t.tgrelid"
+                " JOIN pg_namespace n ON n.oid=c.relnamespace"
+                " WHERE n.nspname=:s AND t.tgisinternal=true AND t.tgenabled!='D'"
+            ), {"s": db_schema or "public"}).scalar_one()
+            console.print(f"[yellow]DEBUG[/yellow] FK triggers still enabled after disable: {_n} (want 0)")
+        # --- END DEBUG ---
         if progress_callback is not None:
             progress_callback(VocabularyLoadProgress(
                 phase=VocabularyLoadPhase.DISABLING_INDEXES,
@@ -364,10 +363,17 @@ def load_vocab_source(
             db_schema=db_schema,
             dry_run=False,
         )
+        # --- DEBUG: remove after diagnosis ---
+        with load_engine.connect() as _c:
+            _n = _c.execute(sa.text(
+                "SELECT count(*) FROM pg_indexes"
+                " WHERE schemaname=:s AND indexname LIKE 'ix_%%'"
+            ), {"s": db_schema or "public"}).scalar_one()
+            console.print(f"[yellow]DEBUG[/yellow] Non-primary indexes still present after drop: {_n} (want 0)")
+        # --- END DEBUG ---
 
     if not dry_run:
         with load_engine.connect() as pre_conn:
-            _configure_loader_connection(pre_conn, db_schema=db_schema)
             created_table_count = _create_missing_vocabulary_tables(pre_conn, db_schema=db_schema)
             pre_conn.commit()
 
@@ -421,7 +427,6 @@ def load_vocab_source(
         for attempt in range(3):
             try:
                 with so.Session(load_engine) as session:
-                    _configure_loader_connection(session.connection(), db_schema=db_schema)
                     if _prev_attempt_was_crash and merge_strategy == "insert_if_empty":
                         # A DB crash left partial data committed in this table.
                         # Truncate so insert_if_empty can retry cleanly. Safe because

@@ -195,6 +195,13 @@ class Backend(ABC):
     ) -> None:
         pass  # no-op by default; PostgreSQL overrides with SET search_path
 
+    def ensure_schema(
+        self,
+        conn: sa.Connection,
+        schema: str | None,
+    ) -> None:
+        pass  # no-op by default; backends that support named schemas override this
+
     # ── Full-text search ─────────────────────────────────────────────────────
 
     @property
