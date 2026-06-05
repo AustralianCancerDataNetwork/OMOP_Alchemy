@@ -337,16 +337,6 @@ def load_vocab_source(
             db_schema=db_schema,
             dry_run=False,
         )
-        # --- DEBUG: remove after diagnosis ---
-        with load_engine.connect() as _c:
-            _n = _c.execute(sa.text(
-                "SELECT count(*) FROM pg_trigger t"
-                " JOIN pg_class c ON c.oid=t.tgrelid"
-                " JOIN pg_namespace n ON n.oid=c.relnamespace"
-                " WHERE n.nspname=:s AND t.tgisinternal=true AND t.tgenabled!='D'"
-            ), {"s": db_schema or "public"}).scalar_one()
-            console.print(f"[yellow]DEBUG[/yellow] FK triggers still enabled after disable: {_n} (want 0)")
-        # --- END DEBUG ---
         if progress_callback is not None:
             progress_callback(VocabularyLoadProgress(
                 phase=VocabularyLoadPhase.DISABLING_INDEXES,
@@ -363,14 +353,6 @@ def load_vocab_source(
             db_schema=db_schema,
             dry_run=False,
         )
-        # --- DEBUG: remove after diagnosis ---
-        with load_engine.connect() as _c:
-            _n = _c.execute(sa.text(
-                "SELECT count(*) FROM pg_indexes"
-                " WHERE schemaname=:s AND indexname LIKE 'ix_%%'"
-            ), {"s": db_schema or "public"}).scalar_one()
-            console.print(f"[yellow]DEBUG[/yellow] Non-primary indexes still present after drop: {_n} (want 0)")
-        # --- END DEBUG ---
 
     if not dry_run:
         with load_engine.connect() as pre_conn:
