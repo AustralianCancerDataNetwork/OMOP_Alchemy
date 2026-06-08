@@ -481,6 +481,7 @@ def load_vocab_source(
             vocabulary_included=True,
             db_schema=db_schema,
             dry_run=False,
+            cluster=False,
         )
         if progress_callback is not None:
             progress_callback(VocabularyLoadProgress(

@@ -20,7 +20,7 @@ omop-alchemy --help
 | `analyze-tables` | ANALYZE or VACUUM ANALYZE selected tables to refresh planner statistics |
 | `reset-sequences` | Reset owned PostgreSQL sequences to MAX(pk) + 1 |
 | `truncate-tables` | Truncate selected ORM-managed tables |
-| `indexes disable` / `enable` | Drop or recreate ORM-defined secondary indexes |
+| `indexes disable` / `enable` / `cluster` | Drop or recreate ORM-defined secondary indexes; physically cluster tables on their designated index |
 | `foreign-keys disable` / `enable` / `status` / `validate` | Manage PostgreSQL RI trigger enforcement |
 | `fulltext install` / `populate` / `drop` | Manage tsvector sidecar columns on vocabulary tables |
 | `backup-database` | Create a pg_dump backup artifact |

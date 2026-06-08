@@ -65,12 +65,16 @@ Summarise ORM-managed OMOP tables present in the target database.
 
 Load all Athena vocabulary CSVs from the configured source path, optionally toggling indexes and FK triggers for speed.
 
+!!! warning "Clustering"
+    `--bulk-mode` (default) drops all secondary indexes before loading and recreates them afterward. Physical table clustering is **not** run as part of the load. Use [`indexes cluster`](#indexes-cluster) as a separate step once the load completes and you have confirmed sufficient free disk space.
+
 | Flag | Type / Choices | Default | Description |
 |---|---|---|---|
 | `--athena-source` | str (optional) | (saved default) | Path to the unzipped Athena vocabulary CSV directory. Falls back to the saved athena-source default. |
 | `--merge-strategy` | `replace` / `upsert` / `insert_if_empty` | `replace` | CSV merge strategy. `replace` keeps the DB in sync with the source. `upsert` is incremental and non-destructive. `insert_if_empty` is the fast path for a fresh empty target. |
 | `--chunksize` | int (optional) | `100000` | Chunk size for fallback ORM CSV loading. Defaults to 100 000 rows. Pass `0` to disable chunking. |
 | `--bulk-mode` / `--no-bulk-mode` | bool | `True` | Disable FK triggers and drop indexes globally before loading, then rebuild after. Much faster for a full vocabulary reload. Ignored on backends that do not support it. |
+| `--merge-batch-size` | int | `1000000` | Maximum rows per INSERT/DELETE transaction during the staging-to-target merge. Lower values reduce peak WAL pressure on memory-constrained systems. Raise to 5 000 000+ on machines with ample RAM for faster throughput. |
 | `--dry-run` | bool | `False` | Preview planned actions without applying any changes to the database. |
 
 ---
@@ -132,6 +136,30 @@ Drop all ORM-defined secondary indexes from the target database. Useful before b
 ### `indexes enable`
 
 Recreate all ORM-defined secondary indexes. Also CLUSTERs tables on PostgreSQL where metadata specifies it.
+
+!!! note
+    Physical clustering (`CLUSTER`) requires approximately 2× the table size in free disk space and is therefore a separate step on large databases. When called without `--vocab`, any cluster metadata on vocabulary tables is skipped. For vocabulary tables (especially `concept_ancestor`), use [`indexes cluster --vocab`](#indexes-cluster) after the load.
+
+| Flag | Type / Choices | Default | Description |
+|---|---|---|---|
+| `--vocab` / `--no-vocab` | bool | `False` | Include OMOP vocabulary tables in the selection. |
+| `--dry-run` | bool | `False` | Preview planned actions without applying any changes to the database. |
+
+---
+
+### `indexes cluster`
+
+Physically rewrite tables on disk sorted by their ORM-designated cluster index, then run `ANALYZE` to refresh planner statistics.
+
+This is intentionally separate from `indexes enable` because `CLUSTER` writes a full second copy of each heap before swapping it in. On large vocabulary tables (`concept_ancestor` alone can be 3–4 GB) you need that much free disk space on top of the existing database. Confirm available disk headroom before running — on Docker Desktop check **Settings → Resources → Virtual Disk Limit**.
+
+Recommended workflow after a full vocabulary load:
+
+```bash
+# Indexes are already built by load-vocab-source --bulk-mode.
+# Cluster and analyze vocabulary tables once disk space is confirmed:
+omop-alchemy indexes cluster --vocab
+```
 
 | Flag | Type / Choices | Default | Description |
 |---|---|---|---|

@@ -153,8 +153,9 @@ def manage_indexes(
     db_schema: str | None = None,
     vocabulary_included: bool = False,
     dry_run: bool = False,
+    cluster: bool = True,
 ) -> list[IndexManagementResult]:
-    """Create or drop all ORM-defined indexes. Also CLUSTERs tables on PostgreSQL when enabling."""
+    """Create or drop all ORM-defined indexes. CLUSTERs tables when enabling and cluster=True."""
     backend = resolve_backend(engine)
     inspector = sa.inspect(engine)
     selected_tables = select_omop_tables(vocabulary_included=vocabulary_included)
@@ -227,7 +228,7 @@ def manage_indexes(
                 continue
 
             cluster_columns = _cluster_column_names(table, cluster_index_name)
-            if not clustering_supported:
+            if not clustering_supported or not cluster:
                 results.append(
                     IndexManagementResult(
                         operation="cluster",
@@ -242,8 +243,9 @@ def manage_indexes(
                         enable=enable,
                         status="skipped",
                         detail=(
-                            "cluster metadata present but unsupported on "
-                            f"{backend.name}"
+                            f"cluster metadata present but unsupported on {backend.name}"
+                            if not clustering_supported
+                            else "clustering skipped (run 'indexes cluster' to apply)"
                         ),
                     )
                 )
@@ -321,7 +323,11 @@ def enable_indexes_command(
     ),
     dry_run: bool = False,
 ) -> None:
-    """Recreate all ORM-defined secondary indexes. Also CLUSTERs tables on PostgreSQL where metadata specifies it."""
+    """Recreate all ORM-defined secondary indexes. Also CLUSTERs tables on PostgreSQL where metadata specifies it.
+
+    Note: CLUSTER rewrites the full heap and requires ~2× the table size in free disk space.
+    On large vocabulary tables, run 'indexes cluster' as a separate step instead.
+    """
     with console.status("Managing metadata-defined indexes..."):
         results = manage_indexes(
             engine,
@@ -333,3 +339,75 @@ def enable_indexes_command(
     console.print(render_index_results(results))
     console.print(render_index_summary(results, dry_run=dry_run))
     console.print(render_index_note(enable=True))
+
+
+@app.command("cluster")
+@omop_command("indexes cluster", dry_run=True)
+def cluster_tables_command(
+    conn,
+    engine,
+    vocabulary_included: bool = typer.Option(
+        False,
+        "--vocab/--no-vocab",
+        help="Include OMOP vocabulary tables in the selection.",
+    ),
+    dry_run: bool = False,
+) -> None:
+    """CLUSTER tables using their ORM-designated cluster index.
+
+    Physically rewrites table data sorted by the cluster index for improved sequential-scan
+    performance. Requires approximately 2× the table size in free disk space per table.
+
+    Run this after 'indexes enable' once you have confirmed sufficient disk headroom.
+    On Docker, check Docker Desktop → Resources → Virtual Disk Limit before running on
+    vocabulary tables (concept_ancestor alone needs ~5 GB free).
+    """
+    backend = resolve_backend(engine)
+    if not backend_supports(backend, "cluster_table"):
+        console.print(f"[yellow]Clustering is not supported on {backend.name}.[/yellow]")
+        raise typer.Exit(0)
+
+    inspector = sa.inspect(engine)
+    selected_tables = select_omop_tables(vocabulary_included=vocabulary_included)
+    results: list[IndexManagementResult] = []
+
+    for table in selected_tables:
+        if not inspector.has_table(table.table_name, schema=conn.db_schema):
+            continue
+
+        cluster_index_name = _cluster_target_name(table)
+        if cluster_index_name is None:
+            continue
+
+        cluster_columns = _cluster_column_names(table, cluster_index_name)
+
+        if not dry_run:
+            with engine.begin() as connection:
+                backend.cluster_table(connection, table.table_name, cluster_index_name, conn.db_schema)
+            with engine.connect() as connection:
+                backend.analyze_table(connection, table.table_name, conn.db_schema)
+                connection.commit()
+
+        results.append(
+            IndexManagementResult(
+                operation="cluster",
+                table_name=table.table_name,
+                category=table.category,
+                model_name=table.model_name,
+                model_module=table.model_module,
+                index_name=cluster_index_name,
+                column_names=cluster_columns,
+                unique=False,
+                clustered=True,
+                enable=True,
+                status="planned" if dry_run else "applied",
+                detail=(
+                    "table would be clustered and analyzed"
+                    if dry_run
+                    else "table clustered and analyzed"
+                ),
+            )
+        )
+
+    console.print(render_index_results(results))
+    console.print(render_index_summary(results, dry_run=dry_run))
