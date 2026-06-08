@@ -31,7 +31,7 @@ services:
       - omop-net
     command: >
       bash -c "
-        omop-config configure omop_alchemy --skip-if-configured
+        omop-config configure omop_alchemy
           --conn-name cdm --dialect postgresql+psycopg
           --host omop-cdm-db --port 5432
           --user ${OMOP_CDM_DB_USER:-omop}

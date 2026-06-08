@@ -71,7 +71,7 @@ docker compose up
 
 The `python-alchemy` container runs `omop-config configure omop_alchemy` automatically at
 startup. Your `~/.config/omop/config.toml` on the host is written on first start and
-skipped on subsequent starts (`--skip-if-configured` flag makes this idempotent).
+safe to re-run on subsequent starts: connection flags always apply, and any values already stored in `config.toml` are preserved for fields not explicitly provided.
 
 ### Overriding default values
 
