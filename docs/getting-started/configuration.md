@@ -20,16 +20,16 @@ recognise.
 The resulting TOML looks like:
 
 ```toml
-[connections.cdm]
-dialect   = "postgresql+psycopg2"
-host      = "localhost"
-port      = 5432
-user      = "omop"
-password  = "changeme"
-database  = "omop_cdm"
+[databases.cdm]
+dialect       = "postgresql+psycopg2"
+host          = "localhost"
+port          = 5432
+user          = "omop"
+password      = "changeme"
+database_name = "omop_cdm"
 
 [resources.cdm_db]
-primary_db = "cdm"
+database   = "cdm"
 cdm_schema = "omop"
 ```
 

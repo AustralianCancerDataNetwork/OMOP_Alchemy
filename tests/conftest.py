@@ -373,13 +373,13 @@ def pg_engine():
     # DROP SCHEMA public CASCADE would destroy production data.
     if _stack is not None and _resolved is not None:
         try:
-            test_url = sa.engine.make_url(_resolved.primary_db.url)
+            test_url = sa.engine.make_url(_resolved.database.url)
             for res_name in _stack.resources:
                 if res_name == _TEST_RESOURCE:
                     continue
                 try:
                     other = Resolver(_stack).resolve_resource(res_name)
-                    other_url = sa.engine.make_url(other.primary_db.url)
+                    other_url = sa.engine.make_url(other.database.url)
                     if (test_url.host, test_url.port, test_url.database) == (
                         other_url.host, other_url.port, other_url.database
                     ):

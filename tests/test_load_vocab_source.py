@@ -159,8 +159,8 @@ def test_load_vocab_source_cli_uses_configured_athena_source(monkeypatch, tmp_pa
     athena_dir.mkdir()
 
     cfg = StackConfig.for_session(
-        connections={"db": {"dialect": "sqlite", "database": ":memory:"}},
-        resources={"cdm_db": {"primary_db": "db", "cdm_schema": "main"}},
+        databases={"db": {"dialect": "sqlite", "database_name": ":memory:"}},
+        resources={"cdm_db": {"database": "db", "cdm_schema": "main"}},
         tools={TOOL_NAME: {"extra": {"athena_source_path": str(athena_dir)}}},
     )
 
@@ -429,8 +429,8 @@ def test_load_vocab_source_cli_surfaces_database_error_detail(monkeypatch):
     from oa_configurator import StackConfig
 
     cfg = StackConfig.for_session(
-        connections={"db": {"dialect": "sqlite", "database": ":memory:"}},
-        resources={"cdm_db": {"primary_db": "db", "cdm_schema": "main"}},
+        databases={"db": {"dialect": "sqlite", "database_name": ":memory:"}},
+        resources={"cdm_db": {"database": "db", "cdm_schema": "main"}},
     )
     monkeypatch.setattr(
         "omop_alchemy.config.load_stack_config",

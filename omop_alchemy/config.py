@@ -57,14 +57,6 @@ class OmopAlchemyConfig(PackageConfigBase):
     )
 
 
-def get_resolver() -> Resolver:
-    return Resolver(load_stack_config())
-
-
-def get_config() -> OmopAlchemyConfig:
-    return OmopAlchemyConfig.from_stack(load_stack_config())
-
-
 def get_cdm_context() -> tuple[OmopAlchemyConfig, ResolvedResource]:
     """Return (pkg_config, resolved_cdm_resource), loading config once.
 
@@ -84,7 +76,7 @@ def create_cdm_engine(resolved: ResolvedResource) -> sa.Engine:
     try:
         return resolved.create_engine()
     except ModuleNotFoundError as exc:
-        msg = _missing_driver_message(resolved.primary_db.url, exc)
+        msg = _missing_driver_message(resolved.database.url, exc)
         if msg is not None:
             raise RuntimeError(msg) from exc
         raise

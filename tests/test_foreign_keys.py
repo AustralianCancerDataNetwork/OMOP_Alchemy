@@ -75,8 +75,8 @@ def test_disable_foreign_keys_cli_fails_gracefully_for_sqlite(monkeypatch):
     from oa_configurator import StackConfig
 
     cfg = StackConfig.for_session(
-        connections={"db": {"dialect": "sqlite", "database": ":memory:"}},
-        resources={"cdm_db": {"primary_db": "db", "cdm_schema": "main"}},
+        databases={"db": {"dialect": "sqlite", "database_name": ":memory:"}},
+        resources={"cdm_db": {"database": "db", "cdm_schema": "main"}},
     )
     monkeypatch.setattr(
         "omop_alchemy.config.load_stack_config",
@@ -250,8 +250,8 @@ def test_enable_foreign_keys_strict_cli_invokes_strict_management(monkeypatch):
     calls: dict[str, object] = {}
 
     cfg = StackConfig.for_session(
-        connections={"db": {"dialect": "sqlite", "database": ":memory:"}},
-        resources={"cdm_db": {"primary_db": "db", "cdm_schema": "main"}},
+        databases={"db": {"dialect": "sqlite", "database_name": ":memory:"}},
+        resources={"cdm_db": {"database": "db", "cdm_schema": "main"}},
     )
     monkeypatch.setattr(
         "omop_alchemy.config.load_stack_config",
@@ -363,8 +363,8 @@ def test_foreign_keys_validate_cli_invokes_validation(monkeypatch):
     calls: dict[str, object] = {}
 
     cfg = StackConfig.for_session(
-        connections={"db": {"dialect": "sqlite", "database": ":memory:"}},
-        resources={"cdm_db": {"primary_db": "db", "cdm_schema": "main"}},
+        databases={"db": {"dialect": "sqlite", "database_name": ":memory:"}},
+        resources={"cdm_db": {"database": "db", "cdm_schema": "main"}},
     )
     monkeypatch.setattr(
         "omop_alchemy.config.load_stack_config",

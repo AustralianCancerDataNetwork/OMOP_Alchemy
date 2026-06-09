@@ -43,8 +43,8 @@ def test_truncate_tables_cli_requires_confirmation(monkeypatch):
     from oa_configurator import StackConfig
 
     cfg = StackConfig.for_session(
-        connections={"db": {"dialect": "sqlite", "database": ":memory:"}},
-        resources={"cdm_db": {"primary_db": "db", "cdm_schema": "main"}},
+        databases={"db": {"dialect": "sqlite", "database_name": ":memory:"}},
+        resources={"cdm_db": {"database": "db", "cdm_schema": "main"}},
     )
     monkeypatch.setattr(
         "omop_alchemy.config.load_stack_config",
@@ -67,8 +67,8 @@ def test_truncate_tables_cli_invokes_management(monkeypatch):
     calls: dict[str, object] = {}
 
     cfg = StackConfig.for_session(
-        connections={"db": {"dialect": "sqlite", "database": ":memory:"}},
-        resources={"cdm_db": {"primary_db": "db", "cdm_schema": "main"}},
+        databases={"db": {"dialect": "sqlite", "database_name": ":memory:"}},
+        resources={"cdm_db": {"database": "db", "cdm_schema": "main"}},
     )
     monkeypatch.setattr(
         "omop_alchemy.config.load_stack_config",

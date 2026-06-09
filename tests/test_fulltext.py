@@ -203,8 +203,8 @@ def test_fulltext_install_cli_passes_options(monkeypatch):
     calls: dict[str, object] = {}
 
     cfg = StackConfig.for_session(
-        connections={"db": {"dialect": "sqlite", "database": ":memory:"}},
-        resources={"cdm_db": {"primary_db": "db", "cdm_schema": "public"}},
+        databases={"db": {"dialect": "sqlite", "database_name": ":memory:"}},
+        resources={"cdm_db": {"database": "db", "cdm_schema": "public"}},
     )
     monkeypatch.setattr(
         "omop_alchemy.config.load_stack_config",

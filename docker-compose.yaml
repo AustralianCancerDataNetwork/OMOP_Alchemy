@@ -32,11 +32,12 @@ services:
     command: >
       bash -c "
         omop-config configure omop_alchemy
-          --conn-name cdm --dialect postgresql+psycopg
+          --database cdm --dialect postgresql+psycopg
           --host omop-cdm-db --port 5432
           --user ${OMOP_CDM_DB_USER:-omop}
           --password ${OMOP_CDM_DB_PASSWORD:-omop}
-          --database ${OMOP_CDM_DB_NAME:-omop_cdm} --cdm-schema omop &&
+          --database-name ${OMOP_CDM_DB_NAME:-omop_cdm}
+          --cdm-schema omop &&
         sleep infinity
       "
 

@@ -94,7 +94,7 @@ def test_sqlite_url_not_intercepted():
     from unittest.mock import MagicMock
     resolved = MagicMock()
     resolved.create_engine.return_value = target.create_engine()
-    resolved.primary_db.url = "sqlite:///:memory:"
+    resolved.database.url = "sqlite:///:memory:"
     engine = create_cdm_engine(resolved)
     engine.dispose()
 
@@ -106,7 +106,7 @@ def test_create_engine_raises_runtime_for_missing_postgres_driver(monkeypatch):
 
     resolved = MagicMock()
     resolved.create_engine.side_effect = exc
-    resolved.primary_db.url = "postgresql+psycopg://host/db"
+    resolved.database.url = "postgresql+psycopg://host/db"
 
     with pytest.raises(RuntimeError, match="psycopg"):
         create_cdm_engine(resolved)

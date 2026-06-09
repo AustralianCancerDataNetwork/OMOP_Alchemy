@@ -49,7 +49,7 @@ def _get_admin_engine(*, yes: bool) -> sa.engine.Engine:
     try:
         stack = load_stack_config()
         resolved = Resolver(stack).resolve_resource(CDM_DB_RESOURCE)
-        suggested_url = resolved.primary_db.url
+        suggested_url = resolved.database.url
     except Exception:
         pass
 
@@ -169,7 +169,7 @@ def configure_test_db(
     """
     from oa_configurator.io import save_stack_config
     from oa_configurator.loader import DEFAULT_CONFIG_PATH, load_stack_config
-    from oa_configurator.models import ConnectionConfig, ResourceConfig, StackConfig
+    from oa_configurator.models import DatabaseConfig, ResourceConfig, StackConfig
 
     try:
         config = load_stack_config()
@@ -212,12 +212,12 @@ def configure_test_db(
     for res_name, existing_res in config.resources.items():
         if res_name == _TEST_RESOURCE:
             continue
-        existing_conn = config.connections.get(existing_res.primary_db)
+        existing_conn = config.databases.get(existing_res.database)
         if (
             existing_conn is not None
             and existing_conn.host == host
             and existing_conn.port == port
-            and existing_conn.database == database
+            and existing_conn.database_name == database
         ):
             err_console.print(
                 f"\n[red bold]DANGER[/red bold]: these connection details match the"
@@ -247,17 +247,17 @@ def configure_test_db(
         finally:
             admin_engine.dispose()
 
-    conn = ConnectionConfig(
+    conn = DatabaseConfig(
         dialect=dialect,
         host=host,
         port=port,
         user=user,
         password=password,
-        database=database,
+        database_name=database,
     )
-    resource = ResourceConfig(primary_db=_CONN_NAME, cdm_schema=cdm_schema)
+    resource = ResourceConfig(database=_CONN_NAME, cdm_schema=cdm_schema)
 
-    config.connections[_CONN_NAME] = conn
+    config.databases[_CONN_NAME] = conn
     config.resources[_TEST_RESOURCE] = resource
     save_stack_config(config)
 
