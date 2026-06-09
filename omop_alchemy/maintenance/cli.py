@@ -16,7 +16,7 @@ from . import (
     cli_tables as tables,
     cli_vocab as vocab,
 )
-from ..config import configure_logging
+from ..config import OmopAlchemyConfig
 from .help import install_help_customizations
 
 install_help_customizations()
@@ -47,7 +47,7 @@ def app_callback(
         typer.Option("--verbose", "-v", count=True, help="Increase verbosity: -v=INFO, -vv=DEBUG"),
     ] = 0,
 ) -> None:
-    configure_logging(verbose)
+    OmopAlchemyConfig.configure_logging(verbosity=verbose)
 
 
 def main() -> None:

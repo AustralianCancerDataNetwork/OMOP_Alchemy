@@ -5,7 +5,7 @@ from typing import ClassVar, Final
 import sqlalchemy as sa
 from pydantic import Field
 from oa_configurator import PackageConfigBase, ResourceSpec, Resolver, ResolvedResource, load_stack_config
-from oa_configurator import configure_logging as _configure_logging
+
 
 CDM_DB_RESOURCE: Final[str] = "cdm_db"
 TOOL_NAME: Final[str] = "omop_alchemy"
@@ -41,6 +41,7 @@ def _missing_driver_message(url: str, exc: ModuleNotFoundError) -> str | None:
 
 class OmopAlchemyConfig(PackageConfigBase):
     tool_name: ClassVar[str] = TOOL_NAME
+    extra_logging_namespaces: ClassVar[tuple[str, ...]] = ()
     required_resources: ClassVar[tuple[str, ...]] = (CDM_DB_RESOURCE,)
     owned_resources: ClassVar[tuple[ResourceSpec, ...]] = (
         ResourceSpec(
@@ -82,5 +83,3 @@ def create_cdm_engine(resolved: ResolvedResource) -> sa.Engine:
         raise
 
 
-def configure_logging(verbosity: int = 0) -> None:
-    _configure_logging(verbosity=verbosity, extra_namespaces=[TOOL_NAME])
