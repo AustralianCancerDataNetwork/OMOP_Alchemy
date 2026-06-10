@@ -41,7 +41,7 @@ def _missing_driver_message(url: str, exc: ModuleNotFoundError) -> str | None:
 
 class OmopAlchemyConfig(PackageConfigBase):
     tool_name: ClassVar[str] = TOOL_NAME
-    extra_logging_namespaces: ClassVar[tuple[str, ...]] = ()
+    extra_logging_namespaces: ClassVar[tuple[str, ...]] = ("orm_loader",)
     required_resources: ClassVar[tuple[str, ...]] = (CDM_DB_RESOURCE,)
     owned_resources: ClassVar[tuple[ResourceSpec, ...]] = (
         ResourceSpec(

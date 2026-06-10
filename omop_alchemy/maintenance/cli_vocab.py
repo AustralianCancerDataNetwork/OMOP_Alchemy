@@ -163,7 +163,7 @@ def _load_vocab_model_csv(
     quote_mode: str = "auto",
     chunksize: int | None = None,
     index_strategy: str = "auto",
-    merge_batch_size: int = 1_000_000,
+    merge_batch_size: int | None = None,
 ) -> int:
     """Call model.load_csv. If the staging table is absent, create it and retry once."""
     load_kwargs: dict[str, object] = {
@@ -255,7 +255,7 @@ def load_vocab_source(
     merge_strategy: MergeStrategy = "replace",
     chunksize: int | None = 100_000,
     bulk_mode: bool = True,
-    merge_batch_size: int = 1_000_000,
+    merge_batch_size: int | None = None,
     progress_callback: VocabularyLoadProgressCallback | None = None,
 ) -> VocabularyLoadReport:
     """Load all Athena vocabulary CSVs from source_path. With bulk_mode, indexes and FK triggers are toggled around the load."""
@@ -558,9 +558,13 @@ def load_vocab_source_command(
             "`insert_if_empty` is the fast path for a fresh empty target."
         ),
     ),
-    chunksize: int | None = typer.Option(
+    staging_chunk_size: int | None = typer.Option(
         100_000,
-        help="Chunk size for fallback ORM CSV loading. Defaults to 100 000 rows; pass 0 to disable chunking.",
+        help=(
+            "[Phase 1] Rows per ORM transaction when loading CSV → staging table. "
+            "Ignored when the PostgreSQL COPY fast-path is active (the default for "
+            "Athena CSVs). Pass 0 to disable chunking entirely."
+        ),
     ),
     bulk_mode: bool = typer.Option(
         True,
@@ -572,12 +576,14 @@ def load_vocab_source_command(
             "If the load fails mid-way, run `indexes enable --vocab` and `foreign-keys enable` to recover."
         ),
     ),
-    merge_batch_size: int = typer.Option(
-        1_000_000,
+    merge_batch_size: int | None = typer.Option(
+        None,
         help=(
-            "Maximum rows per INSERT/DELETE transaction during the staging-to-target merge. "
-            "Lower values reduce peak WAL pressure (safer on memory-constrained systems). "
-            "Raise to 5 000 000+ on machines with ample RAM for faster throughput."
+            "[Phase 2] Rows per transaction when merging staging → target table. "
+            "Default: None (no pagination — single INSERT per table, fastest for high-RAM systems). "
+            "Set to a positive integer to enable paginated commits for memory-constrained systems; "
+            "note that pagination adds a COUNT query and an index build on the staging table "
+            "before the merge begins, which adds significant overhead even at large batch sizes."
         ),
     ),
     dry_run: bool = False,
@@ -627,7 +633,7 @@ def load_vocab_source_command(
             db_schema=conn.db_schema,
             dry_run=dry_run,
             merge_strategy=merge_strategy,
-            chunksize=None if chunksize == 0 else chunksize,
+            chunksize=None if staging_chunk_size == 0 else staging_chunk_size,
             bulk_mode=bulk_mode,
             merge_batch_size=merge_batch_size,
             progress_callback=_update_progress,
