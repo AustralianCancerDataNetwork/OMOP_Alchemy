@@ -136,6 +136,16 @@ def handle_error(exc: Exception) -> None:
     raise exc
 
 
+def dry_status(dry_run: bool, applied: str = "applied") -> str:
+    """Return 'planned' when dry_run is True, otherwise the applied label."""
+    return "planned" if dry_run else applied
+
+
+def dry_label(dry_run: bool, planned: str, applied: str) -> str:
+    """Return the planned or applied detail string based on dry_run."""
+    return planned if dry_run else applied
+
+
 def resolve_selection(
     *,
     scope: TableScope | None,

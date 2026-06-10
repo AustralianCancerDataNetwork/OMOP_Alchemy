@@ -8,7 +8,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal, TypeAlias, cast
 
-from enum import StrEnum
 import sqlalchemy as sa
 import sqlalchemy.orm as so
 import sqlalchemy.event as sae
@@ -75,28 +74,26 @@ class VocabularyLoadReport:
     results: tuple[VocabularyLoadResult, ...]
 
 
-class VocabularyLoadPhase(StrEnum):
-    START = "start"
-    DISABLING_FK = "disabling_fk"
-    DISABLING_INDEXES = "disabling_indexes"
-    LOADING = "loading"
-    DONE = "done"
-    REBUILDING_INDEXES = "rebuilding_indexes"
-    REBUILDING_FK = "rebuilding_fk"
-    COMPLETE = "complete"
-
 @dataclass(frozen=True)
 class VocabularyLoadProgress:
-    """Progress event emitted after each table load. Drives the CLI progress bar."""
+    """Progress event emitted during vocabulary load. Drives the CLI progress bar."""
 
-    phase: VocabularyLoadPhase
-    table_name: str | None
-    table_index: int
-    table_count: int
+    description: str
     percent: float
-    detail: str
+    table_done: bool = False
+    table_name: str | None = None
     rows_this_table: int | None = None
-    rows_cumulative: int = 0
+    table_count: int = 0
+
+
+def _emit(
+    callback: VocabularyLoadProgressCallback | None,
+    description: str,
+    percent: float,
+    **kwargs,
+) -> None:
+    if callback is not None:
+        callback(VocabularyLoadProgress(description=description, percent=percent, **kwargs))
 
 
 REQUIRED_VOCAB_MODELS: tuple[VocabularyModel, ...] = cast(
@@ -305,15 +302,7 @@ def load_vocab_source(
     rows_cumulative = 0
     table_index = 0
 
-    if progress_callback is not None:
-        progress_callback(VocabularyLoadProgress(
-            phase=VocabularyLoadPhase.START,
-            table_name=None,
-            table_index=0,
-            table_count=table_count,
-            percent=0.0,
-            detail=f"Preparing Athena vocabulary load for {table_count} CSV file(s)",
-        ))
+    _emit(progress_callback, f"Preparing Athena vocabulary load for {table_count} CSV file(s)", 0.0, table_count=table_count)
 
     _use_bulk_mode = (
         bulk_mode
@@ -321,15 +310,7 @@ def load_vocab_source(
         and engine.dialect.name == SupportedDialect.POSTGRESQL
     )
     if _use_bulk_mode:
-        if progress_callback is not None:
-            progress_callback(VocabularyLoadProgress(
-                phase=VocabularyLoadPhase.DISABLING_FK,
-                table_name=None,
-                table_index=0,
-                table_count=table_count,
-                percent=0.0,
-                detail="Disabling FK trigger checks for bulk load...",
-            ))
+        _emit(progress_callback, "Disabling FK trigger checks for bulk load...", 0.0, table_count=table_count)
         manage_foreign_key_triggers(
             engine,
             enable=False,
@@ -337,15 +318,7 @@ def load_vocab_source(
             db_schema=db_schema,
             dry_run=False,
         )
-        if progress_callback is not None:
-            progress_callback(VocabularyLoadProgress(
-                phase=VocabularyLoadPhase.DISABLING_INDEXES,
-                table_name=None,
-                table_index=0,
-                table_count=table_count,
-                percent=0.0,
-                detail="Dropping indexes for bulk load...",
-            ))
+        _emit(progress_callback, "Dropping indexes for bulk load...", 0.0, table_count=table_count)
         manage_indexes(
             engine,
             enable=False,
@@ -376,16 +349,13 @@ def load_vocab_source(
 
         table_index += 1
 
-        if progress_callback is not None:
-            progress_callback(VocabularyLoadProgress(
-                phase=VocabularyLoadPhase.LOADING,
-                table_name=model.__tablename__,
-                table_index=table_index,
-                table_count=table_count,
-                percent=(table_index - 1) / table_count * 100,
-                detail=f"Loading {model.__tablename__} ({table_index}/{table_count})...",
-                rows_cumulative=rows_cumulative,
-            ))
+        _emit(
+            progress_callback,
+            f"Loading {model.__tablename__} ({table_index}/{table_count})...",
+            (table_index - 1) / table_count * 100,
+            table_name=model.__tablename__,
+            table_count=table_count,
+        )
 
         if dry_run:
             results.append(VocabularyLoadResult(
@@ -452,29 +422,18 @@ def load_vocab_source(
             detail="Athena CSV loaded via staged ORM CSV loader using tab-delimited input and auto-detected quote mode",
         ))
 
-        if progress_callback is not None:
-            progress_callback(VocabularyLoadProgress(
-                phase=VocabularyLoadPhase.DONE,
-                table_name=model.__tablename__,
-                table_index=table_index,
-                table_count=table_count,
-                percent=table_index / table_count * 100,
-                detail=f"Loaded {model.__tablename__} ({table_index}/{table_count})",
-                rows_this_table=row_count,
-                rows_cumulative=rows_cumulative,
-            ))
+        _emit(
+            progress_callback,
+            f"Loaded {model.__tablename__} ({table_index}/{table_count})",
+            table_index / table_count * 100,
+            table_done=True,
+            table_name=model.__tablename__,
+            rows_this_table=row_count,
+            table_count=table_count,
+        )
 
     if _use_bulk_mode:
-        if progress_callback is not None:
-            progress_callback(VocabularyLoadProgress(
-                phase=VocabularyLoadPhase.REBUILDING_INDEXES,
-                table_name=None,
-                table_index=table_count,
-                table_count=table_count,
-                percent=100.0,
-                detail="Rebuilding indexes on vocabulary tables (may take 15+ min)...",
-                rows_cumulative=rows_cumulative,
-            ))
+        _emit(progress_callback, "Rebuilding indexes on vocabulary tables (may take 15+ min)...", 100.0, table_count=table_count)
         manage_indexes(
             engine,
             enable=True,
@@ -483,16 +442,7 @@ def load_vocab_source(
             dry_run=False,
             cluster=False,
         )
-        if progress_callback is not None:
-            progress_callback(VocabularyLoadProgress(
-                phase=VocabularyLoadPhase.REBUILDING_FK,
-                table_name=None,
-                table_index=table_count,
-                table_count=table_count,
-                percent=100.0,
-                detail="Re-enabling FK trigger checks...",
-                rows_cumulative=rows_cumulative,
-            ))
+        _emit(progress_callback, "Re-enabling FK trigger checks...", 100.0, table_count=table_count)
         manage_foreign_key_triggers(
             engine,
             enable=True,
@@ -501,16 +451,7 @@ def load_vocab_source(
             dry_run=False,
         )
 
-    if progress_callback is not None:
-        progress_callback(VocabularyLoadProgress(
-            phase=VocabularyLoadPhase.COMPLETE,
-            table_name=None,
-            table_index=table_count,
-            table_count=table_count,
-            percent=100.0,
-            detail="Athena vocabulary load complete",
-            rows_cumulative=rows_cumulative,
-        ))
+    _emit(progress_callback, "Athena vocabulary load complete", 100.0, table_count=table_count)
 
     if not dry_run and engine.dialect.name == SupportedDialect.POSTGRESQL:
         sequence_results = reset_model_sequences(
@@ -615,8 +556,8 @@ def load_vocab_source_command(
         completed_tables: list[str] = []
 
         def _update_progress(event: VocabularyLoadProgress) -> None:
-            progress.update(task_id, completed=event.percent, description=event.detail)
-            if event.phase == VocabularyLoadPhase.DONE and event.table_name is not None:
+            progress.update(task_id, completed=event.percent, description=event.description)
+            if event.table_done and event.table_name is not None:
                 completed_tables.append(event.table_name)
                 row_info = (
                     f": [dim]{event.rows_this_table:,} rows[/dim]"

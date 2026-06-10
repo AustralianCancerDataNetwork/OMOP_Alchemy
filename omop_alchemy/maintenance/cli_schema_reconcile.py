@@ -35,8 +35,6 @@ class TableReconciliationResult:
 
     table_name: str
     category: TableCategory
-    model_name: str
-    model_module: str
     status: str
     issue_count: int
     detail: str
@@ -158,8 +156,6 @@ def reconcile_schema(
                     TableReconciliationResult(
                         table_name=maintenance_table.table_name,
                         category=maintenance_table.category,
-                        model_name=maintenance_table.model_name,
-                        model_module=maintenance_table.model_module,
                         status="missing",
                         issue_count=1,
                         detail="Table is missing from the target database.",
@@ -389,8 +385,6 @@ def reconcile_schema(
                 TableReconciliationResult(
                     table_name=maintenance_table.table_name,
                     category=maintenance_table.category,
-                    model_name=maintenance_table.model_name,
-                    model_module=maintenance_table.model_module,
                     status=table_status,
                     issue_count=len(table_issues),
                     detail=(

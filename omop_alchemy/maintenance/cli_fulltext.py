@@ -8,7 +8,7 @@ from sqlalchemy.engine import Engine
 from ..backends import backend_support_note as _backend_support_note
 from ..backends import resolve_backend, require_backend_support
 from ..backends.base import FullTextAction, FullTextError, FullTextResult
-from ._cli_utils import omop_command
+from ._cli_utils import dry_label, dry_status, omop_command
 from .ui import (
     console,
     render_fulltext_results,
@@ -65,15 +65,11 @@ def install_fulltext_columns(
             vector_column_name=cfg.vector_column_name,
             index_name=cfg.index_name,
             action=FullTextAction.INSTALL,
-            status="planned" if dry_run else "applied",
-            detail=(
-                "tsvector column would be installed"
-                if dry_run and not create_indexes
-                else "tsvector column and GIN index would be installed"
-                if dry_run
-                else "tsvector column installed"
-                if not create_indexes
-                else "tsvector column and GIN index installed"
+            status=dry_status(dry_run),
+            detail=dry_label(
+                dry_run,
+                "tsvector column would be installed" if not create_indexes else "tsvector column and GIN index would be installed",
+                "tsvector column installed" if not create_indexes else "tsvector column and GIN index installed",
             ),
         )
         for cfg in targets
@@ -121,12 +117,8 @@ def populate_fulltext_columns(
             vector_column_name=cfg.vector_column_name,
             index_name=cfg.index_name,
             action=FullTextAction.POPULATE,
-            status="planned" if dry_run else "applied",
-            detail=(
-                "tsvector column would be populated from source text"
-                if dry_run
-                else "tsvector column populated from source text"
-            ),
+            status=dry_status(dry_run),
+            detail=dry_label(dry_run, "tsvector column would be populated from source text", "tsvector column populated from source text"),
             row_count=None if dry_run else row_counts.get(cfg.table_name),
         )
         for cfg in targets
@@ -173,15 +165,11 @@ def drop_fulltext_columns(
             vector_column_name=cfg.vector_column_name,
             index_name=cfg.index_name,
             action=FullTextAction.DROP,
-            status="planned" if dry_run else "applied",
-            detail=(
-                "tsvector column would be dropped"
-                if dry_run and not drop_indexes
-                else "tsvector column and GIN index would be dropped"
-                if dry_run
-                else "tsvector column dropped"
-                if not drop_indexes
-                else "tsvector column and GIN index dropped"
+            status=dry_status(dry_run),
+            detail=dry_label(
+                dry_run,
+                "tsvector column would be dropped" if not drop_indexes else "tsvector column and GIN index would be dropped",
+                "tsvector column dropped" if not drop_indexes else "tsvector column and GIN index dropped",
             ),
         )
         for cfg in targets

@@ -8,7 +8,7 @@ import sqlalchemy as sa
 import typer
 
 from ..backends import resolve_backend, require_backend_support, backend_support_note
-from ._cli_utils import omop_command, resolve_selection
+from ._cli_utils import dry_label, dry_status, omop_command, resolve_selection
 from .tables import (
     TableCategory,
     TableScope,
@@ -40,8 +40,6 @@ class AnalyzeTableResult:
 
     table_name: str
     category: TableCategory
-    model_name: str
-    model_module: str
     operation: str
     status: str
     detail: str
@@ -79,8 +77,6 @@ def analyze_tables(
                     AnalyzeTableResult(
                         table_name=maintenance_table.table_name,
                         category=maintenance_table.category,
-                        model_name=maintenance_table.model_name,
-                        model_module=maintenance_table.model_module,
                         operation=operation,
                         status="skipped",
                         detail="table not present in target database",
@@ -95,15 +91,9 @@ def analyze_tables(
                 AnalyzeTableResult(
                     table_name=maintenance_table.table_name,
                     category=maintenance_table.category,
-                    model_name=maintenance_table.model_name,
-                    model_module=maintenance_table.model_module,
                     operation=operation,
-                    status="planned" if dry_run else "applied",
-                    detail=(
-                        f"{operation.lower()} would run"
-                        if dry_run
-                        else f"{operation.lower()} completed"
-                    ),
+                    status=dry_status(dry_run),
+                    detail=dry_label(dry_run, f"{operation.lower()} would run", f"{operation.lower()} completed"),
                 )
             )
 
@@ -120,8 +110,6 @@ class TruncateTableResult:
 
     table_name: str
     category: TableCategory
-    model_name: str
-    model_module: str
     row_count: int | None
     status: str
     detail: str
@@ -196,8 +184,6 @@ def truncate_tables(
                     TruncateTableResult(
                         table_name=maintenance_table.table_name,
                         category=maintenance_table.category,
-                        model_name=maintenance_table.model_name,
-                        model_module=maintenance_table.model_module,
                         row_count=None,
                         status="skipped",
                         detail="table not present in target database",
@@ -215,11 +201,9 @@ def truncate_tables(
                 TruncateTableResult(
                     table_name=maintenance_table.table_name,
                     category=maintenance_table.category,
-                    model_name=maintenance_table.model_name,
-                    model_module=maintenance_table.model_module,
                     row_count=row_count,
-                    status="planned" if dry_run else "applied",
-                    detail="table would be truncated" if dry_run else "table truncated",
+                    status=dry_status(dry_run),
+                    detail=dry_label(dry_run, "table would be truncated", "table truncated"),
                 )
             )
 
@@ -254,8 +238,6 @@ class SequenceTarget:
 
     table_name: str
     category: TableCategory
-    model_name: str
-    model_module: str
     pk_column_name: str
 
 
@@ -265,8 +247,6 @@ class SequenceResetResult:
 
     table_name: str
     category: TableCategory
-    model_name: str
-    model_module: str
     pk_column_name: str
     sequence_name: str | None
     next_value: int | None
@@ -291,8 +271,6 @@ def collect_sequence_targets(
             SequenceTarget(
                 table_name=table.table_name,
                 category=table.category,
-                model_name=table.model_name,
-                model_module=table.model_module,
                 pk_column_name=pk_column_name,
             )
         )
@@ -327,8 +305,6 @@ def reset_model_sequences(
                     SequenceResetResult(
                         table_name=target.table_name,
                         category=target.category,
-                        model_name=target.model_name,
-                        model_module=target.model_module,
                         pk_column_name=target.pk_column_name,
                         sequence_name=None,
                         next_value=None,
@@ -354,17 +330,11 @@ def reset_model_sequences(
                 SequenceResetResult(
                     table_name=target.table_name,
                     category=target.category,
-                    model_name=target.model_name,
-                    model_module=target.model_module,
                     pk_column_name=target.pk_column_name,
                     sequence_name=sequence_name,
                     next_value=next_value,
-                    status="planned" if dry_run else "reset",
-                    detail=(
-                        "sequence would be reset from table max + 1"
-                        if dry_run
-                        else "sequence reset from table max + 1"
-                    ),
+                    status=dry_status(dry_run, applied="reset"),
+                    detail=dry_label(dry_run, "sequence would be reset from table max + 1", "sequence reset from table max + 1"),
                 )
             )
 

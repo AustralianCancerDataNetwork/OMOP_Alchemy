@@ -6,6 +6,7 @@ from typing import Annotated
 
 import typer
 
+from .ui import console
 from . import (
     cli_backup as backup,
     cli_config as config,
@@ -47,7 +48,7 @@ def app_callback(
         typer.Option("--verbose", "-v", count=True, help="Increase verbosity: -v=INFO, -vv=DEBUG"),
     ] = 0,
 ) -> None:
-    OmopAlchemyConfig.configure_logging(verbosity=verbose)
+    OmopAlchemyConfig.configure_logging(verbosity=verbose, console=console)
 
 
 def main() -> None:

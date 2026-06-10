@@ -292,7 +292,7 @@ def test_enable_foreign_keys_strict_cli_invokes_strict_management(monkeypatch):
     assert result.exit_code == 0
     assert calls["strict"] is True
     assert calls["enable"] is True
-    assert "enable --strict" in result.stdout
+    assert "foreign-keys enable" in result.stdout
 
 
 def test_validate_foreign_key_constraints_reports_failures(monkeypatch):
@@ -396,8 +396,6 @@ def test_foreign_keys_validate_cli_invokes_validation(monkeypatch):
                 ForeignKeyValidationResult(
                     table_name="visit_occurrence",
                     category=TableCategory.HEALTH_SYSTEM,
-                    model_name="VisitOccurrence",
-                    model_module="omop_alchemy.cdm.model.health_system.visit_occurrence",
                     outgoing_constraint_count=2,
                     incoming_constraint_count=0,
                     violating_constraint_count=1,

@@ -100,8 +100,6 @@ def test_truncate_tables_cli_invokes_management(monkeypatch):
             TruncateTableResult(
                 table_name="person",
                 category=TableCategory.CLINICAL,
-                model_name="Person",
-                model_module="omop_alchemy.cdm.model.clinical.person",
                 row_count=10,
                 status="planned",
                 detail="table would be truncated",

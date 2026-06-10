@@ -12,7 +12,7 @@ import sqlalchemy as sa
 import typer
 
 from ..backends import resolve_backend, require_backend_support, backend_support_note
-from ._cli_utils import omop_command
+from ._cli_utils import dry_label, dry_status, omop_command
 from .ui import (
     console,
     render_backup_result,
@@ -87,12 +87,8 @@ def create_database_backup(
     return BackupResult(
         file_path=str(resolved_output_path),
         backup_format=backup_format,
-        status="planned" if dry_run else "created",
-        detail=(
-            "Database backup would be created with pg_dump."
-            if dry_run
-            else "Database backup created with pg_dump."
-        ),
+        status=dry_status(dry_run, applied="created"),
+        detail=dry_label(dry_run, "Database backup would be created with pg_dump.", "Database backup created with pg_dump."),
         database_name=database_name,
         backend=engine.dialect.name,
         schema_name=db_schema,
@@ -131,12 +127,8 @@ def restore_database_backup(
     return BackupResult(
         file_path=str(resolved_input_path),
         backup_format=backup_format,
-        status="planned" if dry_run else "applied",
-        detail=(
-            "Database restore would be executed using PostgreSQL client tools."
-            if dry_run
-            else "Database restore completed using PostgreSQL client tools."
-        ),
+        status=dry_status(dry_run),
+        detail=dry_label(dry_run, "Database restore would be executed using PostgreSQL client tools.", "Database restore completed using PostgreSQL client tools."),
         database_name=database_name,
         backend=engine.dialect.name,
         schema_name=db_schema,

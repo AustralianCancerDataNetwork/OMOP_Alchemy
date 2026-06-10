@@ -10,7 +10,7 @@ import typer
 from omop_alchemy.cdm.base.indexing import OMOP_CLUSTER_INDEX_INFO_KEY
 
 from ..backends import resolve_backend, backend_supports
-from ._cli_utils import omop_command
+from ._cli_utils import dry_label, dry_status, omop_command
 from .tables import (
     MaintenanceTable,
     TableCategory,
@@ -31,8 +31,6 @@ class IndexTarget:
 
     table_name: str
     category: TableCategory
-    model_name: str
-    model_module: str
     index_name: str
     column_names: tuple[str, ...]
     unique: bool
@@ -40,18 +38,9 @@ class IndexTarget:
 
 
 @dataclass(frozen=True)
-class IndexManagementResult:
+class IndexManagementResult(IndexTarget):
     """Outcome of creating or dropping one ORM-defined index, or clustering a table."""
-
     operation: str
-    table_name: str
-    category: TableCategory
-    model_name: str
-    model_module: str
-    index_name: str
-    column_names: tuple[str, ...]
-    unique: bool
-    clustered: bool
     enable: bool
     status: str
     detail: str
@@ -134,8 +123,6 @@ def collect_index_targets(
                 IndexTarget(
                     table_name=table.table_name,
                     category=table.category,
-                    model_name=table.model_name,
-                    model_module=table.model_module,
                     index_name=str(metadata_index.name),
                     column_names=tuple(column.name for column in metadata_index.columns),
                     unique=bool(metadata_index.unique),
@@ -202,22 +189,16 @@ def manage_indexes(
                     operation="index",
                     table_name=table.table_name,
                     category=table.category,
-                    model_name=table.model_name,
-                    model_module=table.model_module,
                     index_name=index_name,
                     column_names=tuple(column.name for column in metadata_index.columns),
                     unique=bool(metadata_index.unique),
                     clustered=metadata_index.info.get(OMOP_CLUSTER_INDEX_INFO_KEY) is True,
                     enable=enable,
-                    status="planned" if dry_run else "applied",
-                    detail=(
-                        "metadata-defined index would be dropped"
-                        if not enable and dry_run
-                        else "metadata-defined index dropped"
-                        if not enable
-                        else "metadata-defined index would be created"
-                        if dry_run
-                        else "metadata-defined index created"
+                    status=dry_status(dry_run),
+                    detail=dry_label(
+                        dry_run,
+                        "metadata-defined index would be dropped" if not enable else "metadata-defined index would be created",
+                        "metadata-defined index dropped" if not enable else "metadata-defined index created",
                     ),
                 )
             )
@@ -234,8 +215,6 @@ def manage_indexes(
                         operation="cluster",
                         table_name=table.table_name,
                         category=table.category,
-                        model_name=table.model_name,
-                        model_module=table.model_module,
                         index_name=cluster_index_name,
                         column_names=cluster_columns,
                         unique=False,
@@ -260,19 +239,13 @@ def manage_indexes(
                     operation="cluster",
                     table_name=table.table_name,
                     category=table.category,
-                    model_name=table.model_name,
-                    model_module=table.model_module,
                     index_name=cluster_index_name,
                     column_names=cluster_columns,
                     unique=False,
                     clustered=True,
                     enable=enable,
-                    status="planned" if dry_run else "applied",
-                    detail=(
-                        "table would be clustered using ORM-defined metadata"
-                        if dry_run
-                        else "table clustered using ORM-defined metadata"
-                    ),
+                    status=dry_status(dry_run),
+                    detail=dry_label(dry_run, "table would be clustered using ORM-defined metadata", "table clustered using ORM-defined metadata"),
                 )
             )
 
@@ -393,19 +366,13 @@ def cluster_tables_command(
                 operation="cluster",
                 table_name=table.table_name,
                 category=table.category,
-                model_name=table.model_name,
-                model_module=table.model_module,
                 index_name=cluster_index_name,
                 column_names=cluster_columns,
                 unique=False,
                 clustered=True,
                 enable=True,
-                status="planned" if dry_run else "applied",
-                detail=(
-                    "table would be clustered and analyzed"
-                    if dry_run
-                    else "table clustered and analyzed"
-                ),
+                status=dry_status(dry_run),
+                detail=dry_label(dry_run, "table would be clustered and analyzed", "table clustered and analyzed"),
             )
         )
 

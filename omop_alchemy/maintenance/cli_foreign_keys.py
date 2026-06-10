@@ -7,16 +7,14 @@ from dataclasses import dataclass
 import sqlalchemy as sa
 import typer
 
-from ._cli_utils import _ConnContext
 from ..backends import Backend, resolve_backend, require_backend_support, backend_support_note
-from ._cli_utils import handle_error, omop_command
+from ._cli_utils import dry_label, dry_status, handle_error, omop_command
 from .tables import (
     TableCategory,
     existing_maintenance_tables,
 )
 from .ui import (
     console,
-    render_command_header,
     render_foreign_key_note,
     render_foreign_key_results,
     render_foreign_key_status_results,
@@ -34,8 +32,6 @@ class ForeignKeyBase:
 
     table_name: str
     category: TableCategory
-    model_name: str
-    model_module: str
 
 
 @dataclass(frozen=True)
@@ -47,32 +43,23 @@ class _FKTableInfo(ForeignKeyBase):
 
 
 @dataclass(frozen=True)
-class ForeignKeyManagementResult(ForeignKeyBase):
+class ForeignKeyManagementResult(_FKTableInfo):
     """Outcome of a FK trigger enable or disable operation for one table."""
-
-    outgoing_constraint_count: int
-    incoming_constraint_count: int
     enable: bool
     status: str
     detail: str
 
 
 @dataclass(frozen=True)
-class ForeignKeyStatusResult(ForeignKeyBase):
+class ForeignKeyStatusResult(_FKTableInfo):
     """Current FK trigger state for one table: counts of disabled vs enabled PostgreSQL RI triggers."""
-
-    outgoing_constraint_count: int
-    incoming_constraint_count: int
     disabled_trigger_count: int
     enabled_trigger_count: int
 
 
 @dataclass(frozen=True)
-class ForeignKeyValidationResult(ForeignKeyBase):
+class ForeignKeyValidationResult(_FKTableInfo):
     """FK constraint validation outcome for one table, with counts of violating constraints and rows."""
-
-    outgoing_constraint_count: int
-    incoming_constraint_count: int
     violating_constraint_count: int
     violating_row_count: int
     status: str
@@ -141,8 +128,6 @@ def _collect_fk_info(
             _FKTableInfo(
                 table_name=table.table_name,
                 category=table.category,
-                model_name=table.model_name,
-                model_module=table.model_module,
                 outgoing_constraint_count=outgoing_count,
                 incoming_constraint_count=incoming_count,
             )
@@ -216,37 +201,21 @@ def _collect_strict_validation_failures(
     }
 
 
-def _strict_failure_detail(violations: list[ForeignKeyConstraintViolation]) -> str:
-    """Build the detail string used when strict mode aborts trigger enabling due to FK violations."""
+def _fk_violation_detail(
+    violations: list[ForeignKeyConstraintViolation],
+    *,
+    strict_abort: bool = False,
+) -> str:
+    """Format a list of FK violations into a human-readable detail string."""
     constraint_summary = ", ".join(
-        f"{violation.constraint_name} ({violation.violation_count})"
-        for violation in violations[:3]
+        f"{v.constraint_name} ({v.violation_count})"
+        for v in violations[:3]
     )
     if len(violations) > 3:
         constraint_summary = f"{constraint_summary}, +{len(violations) - 3} more"
-
-    total_violations = sum(violation.violation_count for violation in violations)
-    return (
-        "Strict validation failed; no FK triggers were enabled. "
-        f"{total_violations} violating row(s) across {len(violations)} constraint(s): "
-        f"{constraint_summary}"
-    )
-
-
-def _validation_failure_detail(violations: list[ForeignKeyConstraintViolation]) -> str:
-    """Build the per-table detail string for the validate command when violations are found."""
-    constraint_summary = ", ".join(
-        f"{violation.constraint_name} ({violation.violation_count})"
-        for violation in violations[:3]
-    )
-    if len(violations) > 3:
-        constraint_summary = f"{constraint_summary}, +{len(violations) - 3} more"
-
-    total_violations = sum(violation.violation_count for violation in violations)
-    return (
-        f"{total_violations} violating row(s) across {len(violations)} constraint(s): "
-        f"{constraint_summary}"
-    )
+    total = sum(v.violation_count for v in violations)
+    prefix = "Strict validation failed; no FK triggers were enabled. " if strict_abort else ""
+    return f"{prefix}{total} violating row(s) across {len(violations)} constraint(s): {constraint_summary}"
 
 
 def validate_foreign_key_constraints(
@@ -284,15 +253,13 @@ def validate_foreign_key_constraints(
             ForeignKeyValidationResult(
                 table_name=target.table_name,
                 category=target.category,
-                model_name=target.model_name,
-                model_module=target.model_module,
                 outgoing_constraint_count=target.outgoing_constraint_count,
                 incoming_constraint_count=target.incoming_constraint_count,
                 violating_constraint_count=violating_constraint_count,
                 violating_row_count=violating_row_count,
                 status="failed" if violations else "passed",
                 detail=(
-                    _validation_failure_detail(violations)
+                    _fk_violation_detail(violations)
                     if violations
                     else "No FK violations found for this table."
                 ),
@@ -344,35 +311,26 @@ def manage_foreign_key_triggers(
                         ForeignKeyManagementResult(
                             table_name=target.table_name,
                             category=target.category,
-                            model_name=target.model_name,
-                            model_module=target.model_module,
                             outgoing_constraint_count=target.outgoing_constraint_count,
                             incoming_constraint_count=target.incoming_constraint_count,
                             enable=enable,
                             status="failed" if violations else "skipped",
                             detail=(
-                                _strict_failure_detail(violations)
+                                _fk_violation_detail(violations, strict_abort=True)
                                 if violations
                                 else "Strict validation failed on other tables; no FK triggers were enabled."
                             ),
                         )
                     )
                 return results
+        
 
+        fk_planned_applied: dict[tuple[bool, bool], tuple[str, str]] = {
+            (False, False): ("FK trigger enforcement would be disabled", "FK trigger enforcement disabled"),
+            (True,  False): ("FK trigger enforcement would be enabled", "FK trigger enforcement enabled"),
+            (True,  True):  ("Strict FK validation passed; trigger enforcement would be enabled", "Strict FK validation passed; trigger enforcement enabled"),
+        }
         for target in targets:
-            detail = (
-                "FK trigger enforcement would be disabled"
-                if not enable and dry_run
-                else "FK trigger enforcement disabled"
-                if not enable
-                else "Strict FK validation passed; trigger enforcement would be enabled"
-                if strict and dry_run
-                else "Strict FK validation passed; trigger enforcement enabled"
-                if strict
-                else "FK trigger enforcement would be enabled"
-                if dry_run
-                else "FK trigger enforcement enabled"
-            )
             if not dry_run:
                 backend.toggle_fk_triggers(connection, target.table_name, db_schema, enable=enable)
 
@@ -380,13 +338,11 @@ def manage_foreign_key_triggers(
                 ForeignKeyManagementResult(
                     table_name=target.table_name,
                     category=target.category,
-                    model_name=target.model_name,
-                    model_module=target.model_module,
                     outgoing_constraint_count=target.outgoing_constraint_count,
                     incoming_constraint_count=target.incoming_constraint_count,
                     enable=enable,
-                    status="planned" if dry_run else "applied",
-                    detail=detail,
+                    status=dry_status(dry_run),
+                    detail=dry_label(dry_run, *fk_planned_applied[(enable, enable and strict)]),
                 )
             )
 
@@ -419,8 +375,6 @@ def collect_foreign_key_trigger_status(
                 ForeignKeyStatusResult(
                     table_name=target.table_name,
                     category=target.category,
-                    model_name=target.model_name,
-                    model_module=target.model_module,
                     disabled_trigger_count=disabled_count,
                     enabled_trigger_count=enabled_count,
                     outgoing_constraint_count=target.outgoing_constraint_count,
@@ -473,7 +427,10 @@ def disable_foreign_keys_command(
 
 
 @app.command("enable")
+@omop_command("foreign-keys enable", dry_run=True)
 def enable_foreign_keys_command(
+    conn,
+    engine,
     vocabulary_included: bool = typer.Option(
         False,
         "--vocab/--no-vocab",
@@ -484,53 +441,26 @@ def enable_foreign_keys_command(
         "--strict",
         help="Validate all FK relationships before enabling trigger enforcement; aborts if any violations are found.",
     ),
-    dry_run: bool = typer.Option(
-        False,
-        "--dry-run",
-        help="Preview planned actions without applying any changes to the database.",
-    ),
+    dry_run: bool = False,
 ) -> None:
     """Re-enable PostgreSQL RI trigger enforcement. Use --strict to abort if any violations exist first."""
-    try:
-        from omop_alchemy.config import create_cdm_engine, get_cdm_context
-        pkg_config, resolved = get_cdm_context()
-        engine = create_cdm_engine(resolved)
-        conn = _ConnContext(
-            db_schema=resolved.cdm_schema,
-            engine_url=engine.url.render_as_string(hide_password=True),
-        )
-    except Exception as exc:
-        handle_error(exc)
-        return
-    console.print(
-        render_command_header(
-            command_name="foreign-keys enable --strict" if strict else "foreign-keys enable",
-            engine_url=conn.engine_url,
+    status_msg = (
+        "Validating and enabling PostgreSQL foreign key trigger enforcement..."
+        if strict
+        else "Managing PostgreSQL foreign key trigger enforcement..."
+    )
+    with console.status(status_msg):
+        results = manage_foreign_key_triggers(
+            engine,
+            enable=True,
             db_schema=conn.db_schema,
             vocabulary_included=vocabulary_included,
-            mode_label="dry-run" if dry_run else "apply",
+            dry_run=dry_run,
+            strict=strict,
         )
-    )
-    try:
-        status_msg = (
-            "Validating and enabling PostgreSQL foreign key trigger enforcement..."
-            if strict
-            else "Managing PostgreSQL foreign key trigger enforcement..."
-        )
-        with console.status(status_msg):
-            results = manage_foreign_key_triggers(
-                engine,
-                enable=True,
-                db_schema=conn.db_schema,
-                vocabulary_included=vocabulary_included,
-                dry_run=dry_run,
-                strict=strict,
-            )
-        console.print(render_foreign_key_results(results))
-        console.print(render_foreign_key_summary(results, dry_run=dry_run))
-        console.print(render_foreign_key_note(enable=True, strict=strict))
-    except Exception as exc:
-        handle_error(exc)
+    console.print(render_foreign_key_results(results))
+    console.print(render_foreign_key_summary(results, dry_run=dry_run))
+    console.print(render_foreign_key_note(enable=True, strict=strict))
 
 
 @app.command("status")

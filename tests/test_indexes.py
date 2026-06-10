@@ -151,8 +151,6 @@ def test_disable_indexes_cli_invokes_management(monkeypatch):
                 operation="index",
                 table_name="person",
                 category=TableCategory.CLINICAL,
-                model_name="Person",
-                model_module="omop_alchemy.cdm.model.clinical.person",
                 index_name=PERSON_GENDER_INDEX,
                 column_names=("gender_concept_id",),
                 unique=False,
