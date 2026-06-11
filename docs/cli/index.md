@@ -28,6 +28,17 @@ omop-alchemy --help
 
 See the [Command Reference](reference.md) for full parameter details.
 
+!!! note "Verbosity flag placement"
+    The `--verbose` / `-v` flag is a **global option** and must appear **before** the
+    subcommand name, not after it:
+
+    ```
+    omop-alchemy -v load-vocab-source   # ✓ correct
+    omop-alchemy load-vocab-source -v   # ✗ flag is ignored
+    ```
+
+    Use `-v` for INFO level and `-vv` for DEBUG level.
+
 ---
 
 ## The `@omop_command` decorator

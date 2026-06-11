@@ -14,7 +14,7 @@ from omop_alchemy.maintenance.cli_vocab import (
     load_vocab_source,
 )
 from omop_alchemy.cdm.model.vocabulary import Drug_Strength
-from omop_alchemy.config import TOOL_NAME
+from omop_alchemy.config import OmopAlchemyConfig
 
 
 runner = CliRunner()
@@ -161,7 +161,7 @@ def test_load_vocab_source_cli_uses_configured_athena_source(monkeypatch, tmp_pa
     cfg = StackConfig.for_session(
         databases={"db": {"dialect": "sqlite", "database_name": ":memory:"}},
         resources={"cdm_db": {"database": "db", "cdm_schema": "main"}},
-        tools={TOOL_NAME: {"extra": {"athena_source_path": str(athena_dir)}}},
+        tools={OmopAlchemyConfig.tool_name: {"extra": {"athena_source_path": str(athena_dir)}}},
     )
 
     monkeypatch.setattr(
@@ -248,7 +248,7 @@ def test_load_vocab_model_csv_passes_quote_mode(monkeypatch, tmp_path):
 
     monkeypatch.setattr(FakeModel, "load_csv", fake_load_csv)
 
-    Session = sessionmaker(bind=engine, future=True)
+    Session = sessionmaker(engine, future=True)
     with Session() as session:
         row_count = _load_vocab_model_csv(
             session,
@@ -410,7 +410,7 @@ def test_load_vocab_model_csv_retries_missing_staging_table(monkeypatch, tmp_pat
     monkeypatch.setattr(FakeModel, "load_csv", fake_load_csv)
     monkeypatch.setattr(FakeModel, "create_staging_table", fake_create_staging_table)
 
-    Session = sessionmaker(bind=engine, future=True)
+    Session = sessionmaker(engine, future=True)
     with Session() as session:
         row_count = _load_vocab_model_csv(
             session,

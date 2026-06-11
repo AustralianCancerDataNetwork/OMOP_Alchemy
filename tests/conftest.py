@@ -1,8 +1,6 @@
 import copy
-import time
 from datetime import date
 from pathlib import Path
-import os
 import pytest
 import sqlalchemy as sa
 from orm_loader.helpers import bootstrap
@@ -166,7 +164,7 @@ def _write_fixture_csv(directory: Path, table_name: str, data: Dict[str, Tuple[A
 def _load_fixture_vocabulary(engine: sa.Engine, tmp_dir: Path) -> None:
     """Write in-memory Athena fixtures to tmp_dir and load them into the test database."""
     with engine.connect() as connection:
-        SessionLocal = so.sessionmaker(bind=connection, future=True)
+        SessionLocal = sessionmaker(bind=connection)
         session = SessionLocal()
         try:
             for model in ATHENA_LOAD_ORDER:
@@ -316,8 +314,7 @@ def engine(tmp_path_factory: pytest.TempPathFactory):
     bootstrap(engine, create=True)
     _load_fixture_vocabulary(engine, db_dir)
 
-    SessionLocal = sessionmaker(bind=engine, future=True, expire_on_commit=False)
-    with SessionLocal() as seed_session:
+    with so.Session(engine, expire_on_commit=False) as seed_session:
         _seed_basic_clinical_data(seed_session)
 
     try:
@@ -326,90 +323,37 @@ def engine(tmp_path_factory: pytest.TempPathFactory):
         engine.dispose()
 
 
-_TEST_RESOURCE = "test_cdm_db"
-
-
 @pytest.fixture(scope="session")
 def pg_engine():
+    """Session-scoped PostgreSQL engine for integration tests.
+
+    Resolves via OA_Configurator resource 'test_cdm_db' in ~/.config/omop/config.toml.
+    Run: omop-config configure omop_alchemy (answer Y when asked to configure test database).
     """
-    Session-scoped engine connecting to a PostgreSQL database.
+    from oa_configurator import load_stack_config
+    from oa_configurator.pytest_plugin import ensure_test_db_exists, ensure_test_user_exists, resolve_test_resource
+    from omop_alchemy.config import OmopAlchemyConfig
 
-    Configuration is resolved in order:
-      1. ENGINE_CDM environment variable (used by CI)
-      2. oa_configurator resource 'test_cdm_db' in ~/.config/omop/config.toml
-         (local dev — run: omop-alchemy configure-test-db)
-    """
-    from oa_configurator import Resolver, load_stack_config
-    from oa_configurator.package_base import ConfigurationError
+    url = resolve_test_resource(OmopAlchemyConfig.TEST_DB)
 
-    engine: sa.engine.Engine | None = None
-    _from_env = False
-    _stack = None
-    _resolved = None
+    # Safety guard: pg_session does DROP SCHEMA public CASCADE — refuse if the
+    # backing connection is not explicitly marked test_only in the config.
+    try:
+        stack = load_stack_config()
+        db_name = stack.resources[OmopAlchemyConfig.TEST_DB.semantic_name].database
+        if not stack.databases[db_name].test_only:
+            pytest.fail(
+                f"SAFETY ABORT: the database connection {db_name!r} backing"
+                f" {OmopAlchemyConfig.TEST_DB.semantic_name!r} is not marked"
+                f" test_only=true. Tests would DROP SCHEMA public CASCADE on"
+                f" a non-test database."
+            )
+    except KeyError:
+        pass  # resource or db not in config — resolve_test_resource will skip
 
-    url = os.getenv("ENGINE_CDM")
-    if url:
-        engine = sa.create_engine(url, future=True)
-        _from_env = True
-
-    if engine is None:
-        try:
-            _stack = load_stack_config()
-            _resolved = Resolver(_stack).resolve_resource(_TEST_RESOURCE)
-            engine = _resolved.create_engine()
-        except FileNotFoundError:
-            pass
-        except (KeyError, ConfigurationError):
-            pass
-
-    if engine is None:
-        pytest.skip(
-            f"No PostgreSQL test database configured.\n"
-            f"  Option 1: set ENGINE_CDM to a connection URL.\n"
-            f"  Option 2: run 'omop-alchemy configure-test-db' to register a dedicated test DB."
-        )
-
-    # Safety guard: refuse to run if test_cdm_db resolves to the same DB as any other resource.
-    # DROP SCHEMA public CASCADE would destroy production data.
-    if _stack is not None and _resolved is not None:
-        try:
-            test_url = sa.engine.make_url(_resolved.database.url)
-            for res_name in _stack.resources:
-                if res_name == _TEST_RESOURCE:
-                    continue
-                try:
-                    other = Resolver(_stack).resolve_resource(res_name)
-                    other_url = sa.engine.make_url(other.database.url)
-                    if (test_url.host, test_url.port, test_url.database) == (
-                        other_url.host, other_url.port, other_url.database
-                    ):
-                        pytest.fail(
-                            f"SAFETY ABORT: test_cdm_db points to the same database as"
-                            f" '{res_name}'. Tests would DROP SCHEMA public CASCADE on your"
-                            f" production database."
-                        )
-                except Exception:
-                    pass
-        except Exception:
-            pass
-
-    for attempt in range(20):
-        try:
-            with engine.connect() as conn:
-                conn.execute(sa.text("SELECT 1"))
-            break
-        except Exception:
-            if attempt == 19:
-                engine.dispose()
-                if _from_env:
-                    pytest.fail("PostgreSQL not reachable after 20 attempts. Check CI configuration.")
-                else:
-                    db_url = engine.url.render_as_string(hide_password=True)
-                    pytest.skip(
-                        f"PostgreSQL test database not reachable: {db_url}\n"
-                        f"Ensure the database is running or re-run 'omop-alchemy configure-test-db'."
-                    )
-            time.sleep(1)
+    ensure_test_user_exists(url)
+    ensure_test_db_exists(url)
+    engine = sa.create_engine(url, future=True)
     try:
         yield engine
     finally:
@@ -430,8 +374,7 @@ def pg_session(pg_engine):
 
     bootstrap(pg_engine, create=True)
 
-    SessionLocal = sessionmaker(bind=pg_engine, future=True, expire_on_commit=False)
-    session = SessionLocal()
+    session = so.Session(pg_engine, expire_on_commit=False)
     try:
         yield session
     finally:
@@ -446,13 +389,7 @@ def session(engine) -> Session:  # type: ignore
 
     Each test gets a clean transactional boundary.
     """
-    SessionLocal = sessionmaker(
-        bind=engine,
-        future=True,
-        expire_on_commit=False,
-    )
-
-    session = SessionLocal()
+    session = so.Session(engine, expire_on_commit=False)
 
     try:
         yield session  # type: ignore

@@ -1,7 +1,6 @@
-from .config import CDM_DB_RESOURCE, OmopAlchemyConfig
+from .config import OmopAlchemyConfig
 
 
 __all__ = [
-    "CDM_DB_RESOURCE",
     "OmopAlchemyConfig",
 ]

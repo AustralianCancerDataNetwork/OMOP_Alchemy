@@ -54,6 +54,7 @@ services:
           --password ${OMOP_CDM_DB_PASSWORD:-omop}
           --database-name ${OMOP_CDM_DB_NAME:-omop_cdm}
           --cdm-schema omop &&
+        omop-config configure orm_loader &&
         sleep infinity
       "
 
