@@ -1,6 +1,7 @@
 import sqlalchemy as sa
 import pytest
 from typer.testing import CliRunner
+from oa_configurator import StackConfig, DatabaseConfig
 
 from omop_alchemy.backends import (
     CONCEPT_NAME_TSVECTOR_COLUMN,
@@ -110,7 +111,7 @@ def test_install_fulltext_columns_builds_postgresql_ddl_and_registers_metadata()
     engine = _FakeEngine()
 
     results = install_fulltext_columns(
-        engine,
+        engine,  # type: ignore[arg-type]
         db_schema="public",
         create_indexes=True,
         fastupdate=True,
@@ -137,7 +138,7 @@ def test_populate_fulltext_columns_issues_update_with_regconfig_and_row_counts()
     engine = _FakeEngine(rowcount=11)
 
     results = populate_fulltext_columns(
-        engine,
+        engine,  # type: ignore[arg-type]
         db_schema="public",
         regconfig="simple",
     )
@@ -157,7 +158,7 @@ def test_drop_fulltext_columns_drops_schema_objects_and_unregisters_metadata():
     engine = _FakeEngine()
 
     results = drop_fulltext_columns(
-        engine,
+        engine,  # type: ignore[arg-type]
         db_schema="public",
         drop_indexes=True,
     )
@@ -198,12 +199,11 @@ def test_fulltext_management_requires_postgresql(tmp_path, fn_name):
 
 def test_fulltext_install_cli_passes_options(monkeypatch):
     """CLI forwards install options to the fulltext handler implementation."""
-    from oa_configurator import StackConfig
 
     calls: dict[str, object] = {}
 
     cfg = StackConfig.for_session(
-        databases={"db": {"dialect": "sqlite", "database_name": ":memory:"}},
+        databases={"db": DatabaseConfig(dialect="sqlite", database_name=":memory:")},
         resources={"cdm_db": {"database": "db", "cdm_schema": "public"}},
     )
     monkeypatch.setattr(

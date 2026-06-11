@@ -11,6 +11,7 @@ from omop_alchemy.maintenance.cli_foreign_keys import (
     collect_foreign_key_trigger_status,
     manage_foreign_key_triggers,
 )
+from oa_configurator import StackConfig, DatabaseConfig
 
 runner = CliRunner()
 
@@ -72,10 +73,9 @@ def test_validate_foreign_key_constraints_is_safe_on_sqlite(tmp_path):
 
 def test_disable_foreign_keys_cli_fails_gracefully_for_sqlite(monkeypatch):
     """Test disable foreign keys cli fails gracefully for sqlite."""
-    from oa_configurator import StackConfig
 
     cfg = StackConfig.for_session(
-        databases={"db": {"dialect": "sqlite", "database_name": ":memory:"}},
+        databases={"db": DatabaseConfig(dialect="sqlite", database_name=":memory:")},
         resources={"cdm_db": {"database": "db", "cdm_schema": "main"}},
     )
     monkeypatch.setattr(
@@ -115,7 +115,7 @@ def _make_fake_backend():
             action = "ENABLE" if enable else "DISABLE"
             conn.exec_driver_sql(f"ALTER TABLE {table_name} {action} TRIGGER ALL")
 
-        def count_fk_violations(self, conn, *, source_table, referred_table, constraint_name, db_schema=None):
+        def count_fk_violations(self, conn, *, source_table, referred_table, constraint_name, db_schema=None):  # type: ignore[override]
             return 0
 
     return _FakeBackend()
@@ -180,7 +180,7 @@ def test_manage_foreign_key_triggers_strict_does_not_enable_on_validation_failur
     )
 
     results = manage_foreign_key_triggers(
-        _FakeEngine(),
+        _FakeEngine(),  # type: ignore[arg-type]
         enable=True,
         strict=True,
     )
@@ -233,7 +233,7 @@ def test_manage_foreign_key_triggers_strict_enables_when_validation_passes(monke
     )
 
     results = manage_foreign_key_triggers(
-        _FakeEngine(),
+        _FakeEngine(),  # type: ignore[arg-type]
         enable=True,
         strict=True,
     )
@@ -245,12 +245,11 @@ def test_manage_foreign_key_triggers_strict_enables_when_validation_passes(monke
 
 def test_enable_foreign_keys_strict_cli_invokes_strict_management(monkeypatch):
     """Test enable foreign keys strict cli invokes strict management."""
-    from oa_configurator import StackConfig
 
     calls: dict[str, object] = {}
 
     cfg = StackConfig.for_session(
-        databases={"db": {"dialect": "sqlite", "database_name": ":memory:"}},
+        databases={"db": DatabaseConfig(dialect="sqlite", database_name=":memory:")},
         resources={"cdm_db": {"database": "db", "cdm_schema": "main"}},
     )
     monkeypatch.setattr(
@@ -347,7 +346,7 @@ def test_validate_foreign_key_constraints_reports_failures(monkeypatch):
         },
     )
 
-    report = validate_foreign_key_constraints(_FakeEngine())
+    report = validate_foreign_key_constraints(_FakeEngine())  # type: ignore[arg-type]
 
     assert [result.status for result in report.results] == ["passed", "failed"]
     assert report.results[0].violating_row_count == 0
@@ -358,12 +357,11 @@ def test_validate_foreign_key_constraints_reports_failures(monkeypatch):
 
 def test_foreign_keys_validate_cli_invokes_validation(monkeypatch):
     """Test foreign keys validate cli invokes validation."""
-    from oa_configurator import StackConfig
 
     calls: dict[str, object] = {}
 
     cfg = StackConfig.for_session(
-        databases={"db": {"dialect": "sqlite", "database_name": ":memory:"}},
+        databases={"db": DatabaseConfig(dialect="sqlite", database_name=":memory:")},
         resources={"cdm_db": {"database": "db", "cdm_schema": "main"}},
     )
     monkeypatch.setattr(

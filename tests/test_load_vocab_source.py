@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pytest
 import sqlalchemy as sa
+from oa_configurator import StackConfig, DatabaseConfig
 from sqlalchemy.orm import sessionmaker
 from typer.testing import CliRunner
 
@@ -151,7 +152,6 @@ def test_load_vocab_source_dry_run_does_not_create_tables(tmp_path):
 
 def test_load_vocab_source_cli_uses_configured_athena_source(monkeypatch, tmp_path):
     """load-vocab-source CLI uses athena_source_path from OmopAlchemyConfig when --athena-source is omitted."""
-    from oa_configurator import StackConfig, Resolver
     from omop_alchemy.maintenance.cli_vocab import VocabularyLoadReport, VocabularyLoadResult
 
     calls: dict[str, object] = {}
@@ -159,7 +159,7 @@ def test_load_vocab_source_cli_uses_configured_athena_source(monkeypatch, tmp_pa
     athena_dir.mkdir()
 
     cfg = StackConfig.for_session(
-        databases={"db": {"dialect": "sqlite", "database_name": ":memory:"}},
+        databases={"db": DatabaseConfig(dialect="sqlite", database_name=":memory:")},
         resources={"cdm_db": {"database": "db", "cdm_schema": "main"}},
         tools={OmopAlchemyConfig.tool_name: {"extra": {"athena_source_path": str(athena_dir)}}},
     )
@@ -252,7 +252,7 @@ def test_load_vocab_model_csv_passes_quote_mode(monkeypatch, tmp_path):
     with Session() as session:
         row_count = _load_vocab_model_csv(
             session,
-            model=FakeModel,
+            model=FakeModel,  # type: ignore[arg-type]
             csv_path=_athena_source_path() / "CONCEPT.csv",
             merge_strategy="upsert",
             quote_mode="literal",
@@ -336,7 +336,7 @@ def test_load_vocab_source_reports_weighted_progress(monkeypatch, tmp_path):
     )
 
     assert events
-    percents = [event.percent for event in events]
+    percents = [event.percent for event in events]  # type: ignore[attr-defined]
     assert percents[0] == pytest.approx(0.0)
     assert percents[-1] == pytest.approx(100.0)
     assert percents == sorted(percents)
@@ -349,7 +349,7 @@ def test_load_vocab_source_wraps_failed_table_load(monkeypatch, tmp_path):
 
     def fake_load_vocab_model_csv(session, *, model, csv_path, merge_strategy, quote_mode="auto", chunksize=None, index_strategy="auto", merge_batch_size: int = 1_000_000):
         if model.__tablename__ == "domain":
-            raise sa.exc.ProgrammingError(
+            raise sa.exc.ProgrammingError(  # type: ignore[attr-defined]
                 "COPY domain FROM STDIN",
                 {},
                 Exception("value too long for type character varying(255)"),
@@ -397,7 +397,7 @@ def test_load_vocab_model_csv_retries_missing_staging_table(monkeypatch, tmp_pat
     def fake_load_csv(session, path, *, merge_strategy, quote_mode, index_strategy="auto", merge_batch_size: int = 1_000_000):
         calls["load_csv"] += 1
         if calls["load_csv"] == 1:
-            raise sa.exc.ProgrammingError(
+            raise sa.exc.ProgrammingError(  # type: ignore[attr-defined]
                 'INSERT INTO _staging_drug_strength ("drug_concept_id") VALUES (1)',
                 {},
                 Exception('relation "_staging_drug_strength" does not exist'),
@@ -414,7 +414,7 @@ def test_load_vocab_model_csv_retries_missing_staging_table(monkeypatch, tmp_pat
     with Session() as session:
         row_count = _load_vocab_model_csv(
             session,
-            model=FakeModel,
+            model=FakeModel,  # type: ignore[arg-type]
             csv_path=_athena_source_path() / "DRUG_STRENGTH.csv",
             merge_strategy="upsert",
         )
@@ -426,10 +426,9 @@ def test_load_vocab_model_csv_retries_missing_staging_table(monkeypatch, tmp_pat
 
 def test_load_vocab_source_cli_surfaces_database_error_detail(monkeypatch):
     """Test load vocab source cli surfaces database error detail."""
-    from oa_configurator import StackConfig
 
     cfg = StackConfig.for_session(
-        databases={"db": {"dialect": "sqlite", "database_name": ":memory:"}},
+        databases={"db": DatabaseConfig(dialect="sqlite", database_name=":memory:")},
         resources={"cdm_db": {"database": "db", "cdm_schema": "main"}},
     )
     monkeypatch.setattr(
@@ -442,7 +441,7 @@ def test_load_vocab_source_cli_surfaces_database_error_detail(monkeypatch):
     )
 
     def fail_load_vocab_source(*args, **kwargs):
-        raise sa.exc.ProgrammingError(
+        raise sa.exc.ProgrammingError(  # type: ignore[attr-defined]
             "COPY concept FROM STDIN",
             {},
             Exception("value too long for type character varying(255)"),

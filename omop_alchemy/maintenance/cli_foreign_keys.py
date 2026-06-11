@@ -8,7 +8,7 @@ import sqlalchemy as sa
 import typer
 
 from ..backends import Backend, resolve_backend, require_backend_support, backend_support_note
-from ._cli_utils import dry_label, dry_status, handle_error, omop_command
+from ._cli_utils import dry_label, dry_status, omop_command
 from .tables import (
     TableCategory,
     existing_maintenance_tables,

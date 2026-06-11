@@ -25,7 +25,7 @@ def connection():
     )
 
     connection = engine.connect()
-    bootstrap(connection, create=True)
+    bootstrap(connection, create=True)  # type: ignore[arg-type]
     yield connection
     connection.close()
     engine.dispose()

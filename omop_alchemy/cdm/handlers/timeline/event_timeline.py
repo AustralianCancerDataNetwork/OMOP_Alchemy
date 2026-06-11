@@ -201,7 +201,7 @@ class Condition_Event(Condition_Occurrence, ClinicalEvent):
     )
 
 
-class Measurement_Event(ClinicalEvent, Measurement):
+class Measurement_Event(ClinicalEvent, Measurement):  # type: ignore[misc]
 
     _mapping = EventMapping(
         concept_field="measurement_concept_id",
@@ -269,5 +269,5 @@ class Person_Timeline(Person):
             key=lambda e: e.event_time.start,
         )
     
-    def to_json(self) -> list[str]:
-        return [e.to_json() for e in self.timeline] # type: ignore
+    def to_json(self) -> list[str]:  # type: ignore[override]
+        return [e.to_json() for e in self.timeline]  # type: ignore[return-value]

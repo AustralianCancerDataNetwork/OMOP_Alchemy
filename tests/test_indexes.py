@@ -1,5 +1,6 @@
 import sqlalchemy as sa
 from typer.testing import CliRunner
+from oa_configurator import StackConfig, DatabaseConfig
 
 from omop_alchemy.cdm.base.indexing import OMOP_CLUSTER_INDEX_INFO_KEY, omop_index_name
 from omop_alchemy.maintenance.cli import app
@@ -64,7 +65,7 @@ def test_orm_index_metadata_carries_cluster_configuration():
         index.name: index
         for index in episode.table.indexes
     }
-    assert episode_indexes[EPISODE_PERSON_INDEX].info[OMOP_CLUSTER_INDEX_INFO_KEY] is True
+    assert episode_indexes[EPISODE_PERSON_INDEX].info[OMOP_CLUSTER_INDEX_INFO_KEY] is True  # type: ignore[index]
 
 
 def test_manage_indexes_disable_and_enable_on_sqlite(tmp_path):
@@ -116,12 +117,11 @@ def test_manage_indexes_disable_and_enable_on_sqlite(tmp_path):
 
 def test_disable_indexes_cli_invokes_management(monkeypatch):
     """Test disable indexes cli invokes management."""
-    from oa_configurator import StackConfig
 
     calls: dict[str, object] = {}
 
     cfg = StackConfig.for_session(
-        databases={"db": {"dialect": "sqlite", "database_name": ":memory:"}},
+        databases={"db": DatabaseConfig(dialect="sqlite", database_name=":memory:")},
         resources={"cdm_db": {"database": "db", "cdm_schema": "main"}},
     )
     monkeypatch.setattr(

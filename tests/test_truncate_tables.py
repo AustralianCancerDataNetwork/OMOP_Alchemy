@@ -2,6 +2,7 @@ import importlib
 import sqlalchemy as sa
 import pytest
 from typer.testing import CliRunner
+from oa_configurator import StackConfig, DatabaseConfig
 
 from omop_alchemy.maintenance.cli import app
 from omop_alchemy.maintenance.cli_schema import create_missing_tables
@@ -40,10 +41,9 @@ def test_truncate_tables_reports_blocking_foreign_key_references(monkeypatch, tm
 
 def test_truncate_tables_cli_requires_confirmation(monkeypatch):
     """Test truncate tables cli requires confirmation."""
-    from oa_configurator import StackConfig
 
     cfg = StackConfig.for_session(
-        databases={"db": {"dialect": "sqlite", "database_name": ":memory:"}},
+        databases={"db": DatabaseConfig(dialect="sqlite", database_name=":memory:")},
         resources={"cdm_db": {"database": "db", "cdm_schema": "main"}},
     )
     monkeypatch.setattr(
@@ -62,12 +62,11 @@ def test_truncate_tables_cli_requires_confirmation(monkeypatch):
 
 def test_truncate_tables_cli_invokes_management(monkeypatch):
     """Test truncate tables cli invokes management."""
-    from oa_configurator import StackConfig
 
     calls: dict[str, object] = {}
 
     cfg = StackConfig.for_session(
-        databases={"db": {"dialect": "sqlite", "database_name": ":memory:"}},
+        databases={"db": DatabaseConfig(dialect="sqlite", database_name=":memory:")},
         resources={"cdm_db": {"database": "db", "cdm_schema": "main"}},
     )
     monkeypatch.setattr(
