@@ -125,7 +125,7 @@ def test_install_fulltext_columns_builds_postgresql_ddl_and_registers_metadata()
         for statement in statements
     )
     assert any(
-        "CREATE INDEX IF NOT EXISTS public.idx_gin_concept_name_tsvector" in statement
+        "CREATE INDEX IF NOT EXISTS idx_gin_concept_name_tsvector" in statement
         for statement in statements
     )
     assert CONCEPT_NAME_TSVECTOR_COLUMN in Concept.__table__.c

@@ -293,9 +293,8 @@ class PostgresBackend(Backend):
             f"ALTER TABLE {qualified_table} ADD COLUMN IF NOT EXISTS {vector_column_name} tsvector"
         )
         if create_indexes:
-            qualified_index = f"{db_schema}.{index_name}" if db_schema else index_name
             conn.exec_driver_sql(
-                f"CREATE INDEX IF NOT EXISTS {qualified_index}"
+                f"CREATE INDEX IF NOT EXISTS {index_name}"
                 f" ON {qualified_table} USING GIN ({vector_column_name})"
                 f" WITH (fastupdate = {'on' if fastupdate else 'off'})"
             )
