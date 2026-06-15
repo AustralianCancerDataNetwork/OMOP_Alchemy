@@ -72,9 +72,9 @@ Load all Athena vocabulary CSVs from the configured source path, optionally togg
 |---|---|---|---|
 | `--athena-source` | str (optional) | (saved default) | Path to the unzipped Athena vocabulary CSV directory. Falls back to the saved athena-source default. |
 | `--merge-strategy` | `replace` / `upsert` / `insert_if_empty` | `replace` | CSV merge strategy. `replace` keeps the DB in sync with the source. `upsert` is incremental and non-destructive. `insert_if_empty` is the fast path for a fresh empty target. |
-| `--chunksize` | int (optional) | `100000` | Chunk size for fallback ORM CSV loading. Defaults to 100 000 rows. Pass `0` to disable chunking. |
+| `--staging-chunk-size` | int (optional) | `100000` | [Phase 1] Rows per ORM transaction when loading CSV → staging table. Ignored when the PostgreSQL COPY fast-path is active. Pass `0` to disable chunking. |
 | `--bulk-mode` / `--no-bulk-mode` | bool | `True` | Disable FK triggers and drop indexes globally before loading, then rebuild after. Much faster for a full vocabulary reload. Ignored on backends that do not support it. |
-| `--merge-batch-size` | int | `1000000` | Maximum rows per INSERT/DELETE transaction during the staging-to-target merge. Lower values reduce peak WAL pressure on memory-constrained systems. Raise to 5 000 000+ on machines with ample RAM for faster throughput. |
+| `--merge-batch-size` | int (optional) | `None` | [Phase 2] Rows per transaction when merging staging → target table. Default: `None` (single INSERT per table, fastest for high-RAM systems). Set to a positive integer to enable paginated commits for memory-constrained systems; note that pagination adds a COUNT query and an index build on the staging table before the merge begins. |
 | `--dry-run` | bool | `False` | Preview planned actions without applying any changes to the database. |
 
 ---

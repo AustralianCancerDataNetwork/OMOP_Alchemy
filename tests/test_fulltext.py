@@ -210,10 +210,6 @@ def test_fulltext_install_cli_passes_options(monkeypatch):
         "omop_alchemy.config.load_stack_config",
         lambda: cfg,
     )
-    monkeypatch.setattr(
-        "omop_alchemy.config.load_stack_config",
-        lambda: cfg,
-    )
 
     def fake_install_fulltext_columns(
         engine: object,

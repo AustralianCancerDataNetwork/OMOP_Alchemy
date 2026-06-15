@@ -168,10 +168,6 @@ def test_load_vocab_source_cli_uses_configured_athena_source(monkeypatch, tmp_pa
         "omop_alchemy.config.load_stack_config",
         lambda: cfg,
     )
-    monkeypatch.setattr(
-        "omop_alchemy.config.load_stack_config",
-        lambda: cfg,
-    )
 
     def fake_load_vocab_source(
         engine: object,
@@ -430,10 +426,6 @@ def test_load_vocab_source_cli_surfaces_database_error_detail(monkeypatch):
     cfg = StackConfig.for_session(
         databases={"db": DatabaseConfig(dialect="sqlite", database_name=":memory:")},
         resources={"cdm_db": {"database": "db", "cdm_schema": "main"}},
-    )
-    monkeypatch.setattr(
-        "omop_alchemy.config.load_stack_config",
-        lambda: cfg,
     )
     monkeypatch.setattr(
         "omop_alchemy.config.load_stack_config",

@@ -128,10 +128,6 @@ def test_disable_indexes_cli_invokes_management(monkeypatch):
         "omop_alchemy.config.load_stack_config",
         lambda: cfg,
     )
-    monkeypatch.setattr(
-        "omop_alchemy.config.load_stack_config",
-        lambda: cfg,
-    )
 
     def fake_manage_indexes(
         engine: object,

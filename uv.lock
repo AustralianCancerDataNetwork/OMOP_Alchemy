@@ -1002,7 +1002,7 @@ wheels = [
 
 [[package]]
 name = "oa-configurator"
-version = "0.1.0"
+version = "0.1.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
@@ -1012,9 +1012,9 @@ dependencies = [
     { name = "tomli-w" },
     { name = "typer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/04/bf/abe1fd37a4e717d10b53ce1f73f91ddc8baef39d0c1bda0c6123bf702a6e/oa_configurator-0.1.0.tar.gz", hash = "sha256:2bd8e8416abc4dc99ff78a7961b445c499e7fd25f649a967be037fec5f2d2d08", size = 84105, upload-time = "2026-06-15T01:18:50.128Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/0d/7b/1c3aa611b6a4b0441314e3f8fbbf66e4a6dd3377ff039b434d6e69d6a52f/oa_configurator-0.1.1.tar.gz", hash = "sha256:888608c265799e670097bbb5d967460449c51e03dabe97176ad8443d992ce3e6", size = 123250, upload-time = "2026-06-15T06:05:57.8Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4a/ab/18695a718a53526823d7bf32194d6d78f4ea6dc0062ee17b43c6058e03f7/oa_configurator-0.1.0-py3-none-any.whl", hash = "sha256:7165984090711adff857a76d0468bb789f9b4756081a5688f609f487391a8dba", size = 30092, upload-time = "2026-06-15T01:18:49.163Z" },
+    { url = "https://files.pythonhosted.org/packages/c9/87/7437b6dce109f7c84267ec1b87bd1897bb983ba0dcc4d5fba82b28d2bc20/oa_configurator-0.1.1-py3-none-any.whl", hash = "sha256:2b63a87c6d242b6e49b219d61bbacf664454beb1755e8747cdff910611633747", size = 30088, upload-time = "2026-06-15T06:05:58.632Z" },
 ]
 
 [package.optional-dependencies]
@@ -1067,9 +1067,9 @@ requires-dist = [
     { name = "mkdocstrings-python", marker = "extra == 'dev'", specifier = ">=2.0.1" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.8" },
     { name = "myst-parser", marker = "extra == 'docs'" },
-    { name = "oa-configurator", specifier = ">=0.1.0" },
-    { name = "oa-configurator", extras = ["postgres"], marker = "extra == 'dev'", specifier = ">=0.1.0" },
-    { name = "orm-loader", specifier = ">=0.4.1" },
+    { name = "oa-configurator", specifier = ">=0.1.1" },
+    { name = "oa-configurator", extras = ["postgres"], marker = "extra == 'dev'", specifier = ">=0.1.1" },
+    { name = "orm-loader", specifier = ">=0.5.0" },
     { name = "pandas", specifier = ">=2.0" },
     { name = "psycopg", extras = ["binary"], marker = "extra == 'postgres'", specifier = ">=3.2" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=9.0.3" },
@@ -1086,17 +1086,18 @@ provides-extras = ["postgres", "dev", "docs"]
 
 [[package]]
 name = "orm-loader"
-version = "0.4.1"
+version = "0.5.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "chardet" },
+    { name = "oa-configurator" },
     { name = "pandas" },
     { name = "pyarrow" },
     { name = "sqlalchemy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/2a/6a/007e6eef497753702d5a53444842ee6cc38bcbf7c5c422857c0671bfc727/orm_loader-0.4.1.tar.gz", hash = "sha256:434b6c3436c05bf3ad43774b46476e7f324db05a18bf34ad9f9692e4f02bcb7e", size = 39449, upload-time = "2026-05-19T12:56:29.572Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/2f/5f/83140f757da2a46c688678cd77202c751c71e47126a8a0a642326b0469a8/orm_loader-0.5.0.tar.gz", hash = "sha256:bb7790e91dba2fb26115d1260742e399d905a383bcbe7d1cf62ccfd2bc1b5c2c", size = 39881, upload-time = "2026-06-15T22:37:39.55Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/98/d7/37f82f8748a91fdb14d41f314ddc829806f596dec409196c037e59d3a5a7/orm_loader-0.4.1-py3-none-any.whl", hash = "sha256:03131b5d4b7b787ea446e110684b7256b5690313503626939b83984953174825", size = 54472, upload-time = "2026-05-19T12:56:27.959Z" },
+    { url = "https://files.pythonhosted.org/packages/c8/5e/07a42f13a7b996cd4cf1ac1b82e3101dfcd1639995b3a266bafecc5115af/orm_loader-0.5.0-py3-none-any.whl", hash = "sha256:2cecb11a86f5b46956e0f72eb4f855beff3c9f711e083ec386b34c4037cdb5fb", size = 55064, upload-time = "2026-06-15T22:37:38.207Z" },
 ]
 
 [[package]]

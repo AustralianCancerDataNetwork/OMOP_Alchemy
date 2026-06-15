@@ -68,9 +68,12 @@ def omop_command(
                         mode_label=_mode,
                     )
                 )
-                if dry_run:
-                    return func(conn, engine, dry_run=_dry_run, **kwargs)  # type: ignore[arg-type]
-                return func(conn, engine, **kwargs)  # type: ignore[arg-type]
+                try:
+                    if dry_run:
+                        return func(conn, engine, dry_run=_dry_run, **kwargs)  # type: ignore[arg-type]
+                    return func(conn, engine, **kwargs)  # type: ignore[arg-type]
+                finally:
+                    engine.dispose()
             except Exception as exc:
                 handle_error(exc)
 

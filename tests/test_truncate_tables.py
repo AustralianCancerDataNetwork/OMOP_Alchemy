@@ -50,10 +50,6 @@ def test_truncate_tables_cli_requires_confirmation(monkeypatch):
         "omop_alchemy.config.load_stack_config",
         lambda: cfg,
     )
-    monkeypatch.setattr(
-        "omop_alchemy.config.load_stack_config",
-        lambda: cfg,
-    )
     result = runner.invoke(app, ["truncate-tables", "--scope", "clinical"])
 
     assert result.exit_code == 1
@@ -68,10 +64,6 @@ def test_truncate_tables_cli_invokes_management(monkeypatch):
     cfg = StackConfig.for_session(
         databases={"db": DatabaseConfig(dialect="sqlite", database_name=":memory:")},
         resources={"cdm_db": {"database": "db", "cdm_schema": "main"}},
-    )
-    monkeypatch.setattr(
-        "omop_alchemy.config.load_stack_config",
-        lambda: cfg,
     )
     monkeypatch.setattr(
         "omop_alchemy.config.load_stack_config",

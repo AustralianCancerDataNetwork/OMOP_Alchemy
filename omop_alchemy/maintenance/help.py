@@ -25,7 +25,9 @@ def _strip_backend_flag(helptext: str) -> tuple[str, str | None]:
     marker = f". {_BACKEND_NOTE_MARKER}"
     idx = helptext.rfind(marker)
     if idx != -1:
-        return helptext[:idx], helptext[idx + 2:]  # skip leading ". "
+        tail = helptext[idx + len(marker):]
+        if ". " not in tail:  # guard: note must be the final sentence
+            return helptext[:idx], helptext[idx + 2:]  # skip leading ". "
     if helptext.startswith(_BACKEND_NOTE_MARKER):
         return "", helptext
     return helptext, None
