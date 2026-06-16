@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import Protocol, Iterable, Optional, Union, Callable
 
 """
 This module contains type definitions for the OMOP CDM model. 

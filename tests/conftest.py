@@ -1,8 +1,6 @@
 import copy
-import time
 from datetime import date
 from pathlib import Path
-import os
 import pytest
 import sqlalchemy as sa
 from orm_loader.helpers import bootstrap
@@ -11,7 +9,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from typing import Any, Dict, Tuple
 
-from omop_alchemy.maintenance.load_vocab import _load_vocab_model_csv
+from omop_alchemy.maintenance.cli_vocab import _load_vocab_model_csv
 from omop_alchemy.cdm.model.clinical import Condition_Occurrence, Person
 from omop_alchemy.cdm.model.derived import Observation_Period
 from omop_alchemy.cdm.model.structural import Episode, Episode_Event
@@ -166,7 +164,7 @@ def _write_fixture_csv(directory: Path, table_name: str, data: Dict[str, Tuple[A
 def _load_fixture_vocabulary(engine: sa.Engine, tmp_dir: Path) -> None:
     """Write in-memory Athena fixtures to tmp_dir and load them into the test database."""
     with engine.connect() as connection:
-        SessionLocal = so.sessionmaker(bind=connection, future=True)
+        SessionLocal = sessionmaker(bind=connection)
         session = SessionLocal()
         try:
             for model in ATHENA_LOAD_ORDER:
@@ -316,8 +314,7 @@ def engine(tmp_path_factory: pytest.TempPathFactory):
     bootstrap(engine, create=True)
     _load_fixture_vocabulary(engine, db_dir)
 
-    SessionLocal = sessionmaker(bind=engine, future=True, expire_on_commit=False)
-    with SessionLocal() as seed_session:
+    with so.Session(engine, expire_on_commit=False) as seed_session:
         _seed_basic_clinical_data(seed_session)
 
     try:
@@ -328,31 +325,35 @@ def engine(tmp_path_factory: pytest.TempPathFactory):
 
 @pytest.fixture(scope="session")
 def pg_engine():
-    """
-    Session-scoped engine connecting to a local PostgreSQL container.
+    """Session-scoped PostgreSQL engine for integration tests.
 
-    Start the container with:
-        docker compose -f tests/docker-compose.yaml up -d
-
-    The fixture retries for up to 20 seconds to allow the container to become ready.
+    Resolves via OA_Configurator resource 'test_cdm_db' in ~/.config/omop/config.toml.
+    Run: omop-config configure omop_alchemy (answer Y when asked to configure test database).
     """
-    _PG_URL = os.getenv("ENGINE_CDM")
-    if not _PG_URL:
-        pytest.skip("No PostgreSQL engine configured. Set ENGINE_CDM environment variable.")
-    engine = sa.create_engine(_PG_URL, future=True)
-    for attempt in range(20):
-        try:
-            with engine.connect() as conn:
-                conn.execute(sa.text("SELECT 1"))
-            break
-        except Exception:
-            if attempt == 19:
-                engine.dispose()
-                pytest.fail(
-                    "PostgreSQL container not available after 20 attempts. "
-                    "Run: docker compose -f tests/docker-compose.yaml up -d"
-                )
-            time.sleep(1)
+    from oa_configurator import load_stack_config
+    from oa_configurator.pytest_plugin import ensure_test_db_exists, ensure_test_user_exists, resolve_test_resource
+    from omop_alchemy.config import OmopAlchemyConfig
+
+    url = resolve_test_resource(OmopAlchemyConfig.TEST_DB)
+
+    # Safety guard: pg_session does DROP SCHEMA public CASCADE — refuse if the
+    # backing connection is not explicitly marked test_only in the config.
+    try:
+        stack = load_stack_config()
+        db_name = stack.resources[OmopAlchemyConfig.TEST_DB.semantic_name].database
+        if not stack.databases[db_name].test_only:
+            pytest.fail(
+                f"SAFETY ABORT: the database connection {db_name!r} backing"
+                f" {OmopAlchemyConfig.TEST_DB.semantic_name!r} is not marked"
+                f" test_only=true. Tests would DROP SCHEMA public CASCADE on"
+                f" a non-test database."
+            )
+    except KeyError:
+        pass  # resource or db not in config — resolve_test_resource will skip
+
+    ensure_test_user_exists(url)
+    ensure_test_db_exists(url)
+    engine = sa.create_engine(url, future=True)
     try:
         yield engine
     finally:
@@ -373,8 +374,7 @@ def pg_session(pg_engine):
 
     bootstrap(pg_engine, create=True)
 
-    SessionLocal = sessionmaker(bind=pg_engine, future=True, expire_on_commit=False)
-    session = SessionLocal()
+    session = so.Session(pg_engine, expire_on_commit=False)
     try:
         yield session
     finally:
@@ -389,18 +389,12 @@ def session(engine) -> Session:  # type: ignore
 
     Each test gets a clean transactional boundary.
     """
-    SessionLocal = sessionmaker(
-        bind=engine,
-        future=True,
-        expire_on_commit=False,
-    )
-
-    session = SessionLocal()
+    session = so.Session(engine, expire_on_commit=False)
 
     try:
         yield session  # type: ignore
-        session.rollback()
     finally:
+        session.rollback()
         session.close()
 
 

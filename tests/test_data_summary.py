@@ -1,7 +1,7 @@
 import sqlalchemy as sa
 
-from omop_alchemy.maintenance.create_tables import create_missing_tables
-from omop_alchemy.maintenance.data_summary import collect_data_summary
+from omop_alchemy.maintenance.cli_schema import create_missing_tables
+from omop_alchemy.maintenance.cli_schema import collect_data_summary
 
 
 def _engine(tmp_path):

@@ -1,7 +1,7 @@
 import sqlalchemy as sa
 import sqlalchemy.orm as so
-from typing import Optional, TYPE_CHECKING
-from datetime import date, datetime
+from typing import Optional
+from datetime import date
 
 from orm_loader.helpers import Base
 
@@ -13,11 +13,8 @@ from omop_alchemy.cdm.base import (
     omop_index,
 )
 
-if TYPE_CHECKING:
-    from ..vocabulary import Concept
 
 @cdm_table
-
 class Note_NLP(CDMTableBase, Base):
     __tablename__ = "note_nlp"
     __table_args__ = merge_table_args(

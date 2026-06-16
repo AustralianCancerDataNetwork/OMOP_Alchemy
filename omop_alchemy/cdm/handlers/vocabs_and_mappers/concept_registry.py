@@ -1,4 +1,3 @@
-from collections.abc import Mapping
 from typing import Callable
 import sqlalchemy as sa
 import sqlalchemy.orm as so

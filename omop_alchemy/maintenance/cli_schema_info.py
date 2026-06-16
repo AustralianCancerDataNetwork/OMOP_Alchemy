@@ -1,24 +1,43 @@
+"""Environment inspection domain: package version, dependency status, connection state, and per-command readiness checks."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
 import importlib.metadata
 import importlib.util
-import os
 import shutil
 
 import sqlalchemy as sa
 from sqlalchemy.exc import SQLAlchemyError
 
-from omop_alchemy import create_engine_with_dependencies, get_engine_name, load_environment
+from oa_configurator import Resolver, load_stack_config
+from oa_configurator.loader import DEFAULT_CONFIG_PATH
+from omop_alchemy.backends.resolve import SupportedDialect
+from omop_alchemy.config import OmopAlchemyConfig
 
-from ..backend_support import Dialect, backend_label
-from .create_tables import collect_missing_tables
-from .defaults import defaults_path
-from .tables import TableCategory, select_maintenance_tables
+from .cli_schema_tables import collect_missing_tables
+from .tables import (
+    TableCategory,
+    select_maintenance_tables,
+)
 
+
+def _backend_label(dialect_name: str) -> str:
+    from ..backends.resolve import _DIALECT_TO_BACKEND_MAP, SupportedDialect
+    try:
+        return _DIALECT_TO_BACKEND_MAP[SupportedDialect(dialect_name)].name
+    except (ValueError, KeyError):
+        return dialect_name
+
+
+# ---------------------------------------------------------------------------
+# info
+# ---------------------------------------------------------------------------
 
 @dataclass(frozen=True)
 class DependencyStatus:
+    """Installation status of a Python package or external tool dependency."""
+
     name: str
     installed: bool
     version: str | None
@@ -26,6 +45,8 @@ class DependencyStatus:
 
 @dataclass(frozen=True)
 class CommandSupport:
+    """Readiness assessment for one CLI command given the current backend and connection state."""
+
     command_name: str
     requirement: str
     status: str
@@ -34,16 +55,16 @@ class CommandSupport:
 
 @dataclass(frozen=True)
 class MaintenanceInfo:
+    """Full environment snapshot: package version, connection state, and per-command readiness."""
+
     package_version: str
     cli_path: str | None
     pg_dump_path: str | None
     pg_restore_path: str | None
     psql_path: str | None
-    defaults_file: str
-    defaults_exists: bool
-    dotenv_path: str | None
-    dotenv_exists: bool | None
-    engine_schema: str | None
+    config_file: str
+    config_exists: bool
+    resource_name: str
     db_schema: str | None
     engine_url: str | None
     backend: str | None
@@ -60,10 +81,12 @@ class MaintenanceInfo:
 
 
 def _package_version() -> str:
+    """Return the installed omop-alchemy package version string."""
     return importlib.metadata.version("omop-alchemy")
 
 
 def _dependency_status(distribution_name: str, module_name: str) -> DependencyStatus:
+    """Check whether a Python package is importable and return its installed version if found."""
     installed = importlib.util.find_spec(module_name) is not None
     version: str | None = None
     if installed:
@@ -71,14 +94,11 @@ def _dependency_status(distribution_name: str, module_name: str) -> DependencySt
             version = importlib.metadata.version(distribution_name)
         except importlib.metadata.PackageNotFoundError:
             version = None
-    return DependencyStatus(
-        name=distribution_name,
-        installed=installed,
-        version=version,
-    )
+    return DependencyStatus(name=distribution_name, installed=installed, version=version)
 
 
 def _external_dependency_status(name: str, executable_name: str) -> DependencyStatus:
+    """Check whether an external CLI tool is on PATH and return a DependencyStatus (version always None)."""
     return DependencyStatus(
         name=name,
         installed=shutil.which(executable_name) is not None,
@@ -87,6 +107,7 @@ def _external_dependency_status(name: str, executable_name: str) -> DependencySt
 
 
 def _command_support_for_unavailable_engine(detail: str) -> tuple[CommandSupport, ...]:
+    """Return a full CommandSupport tuple with every command marked blocked, used when the engine cannot be created."""
     blocked = "blocked"
     return (
         CommandSupport("doctor", "Any SQLAlchemy backend", blocked, detail),
@@ -94,12 +115,7 @@ def _command_support_for_unavailable_engine(detail: str) -> tuple[CommandSupport
         CommandSupport("analyze-tables", "PostgreSQL/SQLite", blocked, detail),
         CommandSupport("create-missing-tables", "Any SQLAlchemy backend", blocked, detail),
         CommandSupport("indexes disable", "Any SQLAlchemy backend", blocked, detail),
-        CommandSupport(
-            "indexes enable",
-            "Any SQLAlchemy backend",
-            blocked,
-            detail,
-        ),
+        CommandSupport("indexes enable", "Any SQLAlchemy backend", blocked, detail),
         CommandSupport("reconcile-schema", "Any SQLAlchemy backend", blocked, detail),
         CommandSupport("load-vocab-source", "SQLite/PostgreSQL + Athena CSV source", blocked, detail),
         CommandSupport("backup-database", "PostgreSQL + pg_dump", blocked, detail),
@@ -128,7 +144,8 @@ def _command_support_for_backend(
     pg_restore_path: str | None,
     psql_path: str | None,
 ) -> tuple[CommandSupport, ...]:
-    current_backend = backend_label(backend)
+    """Compute the readiness status of every CLI command given the current backend, connection state, and tool availability."""
+    current_backend = _backend_label(backend)
     if not engine_created:
         blocked_detail = (
             f"Backend resolved to {current_backend}, but the engine could not be created: {engine_error}"
@@ -143,12 +160,10 @@ def _command_support_for_backend(
         )
     portable_status = "ready" if connection_ready else "blocked"
     portable_detail = (
-        f"Ready on {current_backend}."
-        if connection_ready
-        else blocked_detail
+        f"Ready on {current_backend}." if connection_ready else blocked_detail
     )
 
-    if backend == Dialect.POSTGRESQL:
+    if backend == SupportedDialect.POSTGRESQL:
         analyze_status = portable_status
         analyze_detail = (
             "Ready on PostgreSQL; ANALYZE and VACUUM ANALYZE are both supported."
@@ -162,11 +177,7 @@ def _command_support_for_backend(
             else blocked_detail
         )
         postgresql_status = portable_status
-        postgresql_detail = (
-            "Ready on PostgreSQL."
-            if connection_ready
-            else blocked_detail
-        )
+        postgresql_detail = "Ready on PostgreSQL." if connection_ready else blocked_detail
         vocab_load_status = portable_status
         vocab_load_detail = (
             "Ready on PostgreSQL when an Athena source path is configured."
@@ -238,18 +249,18 @@ def _command_support_for_backend(
             "PostgreSQL + pg_dump",
             (
                 "ready"
-                if connection_ready and backend == Dialect.POSTGRESQL and pg_dump_path is not None
+                if connection_ready and backend == SupportedDialect.POSTGRESQL and pg_dump_path is not None
                 else "blocked"
-                if backend == Dialect.POSTGRESQL
+                if backend == SupportedDialect.POSTGRESQL
                 else "unsupported"
                 if connection_ready
                 else "blocked"
             ),
             (
                 "Ready on PostgreSQL; `pg_dump` is available."
-                if connection_ready and backend == Dialect.POSTGRESQL and pg_dump_path is not None
+                if connection_ready and backend == SupportedDialect.POSTGRESQL and pg_dump_path is not None
                 else "PostgreSQL is configured, but `pg_dump` is not on PATH."
-                if connection_ready and backend == Dialect.POSTGRESQL
+                if connection_ready and backend == SupportedDialect.POSTGRESQL
                 else f"Requires PostgreSQL. Current backend: {current_backend}."
                 if connection_ready
                 else blocked_detail
@@ -260,18 +271,18 @@ def _command_support_for_backend(
             "PostgreSQL + pg_restore/psql",
             (
                 "ready"
-                if connection_ready and backend == Dialect.POSTGRESQL and (pg_restore_path is not None or psql_path is not None)
+                if connection_ready and backend == SupportedDialect.POSTGRESQL and (pg_restore_path is not None or psql_path is not None)
                 else "blocked"
-                if backend == Dialect.POSTGRESQL
+                if backend == SupportedDialect.POSTGRESQL
                 else "unsupported"
                 if connection_ready
                 else "blocked"
             ),
             (
                 "Ready on PostgreSQL; restore client tooling is available."
-                if connection_ready and backend == Dialect.POSTGRESQL and (pg_restore_path is not None or psql_path is not None)
+                if connection_ready and backend == SupportedDialect.POSTGRESQL and (pg_restore_path is not None or psql_path is not None)
                 else "PostgreSQL is configured, but neither `pg_restore` nor `psql` is on PATH."
-                if connection_ready and backend == Dialect.POSTGRESQL
+                if connection_ready and backend == SupportedDialect.POSTGRESQL
                 else f"Requires PostgreSQL. Current backend: {current_backend}."
                 if connection_ready
                 else blocked_detail
@@ -292,16 +303,13 @@ def _command_support_for_backend(
 
 def collect_maintenance_info(
     *,
-    engine_schema: str | None = None,
-    db_schema: str | None = None,
-    dotenv: str | None = None,
     vocabulary_included: bool = True,
 ) -> MaintenanceInfo:
-    load_environment(dotenv or "")
+    """Probe the current environment: resolve config, attempt a connection, and assess per-command readiness."""
     pg_dump_path = shutil.which("pg_dump")
     pg_restore_path = shutil.which("pg_restore")
     psql_path = shutil.which("psql")
-    defaults_file = defaults_path()
+    config_file = DEFAULT_CONFIG_PATH
     dependencies = (
         _dependency_status("sqlalchemy", "sqlalchemy"),
         _dependency_status("typer", "typer"),
@@ -316,11 +324,11 @@ def collect_maintenance_info(
         exclude_categories=(() if vocabulary_included else (TableCategory.VOCABULARY,))
     )
     cli_path = shutil.which("omop-alchemy")
-    dotenv_exists = None if dotenv is None else os.path.exists(dotenv)
 
-    engine_name: str | None = None
+    db_schema: str | None = None
     engine_url: str | None = None
     backend: str | None = None
+    engine: sa.engine.Engine | None = None
     engine_created = False
     engine_error: str | None = None
     connection_ready = False
@@ -328,42 +336,43 @@ def collect_maintenance_info(
     existing_table_count: int | None = None
     missing_table_count: int | None = None
 
+    resource_name = OmopAlchemyConfig.required_resources[0]
     try:
-        engine_name = get_engine_name(engine_schema)
-        url = sa.engine.make_url(engine_name)
-        engine_url = url.render_as_string(hide_password=True)
-        backend = url.get_backend_name()
+        stack = load_stack_config()
+        tool = stack.tools.get(OmopAlchemyConfig.tool_name)
+        resource_name = (tool.default_resource if tool else None) or resource_name
+        resolver = Resolver(stack)
+        resolved = resolver.resolve_resource(resource_name)
+        db_schema = resolved.cdm_schema
+        raw_url = sa.engine.make_url(resolved.database.url)
+        engine_url = raw_url.render_as_string(hide_password=True)
+        backend = raw_url.get_backend_name()
+        from omop_alchemy.config import create_cdm_engine
+        engine = create_cdm_engine(resolved)
+        engine_created = True
     except RuntimeError as exc:
         engine_error = str(exc)
     except Exception as exc:
         engine_error = f"Could not resolve engine configuration: {exc}"
 
-    if engine_name is not None:
+    if engine is not None:
         try:
-            engine = create_engine_with_dependencies(engine_name, future=True)
-            engine_created = True
-        except RuntimeError as exc:
-            engine_error = str(exc)
+            with engine.connect() as connection:
+                connection.exec_driver_sql("SELECT 1")
+            connection_ready = True
+            missing_tables = collect_missing_tables(
+                engine,
+                db_schema=db_schema,
+                vocabulary_included=vocabulary_included,
+            )
+            missing_table_count = len(missing_tables)
+            existing_table_count = len(managed_tables) - missing_table_count
+        except SQLAlchemyError as exc:
+            connection_error = f"{exc.__class__.__name__}: {exc}"
         except Exception as exc:
-            engine_error = f"Could not create engine: {exc}"
-        else:
-            try:
-                with engine.connect() as connection:
-                    connection.exec_driver_sql("SELECT 1")
-                connection_ready = True
-                missing_tables = collect_missing_tables(
-                    engine,
-                    db_schema=db_schema,
-                    vocabulary_included=vocabulary_included,
-                )
-                missing_table_count = len(missing_tables)
-                existing_table_count = len(managed_tables) - missing_table_count
-            except SQLAlchemyError as exc:
-                connection_error = f"{exc.__class__.__name__}: {exc}"
-            except Exception as exc:
-                connection_error = str(exc)
-            finally:
-                engine.dispose()
+            connection_error = str(exc)
+        finally:
+            engine.dispose()
 
     if backend is None:
         command_support = _command_support_for_unavailable_engine(
@@ -387,11 +396,9 @@ def collect_maintenance_info(
         pg_dump_path=pg_dump_path,
         pg_restore_path=pg_restore_path,
         psql_path=psql_path,
-        defaults_file=str(defaults_file),
-        defaults_exists=defaults_file.exists(),
-        dotenv_path=dotenv,
-        dotenv_exists=dotenv_exists,
-        engine_schema=engine_schema,
+        config_file=str(config_file),
+        config_exists=config_file.exists(),
+        resource_name=resource_name,
         db_schema=db_schema,
         engine_url=engine_url,
         backend=backend,

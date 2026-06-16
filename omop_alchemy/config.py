@@ -1,106 +1,99 @@
-import os
-from collections.abc import Mapping
-from dotenv import load_dotenv
-from pathlib import Path
+from __future__ import annotations
+
+from typing import ClassVar
+
 import sqlalchemy as sa
-from orm_loader.helpers import get_logger
+from pydantic import Field
+from oa_configurator import PackageConfigBase, ResourceSpec, Resolver, ResolvedResource, load_stack_config
 
-ROOT_PATH = Path(__file__).parent
-TEST_PATH = Path(__file__).parent.parent / "tests"
 
-logger = get_logger(__name__)
-
-# from orm-loader 0.4.0 onwards, implicit psycopg2 dependency has been removed in favor of explicit driver modules. 
-# This mapping is used to provide clearer error messages when a required driver is missing.
-POSTGRES_DRIVER_MODULES: Mapping[str, str] = {
-    "postgresql": "psycopg",           # bare URL aliased to psycopg
+# Mapping of PostgreSQL SQLAlchemy drivernames to the Python module they require.
+# Kept here (not in oa_configurator) because the driver choice and install instructions
+# are OMOP_Alchemy-specific — orm-loader ≥ 0.4.0 dropped the implicit psycopg2 dependency.
+_POSTGRES_DRIVER_MODULES: dict[str, str] = {
+    "postgresql": "psycopg",
     "postgresql+psycopg": "psycopg",
-    "postgresql+psycopg2": "psycopg2", # retained so missing-driver message is clear
+    "postgresql+psycopg2": "psycopg2",
 }
 
-def load_environment(dotenv: str = '') -> None:
-    """
-    Explicitly load environment variables for the application.
-    Safe: does not log sensitive values.
-    """
-    # Dotenv values should take precedence over inherited shell env vars.
-    if load_dotenv(dotenv, override=True) or load_dotenv(override=True):
-        logger.info("Environment variables loaded from .env file")
-    else:
-        logger.debug("No .env file loaded")
 
-
-def get_engine_name(schema: str | None = None) -> str:
-    """
-    Resolve database engine URI.
-
-    Resolution order:
-    1. ENGINE_<SCHEMA> (if schema provided)
-    2. ENGINE (fallback / legacy)
-
-    Raises if nothing is configured.
-    """
-    if schema:
-        key = f"ENGINE_{schema.upper()}"
-        engine = os.getenv(key)
-        if engine:
-            logger.info("Database engine configured for schema '%s'", schema)
-            return engine
-        else:
-            logger.debug(
-                "No schema-specific engine found for '%s' (%s)",
-                schema,
-                key,
-            )
-
-    engine = os.getenv("ENGINE")
-    if engine:
-        logger.info("Default database engine configured")
-        return engine
-
-    raise RuntimeError(
-        f"No database engine configured"
-        + (f" for schema '{schema}'" if schema else "")
-    )
-
-
-def _missing_driver_message(
-    engine_name: str,
-    exc: ModuleNotFoundError,
-) -> str | None:
-    drivername = sa.engine.make_url(engine_name).drivername
-    expected_module = POSTGRES_DRIVER_MODULES.get(drivername)
-    if expected_module is None:
+def _missing_driver_message(url: str, exc: ModuleNotFoundError) -> str | None:
+    """Return an install hint if exc is a missing PostgreSQL driver, else None."""
+    drivername = sa.engine.make_url(url).drivername
+    expected = _POSTGRES_DRIVER_MODULES.get(drivername)
+    if expected is None:
         return None
-
-    missing_module = exc.name
-    if missing_module is None and expected_module in str(exc):
-        missing_module = expected_module
-
-    if missing_module != expected_module:
+    missing = exc.name
+    if missing is None and expected in str(exc):
+        missing = expected
+    if missing != expected:
         return None
-
     return (
-        f"Database driver '{expected_module}' is required for engine "
-        f"'{drivername}' but is not installed. "
+        f"Database driver '{expected}' is required for dialect '{drivername}' "
+        "but is not installed. "
         "Install PostgreSQL support with "
-        "`uv sync --extra postgres` "
-        "or "
-        "`pip install -e '.[postgres]'`."
+        "`uv sync --extra postgres` or `pip install -e '.[postgres]'`."
     )
 
 
-def create_engine_with_dependencies(
-    engine_name: str,
-    **engine_kwargs,
-) -> sa.Engine:
+class OmopAlchemyConfig(PackageConfigBase):
+    CDM_DB: ClassVar[ResourceSpec] = ResourceSpec(
+        semantic_name="cdm_db",
+        display_name="OMOP CDM Database",
+        description="Database containing the OMOP CDM tables and vocabulary.",
+        connection_name_hint="cdm",
+    )
+    TEST_DB: ClassVar[ResourceSpec] = ResourceSpec(
+        semantic_name="test_cdm_db",
+        display_name="Test OMOP CDM Database",
+        description=(
+            "Dedicated PostgreSQL database for running integration tests. "
+            "Tests drop and recreate the entire public schema on every run."
+        ),
+        connection_name_hint="pg_test",
+        defaults={
+            "dialect": "postgresql+psycopg",
+            "host": "localhost",
+            "port": "55432",
+            "user": "test",
+            "password": "test",
+            "database_name": "test_db",
+            "cdm_schema": "public",
+        },
+    )
+
+    tool_name: ClassVar[str] = "omop_alchemy"
+    extra_logging_namespaces: ClassVar[tuple[str, ...]] = ("orm_loader",)
+    required_resources: ClassVar[tuple[str, ...]] = (CDM_DB.semantic_name,)
+    owned_resources: ClassVar[tuple[ResourceSpec, ...]] = (CDM_DB,)
+    test_resources: ClassVar[tuple[ResourceSpec, ...]] = (TEST_DB,)
+
+    athena_source_path: str | None = Field(
+        default=None,
+        description="Path to Athena vocabulary CSV files.",
+    )
+
+
+def get_cdm_context() -> tuple[OmopAlchemyConfig, ResolvedResource]:
+    """Return (pkg_config, resolved_cdm_resource), loading config once.
+
+    The resource is taken from tools.omop_alchemy.default_resource when set;
+    otherwise falls back to the canonical CDM_DB resource name.
     """
-    Create a SQLAlchemy engine with clearer dependency errors for postgres.
-    """
+    stack = load_stack_config()
+    pkg_config = OmopAlchemyConfig.from_stack(stack)
+    tool = stack.tools.get(OmopAlchemyConfig.tool_name)
+    resource_name = (tool.default_resource if tool else None) or OmopAlchemyConfig.CDM_DB.semantic_name
+    resolved = Resolver(stack).resolve_resource(resource_name)
+    return pkg_config, resolved
+
+
+def create_cdm_engine(resolved: ResolvedResource) -> sa.Engine:
+    """Create the CDM SQLAlchemy engine with helpful PostgreSQL driver error messages."""
     try:
-        return sa.create_engine(engine_name, **engine_kwargs)
+        return resolved.create_engine()
     except ModuleNotFoundError as exc:
-        message = _missing_driver_message(engine_name, exc)
-        if message is not None:
-            raise RuntimeError(message) from exc
+        msg = _missing_driver_message(resolved.database.url, exc)
+        if msg is not None:
+            raise RuntimeError(msg) from exc
         raise

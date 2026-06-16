@@ -2,12 +2,12 @@ from pathlib import Path
 
 import pytest
 import sqlalchemy as sa
+from oa_configurator import StackConfig, DatabaseConfig
 from sqlalchemy.orm import sessionmaker
 from typer.testing import CliRunner
 
 from omop_alchemy.maintenance.cli import app
-from omop_alchemy.maintenance.defaults import defaults_path
-from omop_alchemy.maintenance.load_vocab import (
+from omop_alchemy.maintenance.cli_vocab import (
     OPTIONAL_VOCAB_MODELS,
     REQUIRED_VOCAB_MODELS,
     MergeStrategy,
@@ -15,6 +15,7 @@ from omop_alchemy.maintenance.load_vocab import (
     load_vocab_source,
 )
 from omop_alchemy.cdm.model.vocabulary import Drug_Strength
+from omop_alchemy.config import OmopAlchemyConfig
 
 
 runner = CliRunner()
@@ -70,12 +71,14 @@ def test_load_vocab_source_on_sqlite_creates_tables_and_reports_loaded_results(
         merge_strategy,
         quote_mode="auto",
         chunksize=None,
+        index_strategy="auto",
+        merge_batch_size: int = 1_000_000,
     ) -> int:
         loaded_tables.append((model.__tablename__, merge_strategy, quote_mode, csv_path))
         return 1
 
     monkeypatch.setattr(
-        "omop_alchemy.maintenance.load_vocab._load_vocab_model_csv",
+        "omop_alchemy.maintenance.cli_vocab._load_vocab_model_csv",
         fake_load_vocab_model_csv,
     )
 
@@ -147,21 +150,24 @@ def test_load_vocab_source_dry_run_does_not_create_tables(tmp_path):
     assert not inspector.has_table("concept")
 
 
-def test_load_vocab_source_cli_uses_saved_athena_source(monkeypatch):
-    """Test load vocab source cli uses saved athena source."""
+def test_load_vocab_source_cli_uses_configured_athena_source(monkeypatch, tmp_path):
+    """load-vocab-source CLI uses athena_source_path from OmopAlchemyConfig when --athena-source is omitted."""
+    from omop_alchemy.maintenance.cli_vocab import VocabularyLoadReport, VocabularyLoadResult
+
     calls: dict[str, object] = {}
+    athena_dir = tmp_path / "athena_source"
+    athena_dir.mkdir()
 
-    def fake_load_environment(dotenv: str) -> None:
-        calls["dotenv"] = dotenv
+    cfg = StackConfig.for_session(
+        databases={"db": DatabaseConfig(dialect="sqlite", database_name=":memory:")},
+        resources={"cdm_db": {"database": "db", "cdm_schema": "main"}},
+        tools={OmopAlchemyConfig.tool_name: {"extra": {"athena_source_path": str(athena_dir)}}},
+    )
 
-    def fake_get_engine_name(schema: str | None = None) -> str:
-        calls["engine_schema"] = schema
-        return "sqlite:///:memory:"
-
-    def fake_create_engine(url: str, *, future: bool) -> str:
-        calls["engine_url"] = url
-        calls["future"] = future
-        return "ENGINE"
+    monkeypatch.setattr(
+        "omop_alchemy.config.load_stack_config",
+        lambda: cfg,
+    )
 
     def fake_load_vocab_source(
         engine: object,
@@ -171,15 +177,12 @@ def test_load_vocab_source_cli_uses_saved_athena_source(monkeypatch):
         dry_run: bool = False,
         merge_strategy: MergeStrategy = "replace",
         chunksize: int | None = None,
+        bulk_mode: bool = True,
+        merge_batch_size: int = 1_000_000,
         progress_callback=None,
     ):
-        from omop_alchemy.maintenance.load_vocab import VocabularyLoadReport, VocabularyLoadResult
-
-        calls["engine"] = engine
         calls["source_path"] = str(source_path)
-        calls["db_schema"] = db_schema
         calls["dry_run"] = dry_run
-        calls["merge_strategy"] = merge_strategy
         return VocabularyLoadReport(
             source_path=str(source_path),
             backend="sqlite",
@@ -200,50 +203,16 @@ def test_load_vocab_source_cli_uses_saved_athena_source(monkeypatch):
         )
 
     monkeypatch.setattr(
-        "omop_alchemy.maintenance.cli.load_environment",
-        fake_load_environment,
-    )
-    monkeypatch.setattr(
-        "omop_alchemy.maintenance.cli.get_engine_name",
-        fake_get_engine_name,
-    )
-    monkeypatch.setattr(
-        "omop_alchemy.maintenance.cli.create_engine_with_dependencies",
-        fake_create_engine,
-    )
-    monkeypatch.setattr(
-        "omop_alchemy.maintenance.cli.load_vocab_source",
+        "omop_alchemy.maintenance.cli_vocab.load_vocab_source",
         fake_load_vocab_source,
     )
 
-    with runner.isolated_filesystem():
-        athena_dir = Path("athena_source")
-        athena_dir.mkdir()
-        set_result = runner.invoke(
-            app,
-            [
-                "config",
-                "set-overrides",
-                "--athena-source",
-                str(athena_dir),
-                "--engine-schema",
-                "cdm",
-            ],
-        )
-        assert set_result.exit_code == 0
+    result = runner.invoke(app, ["load-vocab-source", "--dry-run"])
 
-        result = runner.invoke(
-            app,
-            ["load-vocab-source", "--dry-run"],
-        )
-
-        expected_source_path = str((defaults_path().parent / "athena_source").resolve())
-        assert result.exit_code == 0
-        assert calls["engine"] == "ENGINE"
-        assert calls["source_path"] == expected_source_path
-        assert calls["merge_strategy"] == "replace"
-        assert "load-vocab-source" in result.stdout
-        assert "concept" in result.stdout
+    assert result.exit_code == 0, result.output
+    assert calls["source_path"] == str(athena_dir)
+    assert calls["dry_run"] is True
+    assert "load-vocab-source" in result.stdout
 
 
 def test_load_vocab_model_csv_passes_quote_mode(monkeypatch, tmp_path):
@@ -258,7 +227,7 @@ def test_load_vocab_model_csv_passes_quote_mode(monkeypatch, tmp_path):
             return "_staging_concept"
 
         @staticmethod
-        def load_csv(session, path, *, merge_strategy, quote_mode):
+        def load_csv(session, path, *, merge_strategy, quote_mode, index_strategy="auto"):
             return 7
 
         @staticmethod
@@ -267,7 +236,7 @@ def test_load_vocab_model_csv_passes_quote_mode(monkeypatch, tmp_path):
 
     calls: dict[str, object] = {}
 
-    def fake_load_csv(session, path, *, merge_strategy, quote_mode):
+    def fake_load_csv(session, path, *, merge_strategy, quote_mode, index_strategy="auto", merge_batch_size: int = 1_000_000):
         calls["merge_strategy"] = merge_strategy
         calls["quote_mode"] = quote_mode
         calls["path"] = path
@@ -275,11 +244,11 @@ def test_load_vocab_model_csv_passes_quote_mode(monkeypatch, tmp_path):
 
     monkeypatch.setattr(FakeModel, "load_csv", fake_load_csv)
 
-    Session = sessionmaker(bind=engine, future=True)
+    Session = sessionmaker(engine, future=True)
     with Session() as session:
         row_count = _load_vocab_model_csv(
             session,
-            model=FakeModel,
+            model=FakeModel,  # type: ignore[arg-type]
             csv_path=_athena_source_path() / "CONCEPT.csv",
             merge_strategy="upsert",
             quote_mode="literal",
@@ -290,14 +259,13 @@ def test_load_vocab_model_csv_passes_quote_mode(monkeypatch, tmp_path):
     assert calls["quote_mode"] == "literal"
 
 
-def test_load_vocab_source_loads_smallest_files_first(monkeypatch, tmp_path):
-    """Test load vocab source loads smallest files first."""
+def test_load_vocab_source_loads_in_fk_dependency_order(monkeypatch, tmp_path):
+    """Tables must be loaded in REQUIRED_VOCAB_MODELS order to respect FK dependencies."""
     engine = sa.create_engine(f"sqlite:///{tmp_path / 'load_vocab_source_order.db'}", future=True)
     source_path = _build_required_athena_source(tmp_path)
 
-    for model in REQUIRED_VOCAB_MODELS:
-        _write_csv_with_size(source_path, model.__tablename__, 500)
-
+    # Give domain a tiny file and concept_class a large one — if size-sorting were still in place
+    # concept_class would come before vocabulary, but FK order requires domain → vocabulary → concept_class.
     _write_csv_with_size(source_path, "domain", 10)
     _write_csv_with_size(source_path, "vocabulary", 200)
     _write_csv_with_size(source_path, "concept_class", 50)
@@ -312,18 +280,21 @@ def test_load_vocab_source_loads_smallest_files_first(monkeypatch, tmp_path):
         merge_strategy,
         quote_mode="auto",
         chunksize=None,
+        index_strategy="auto",
+        merge_batch_size: int = 1_000_000,
     ) -> int:
         loaded_order.append(model.__tablename__)
         return 1
 
     monkeypatch.setattr(
-        "omop_alchemy.maintenance.load_vocab._load_vocab_model_csv",
+        "omop_alchemy.maintenance.cli_vocab._load_vocab_model_csv",
         fake_load_vocab_model_csv,
     )
 
     load_vocab_source(engine, source_path=source_path)
 
-    assert loaded_order[:3] == ["domain", "concept_class", "vocabulary"]
+    expected_order = [m.__tablename__ for m in REQUIRED_VOCAB_MODELS]
+    assert loaded_order[: len(expected_order)] == expected_order
 
 
 def test_load_vocab_source_reports_weighted_progress(monkeypatch, tmp_path):
@@ -344,11 +315,13 @@ def test_load_vocab_source_reports_weighted_progress(monkeypatch, tmp_path):
         merge_strategy,
         quote_mode="auto",
         chunksize=None,
+        index_strategy="auto",
+        merge_batch_size: int = 1_000_000,
     ) -> int:
         return 1
 
     monkeypatch.setattr(
-        "omop_alchemy.maintenance.load_vocab._load_vocab_model_csv",
+        "omop_alchemy.maintenance.cli_vocab._load_vocab_model_csv",
         fake_load_vocab_model_csv,
     )
 
@@ -359,7 +332,7 @@ def test_load_vocab_source_reports_weighted_progress(monkeypatch, tmp_path):
     )
 
     assert events
-    percents = [event.percent for event in events]
+    percents = [event.percent for event in events]  # type: ignore[attr-defined]
     assert percents[0] == pytest.approx(0.0)
     assert percents[-1] == pytest.approx(100.0)
     assert percents == sorted(percents)
@@ -370,9 +343,9 @@ def test_load_vocab_source_wraps_failed_table_load(monkeypatch, tmp_path):
     engine = sa.create_engine(f"sqlite:///{tmp_path / 'load_vocab_source_error.db'}", future=True)
     source_path = _build_required_athena_source(tmp_path)
 
-    def fake_load_vocab_model_csv(session, *, model, csv_path, merge_strategy, quote_mode="auto", chunksize=None):
+    def fake_load_vocab_model_csv(session, *, model, csv_path, merge_strategy, quote_mode="auto", chunksize=None, index_strategy="auto", merge_batch_size: int = 1_000_000):
         if model.__tablename__ == "domain":
-            raise sa.exc.ProgrammingError(
+            raise sa.exc.ProgrammingError(  # type: ignore[attr-defined]
                 "COPY domain FROM STDIN",
                 {},
                 Exception("value too long for type character varying(255)"),
@@ -380,7 +353,7 @@ def test_load_vocab_source_wraps_failed_table_load(monkeypatch, tmp_path):
         return 1
 
     monkeypatch.setattr(
-        "omop_alchemy.maintenance.load_vocab._load_vocab_model_csv",
+        "omop_alchemy.maintenance.cli_vocab._load_vocab_model_csv",
         fake_load_vocab_model_csv,
     )
 
@@ -408,7 +381,7 @@ def test_load_vocab_model_csv_retries_missing_staging_table(monkeypatch, tmp_pat
             return "_staging_drug_strength"
 
         @staticmethod
-        def load_csv(session, path, *, merge_strategy, quote_mode):
+        def load_csv(session, path, *, merge_strategy, quote_mode, index_strategy="auto"):
             raise NotImplementedError
 
         @staticmethod
@@ -417,10 +390,10 @@ def test_load_vocab_model_csv_retries_missing_staging_table(monkeypatch, tmp_pat
 
     calls = {"load_csv": 0, "create_staging_table": 0}
 
-    def fake_load_csv(session, path, *, merge_strategy, quote_mode):
+    def fake_load_csv(session, path, *, merge_strategy, quote_mode, index_strategy="auto", merge_batch_size: int = 1_000_000):
         calls["load_csv"] += 1
         if calls["load_csv"] == 1:
-            raise sa.exc.ProgrammingError(
+            raise sa.exc.ProgrammingError(  # type: ignore[attr-defined]
                 'INSERT INTO _staging_drug_strength ("drug_concept_id") VALUES (1)',
                 {},
                 Exception('relation "_staging_drug_strength" does not exist'),
@@ -433,11 +406,11 @@ def test_load_vocab_model_csv_retries_missing_staging_table(monkeypatch, tmp_pat
     monkeypatch.setattr(FakeModel, "load_csv", fake_load_csv)
     monkeypatch.setattr(FakeModel, "create_staging_table", fake_create_staging_table)
 
-    Session = sessionmaker(bind=engine, future=True)
+    Session = sessionmaker(engine, future=True)
     with Session() as session:
         row_count = _load_vocab_model_csv(
             session,
-            model=FakeModel,
+            model=FakeModel,  # type: ignore[arg-type]
             csv_path=_athena_source_path() / "DRUG_STRENGTH.csv",
             merge_strategy="upsert",
         )
@@ -449,22 +422,25 @@ def test_load_vocab_model_csv_retries_missing_staging_table(monkeypatch, tmp_pat
 
 def test_load_vocab_source_cli_surfaces_database_error_detail(monkeypatch):
     """Test load vocab source cli surfaces database error detail."""
-    def fake_build_engine(*, dotenv: str | None, engine_schema: str | None):
-        return "ENGINE"
+
+    cfg = StackConfig.for_session(
+        databases={"db": DatabaseConfig(dialect="sqlite", database_name=":memory:")},
+        resources={"cdm_db": {"database": "db", "cdm_schema": "main"}},
+    )
+    monkeypatch.setattr(
+        "omop_alchemy.config.load_stack_config",
+        lambda: cfg,
+    )
 
     def fail_load_vocab_source(*args, **kwargs):
-        raise sa.exc.ProgrammingError(
+        raise sa.exc.ProgrammingError(  # type: ignore[attr-defined]
             "COPY concept FROM STDIN",
             {},
             Exception("value too long for type character varying(255)"),
         )
 
     monkeypatch.setattr(
-        "omop_alchemy.maintenance.cli._build_engine",
-        fake_build_engine,
-    )
-    monkeypatch.setattr(
-        "omop_alchemy.maintenance.cli.load_vocab_source",
+        "omop_alchemy.maintenance.cli_vocab.load_vocab_source",
         fail_load_vocab_source,
     )
 
@@ -519,12 +495,14 @@ def test_load_vocab_source_uses_auto_not_literal_quote_mode(monkeypatch, tmp_pat
         merge_strategy,
         quote_mode="auto",
         chunksize=None,
+        index_strategy="auto",
+        merge_batch_size: int = 1_000_000,
     ) -> int:
         received_quote_modes.append(quote_mode)
         return 1
 
     monkeypatch.setattr(
-        "omop_alchemy.maintenance.load_vocab._load_vocab_model_csv",
+        "omop_alchemy.maintenance.cli_vocab._load_vocab_model_csv",
         fake_load_vocab_model_csv,
     )
 

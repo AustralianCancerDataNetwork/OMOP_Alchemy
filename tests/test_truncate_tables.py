@@ -2,14 +2,15 @@ import importlib
 import sqlalchemy as sa
 import pytest
 from typer.testing import CliRunner
+from oa_configurator import StackConfig, DatabaseConfig
 
 from omop_alchemy.maintenance.cli import app
-from omop_alchemy.maintenance.create_tables import create_missing_tables
+from omop_alchemy.maintenance.cli_schema import create_missing_tables
 from omop_alchemy.maintenance.tables import TableCategory, TableScope
-from omop_alchemy.maintenance.truncate_tables import TruncateTableResult, truncate_tables
+from omop_alchemy.maintenance.cli_tables import TruncateTableResult, truncate_tables
 
 runner = CliRunner()
-truncate_tables_module = importlib.import_module("omop_alchemy.maintenance.truncate_tables")
+truncate_tables_module = importlib.import_module("omop_alchemy.maintenance.cli_tables")
 
 
 def test_truncate_tables_requires_postgresql(tmp_path):
@@ -19,7 +20,7 @@ def test_truncate_tables_requires_postgresql(tmp_path):
     with pytest.raises(RuntimeError) as exc_info:
         truncate_tables(engine, scope=TableScope.CLINICAL, dry_run=True)
 
-    assert "only supported for PostgreSQL engines" in str(exc_info.value)
+    assert "not supported by the SQLite backend" in str(exc_info.value)
 
 
 def test_truncate_tables_reports_blocking_foreign_key_references(monkeypatch, tmp_path):
@@ -27,7 +28,7 @@ def test_truncate_tables_reports_blocking_foreign_key_references(monkeypatch, tm
     engine = sa.create_engine(f"sqlite:///{tmp_path / 'truncate_fk.db'}", future=True)
     create_missing_tables(engine, vocabulary_included=True)
 
-    monkeypatch.setattr(truncate_tables_module, "require_backend", lambda *args, **kwargs: None)
+    monkeypatch.setattr(truncate_tables_module, "require_backend_support", lambda *args, **kwargs: None)
 
     with pytest.raises(RuntimeError) as exc_info:
         truncate_tables(engine, scope=TableScope.CLINICAL, dry_run=False)
@@ -38,8 +39,17 @@ def test_truncate_tables_reports_blocking_foreign_key_references(monkeypatch, tm
     assert "--cascade" in message
 
 
-def test_truncate_tables_cli_requires_confirmation():
+def test_truncate_tables_cli_requires_confirmation(monkeypatch):
     """Test truncate tables cli requires confirmation."""
+
+    cfg = StackConfig.for_session(
+        databases={"db": DatabaseConfig(dialect="sqlite", database_name=":memory:")},
+        resources={"cdm_db": {"database": "db", "cdm_schema": "main"}},
+    )
+    monkeypatch.setattr(
+        "omop_alchemy.config.load_stack_config",
+        lambda: cfg,
+    )
     result = runner.invoke(app, ["truncate-tables", "--scope", "clinical"])
 
     assert result.exit_code == 1
@@ -48,19 +58,17 @@ def test_truncate_tables_cli_requires_confirmation():
 
 def test_truncate_tables_cli_invokes_management(monkeypatch):
     """Test truncate tables cli invokes management."""
+
     calls: dict[str, object] = {}
 
-    def fake_load_environment(dotenv: str) -> None:
-        calls["dotenv"] = dotenv
-
-    def fake_get_engine_name(schema: str | None = None) -> str:
-        calls["engine_schema"] = schema
-        return "postgresql+psycopg://example"
-
-    def fake_create_engine(url: str, *, future: bool) -> str:
-        calls["engine_url"] = url
-        calls["future"] = future
-        return "ENGINE"
+    cfg = StackConfig.for_session(
+        databases={"db": DatabaseConfig(dialect="sqlite", database_name=":memory:")},
+        resources={"cdm_db": {"database": "db", "cdm_schema": "main"}},
+    )
+    monkeypatch.setattr(
+        "omop_alchemy.config.load_stack_config",
+        lambda: cfg,
+    )
 
     def fake_truncate_tables(
         engine: object,
@@ -83,8 +91,6 @@ def test_truncate_tables_cli_invokes_management(monkeypatch):
             TruncateTableResult(
                 table_name="person",
                 category=TableCategory.CLINICAL,
-                model_name="Person",
-                model_module="omop_alchemy.cdm.model.clinical.person",
                 row_count=10,
                 status="planned",
                 detail="table would be truncated",
@@ -92,19 +98,7 @@ def test_truncate_tables_cli_invokes_management(monkeypatch):
         ]
 
     monkeypatch.setattr(
-        "omop_alchemy.maintenance.cli.load_environment",
-        fake_load_environment,
-    )
-    monkeypatch.setattr(
-        "omop_alchemy.maintenance.cli.get_engine_name",
-        fake_get_engine_name,
-    )
-    monkeypatch.setattr(
-        "omop_alchemy.maintenance.cli.create_engine_with_dependencies",
-        fake_create_engine,
-    )
-    monkeypatch.setattr(
-        "omop_alchemy.maintenance.cli.truncate_tables",
+        "omop_alchemy.maintenance.cli_tables.truncate_tables",
         fake_truncate_tables,
     )
 

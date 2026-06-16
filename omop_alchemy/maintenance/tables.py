@@ -270,7 +270,7 @@ def schema_adjusted_metadata(
     for maintenance_table in tables:
         adjusted_tables[maintenance_table.table_name] = maintenance_table.table.to_metadata(
             metadata,
-            schema=db_schema,
+            schema=db_schema,  # type: ignore[arg-type]
             referred_schema_fn=(
                 lambda _table, to_schema, _constraint, _referred_schema: to_schema
             ),

@@ -11,7 +11,7 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
-from ..backend_support import POSTGRESQL_ONLY_HELP
+_BACKEND_NOTE_MARKER = "Supported backends:"
 
 
 def _optional_str(value: object) -> str | None:
@@ -21,11 +21,15 @@ def _optional_str(value: object) -> str | None:
 
 
 def _strip_backend_flag(helptext: str) -> tuple[str, str | None]:
-    suffix = f". {POSTGRESQL_ONLY_HELP}"
-    if helptext.endswith(suffix):
-        return helptext[: -len(suffix)], POSTGRESQL_ONLY_HELP
-    if helptext.endswith(POSTGRESQL_ONLY_HELP):
-        return helptext[: -len(POSTGRESQL_ONLY_HELP)].rstrip(), POSTGRESQL_ONLY_HELP
+    """Split off a trailing 'Supported backends: ...' note, if present."""
+    marker = f". {_BACKEND_NOTE_MARKER}"
+    idx = helptext.rfind(marker)
+    if idx != -1:
+        tail = helptext[idx + len(marker):]
+        if ". " not in tail:  # guard: note must be the final sentence
+            return helptext[:idx], helptext[idx + 2:]  # skip leading ". "
+    if helptext.startswith(_BACKEND_NOTE_MARKER):
+        return "", helptext
     return helptext, None
 
 

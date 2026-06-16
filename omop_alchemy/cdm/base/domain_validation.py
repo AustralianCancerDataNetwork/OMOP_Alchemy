@@ -154,7 +154,7 @@ class DomainValidationMixin:
         if ConceptCls is None:
             return False
         concept = session.get(ConceptCls, concept_id) # type: ignore
-        return concept.domain_id in expected.domains if concept else False
+        return concept.domain_id in expected.domains if concept else False  # type: ignore[union-attr]
 
 
     @property

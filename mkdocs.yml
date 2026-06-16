@@ -13,6 +13,19 @@ theme:
     - navigation.top
     - content.code.copy
     - content.code.annotate
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: blue
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: light-blue
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
 
 markdown_extensions:
   - admonition
@@ -28,6 +41,7 @@ markdown_extensions:
           format: !!python/name:mermaid2.fence_mermaid
   - toc:
       permalink: true
+      toc_depth: 3
 
 extra_javascript:
   - https://unpkg.com/mermaid@10/dist/mermaid.min.js
@@ -53,20 +67,70 @@ nav:
   - Getting Started:
       - Overview: getting-started/index.md
       - Installation: getting-started/installation.md
-      - Maintenance CLI: getting-started/maintenance.md
+      - Configuration: getting-started/configuration.md
       - Quickstart: getting-started/quickstart.md
-      - Sessions: getting-started/sessions.md
-  
-  - API Reference: 
+      - Maintenance CLI: getting-started/maintenance.md
+
+  - CLI Reference:
+      - Overview: cli/index.md
+      - Command Reference: cli/reference.md
+
+  - API Reference:
       - Overview: api/index.md
+      - Architecture: api/architecture.md
       - CDM Base: api/base.md
       - Columns: api/columns.md
-      - Configuration: api/configuration.md
       - Relationships: api/relationships.md
+      - Typing: api/typing.md
 
   - Object-Relational Mappings:
-      - CDM Objects: models/index.md
-      
+      - Overview: models/index.md
+      - Clinical:
+          - Overview: models/clinical/index.md
+          - Condition Occurrence: models/clinical/condition_occurrence.md
+          - Drug Exposure: models/clinical/drug_exposure.md
+          - Measurement: models/clinical/measurement.md
+          - Observation: models/clinical/observation.md
+          - Person: models/clinical/person.md
+      - Derived:
+          - Overview: models/derived/index.md
+          - Cohort: models/derived/cohort.md
+          - Condition Era: models/derived/condition_era.md
+          - Dose Era: models/derived/dose_era.md
+          - Drug Era: models/derived/drug_era.md
+      - Health Economic:
+          - Overview: models/health_economic/index.md
+          - Cost: models/health_economic/cost.md
+          - Payer Plan Period: models/health_economic/payer_plan_period.md
+      - Health System:
+          - Overview: models/health_system/index.md
+          - Care Site: models/health_system/care_site.md
+          - Location: models/health_system/location.md
+          - Provider: models/health_system/provider.md
+          - Visit Detail: models/health_system/visit_detail.md
+          - Visit Occurrence: models/health_system/visit_occurrence.md
+      - Metadata:
+          - Overview: models/metadata/index.md
+          - CDM Source: models/metadata/cdm_source.md
+          - Metadata: models/metadata/metadata.md
+      - Structural:
+          - Overview: models/structural/index.md
+          - Episode: models/structural/episode.md
+          - Episode Event: models/structural/episode_event.md
+          - Fact Relationship: models/structural/fact_relationship.md
+      - Unstructured:
+          - Overview: models/unstructured/index.md
+          - Image: models/unstructured/image.md
+          - Image Feature: models/unstructured/image_feature.md
+          - Note: models/unstructured/note.md
+          - Note NLP: models/unstructured/note_nlp.md
+      - Vocabulary:
+          - Overview: models/vocabulary/index.md
+          - Concept: models/vocabulary/concept.md
+          - Concept Relationship: models/vocabulary/concept_relationship.md
+          - Domain: models/vocabulary/domain.md
+          - Vocabulary: models/vocabulary/vocabulary.md
+
   - OMOP-Specific Validation:
       - Overview: validation/index.md
       - Domain Rules: validation/domain-rules.md
@@ -74,7 +138,6 @@ nav:
 
   - Advanced:
       - Overview: advanced/index.md
-      - Views & Analytics: advanced/views.md
-      - Event Timelines: advanced/timelines.md
+      - Backends: advanced/backends.md
+      - Patient Timelines: advanced/timelines.md
       - PostgreSQL Full-Text Search: advanced/fulltext.md
-      - Querying Tips: advanced/query_patterns.md

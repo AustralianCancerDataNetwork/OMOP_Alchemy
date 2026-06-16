@@ -1,16 +1,24 @@
+"""Schema reconciliation domain: comparing ORM metadata against the live database column types, indexes, FK constraints, and cluster state."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
 
 import sqlalchemy as sa
+from sqlalchemy.engine.interfaces import ReflectedForeignKeyConstraint, ReflectedIndex
 
-from ..backend_support import Dialect
-from .indexes import _cluster_target_name
-from .tables import MaintenanceTable, TableCategory, select_maintenance_tables
+from ..backends import backend_supports, resolve_backend
+from .cli_indexes import _cluster_target_name
+from .tables import (
+    TableCategory,
+    select_maintenance_tables,
+)
 
 
 @dataclass(frozen=True)
 class ReconciliationIssue:
+    """A single schema drift detail: column, index, FK, or cluster mismatch between ORM metadata and the database."""
+
     table_name: str
     category: TableCategory
     component: str
@@ -23,10 +31,10 @@ class ReconciliationIssue:
 
 @dataclass(frozen=True)
 class TableReconciliationResult:
+    """Per-table schema reconciliation summary: whether ORM metadata matches the live database."""
+
     table_name: str
     category: TableCategory
-    model_name: str
-    model_module: str
     status: str
     issue_count: int
     detail: str
@@ -34,22 +42,15 @@ class TableReconciliationResult:
 
 @dataclass(frozen=True)
 class SchemaReconciliationReport:
+    """Complete reconciliation report across all selected ORM-managed tables."""
+
     backend: str
     table_results: tuple[TableReconciliationResult, ...]
     issues: tuple[ReconciliationIssue, ...]
 
 
-def _selected_tables(
-    *,
-    vocabulary_included: bool,
-) -> list[MaintenanceTable]:
-    excluded_categories: tuple[TableCategory, ...] = ()
-    if not vocabulary_included:
-        excluded_categories = (TableCategory.VOCABULARY,)
-    return select_maintenance_tables(exclude_categories=excluded_categories)
-
-
 def _schema_table(table: sa.Table, db_schema: str | None) -> sa.Table:
+    """Return table unchanged when db_schema is None, or a schema-qualified copy when a schema is specified."""
     if db_schema is None:
         return table
 
@@ -64,10 +65,14 @@ def _schema_table(table: sa.Table, db_schema: str | None) -> sa.Table:
 
 
 def _normalized_type(type_: sa.types.TypeEngine[object], dialect: sa.engine.Dialect) -> str:
+    """Compile a SQLAlchemy type to its dialect-specific string and normalise whitespace/case for comparison."""
     return type_.compile(dialect=dialect).lower().replace(" ", "")
 
 
-def _expected_foreign_keys(table: sa.Table) -> dict[tuple[tuple[str, ...], str, tuple[str, ...]], sa.ForeignKeyConstraint]:
+def _expected_foreign_keys(
+    table: sa.Table,
+) -> dict[tuple[tuple[str, ...], str, tuple[str, ...]], sa.ForeignKeyConstraint]:
+    """Index ORM-defined FK constraints by (constrained_cols, referred_table, referred_cols) for diffing."""
     expected: dict[tuple[tuple[str, ...], str, tuple[str, ...]], sa.ForeignKeyConstraint] = {}
     for constraint in table.foreign_key_constraints:
         constrained_columns = tuple(element.parent.name for element in constraint.elements)
@@ -81,8 +86,9 @@ def _actual_foreign_keys(
     inspector: sa.Inspector,
     table_name: str,
     db_schema: str | None,
-) -> dict[tuple[tuple[str, ...], str, tuple[str, ...]], dict[str, object]]:
-    actual: dict[tuple[tuple[str, ...], str, tuple[str, ...]], dict[str, object]] = {}
+) -> dict[tuple[tuple[str, ...], str, tuple[str, ...]], ReflectedForeignKeyConstraint]:
+    """Index live FK constraints from the database inspector by the same key tuple used by _expected_foreign_keys."""
+    actual: dict[tuple[tuple[str, ...], str, tuple[str, ...]], ReflectedForeignKeyConstraint] = {}
     for foreign_key in inspector.get_foreign_keys(table_name, schema=db_schema):
         constrained_columns = tuple(foreign_key.get("constrained_columns") or [])
         referred_columns = tuple(foreign_key.get("referred_columns") or [])
@@ -92,6 +98,7 @@ def _actual_foreign_keys(
 
 
 def _expected_indexes(table: sa.Table) -> dict[str, sa.Index]:
+    """Return ORM-defined named indexes for a table, keyed by index name."""
     return {
         str(index.name): index
         for index in table.indexes
@@ -103,39 +110,13 @@ def _actual_indexes(
     inspector: sa.Inspector,
     table_name: str,
     db_schema: str | None,
-) -> dict[str, dict[str, object]]:
+) -> dict[str, ReflectedIndex]:
+    """Return live named indexes from the database inspector, keyed by index name."""
     return {
         str(index["name"]): index
         for index in inspector.get_indexes(table_name, schema=db_schema)
         if index.get("name") is not None
     }
-
-
-def _actual_cluster_index_name(
-    connection: sa.Connection,
-    *,
-    table_name: str,
-    db_schema: str | None,
-) -> str | None:
-    result = connection.execute(
-        sa.text(
-            """
-            SELECT i.relname
-            FROM pg_index ix
-            JOIN pg_class t ON t.oid = ix.indrelid
-            JOIN pg_class i ON i.oid = ix.indexrelid
-            JOIN pg_namespace n ON n.oid = t.relnamespace
-            WHERE ix.indisclustered
-              AND t.relname = :table_name
-              AND (:db_schema IS NULL OR n.nspname = :db_schema)
-            """
-        ),
-        {
-            "table_name": table_name,
-            "db_schema": db_schema,
-        },
-    ).scalar_one_or_none()
-    return str(result) if result is not None else None
 
 
 def reconcile_schema(
@@ -144,8 +125,13 @@ def reconcile_schema(
     db_schema: str | None = None,
     vocabulary_included: bool = False,
 ) -> SchemaReconciliationReport:
+    """Compare ORM metadata against the live database schema. Reports missing columns, indexes, FKs, and cluster state."""
+    excluded_categories: tuple[TableCategory, ...] = (
+        () if vocabulary_included else (TableCategory.VOCABULARY,)
+    )
+    _backend = resolve_backend(engine)
+    selected_tables = select_maintenance_tables(exclude_categories=excluded_categories)
     inspector = sa.inspect(engine)
-    selected_tables = _selected_tables(vocabulary_included=vocabulary_included)
     all_issues: list[ReconciliationIssue] = []
     table_results: list[TableReconciliationResult] = []
 
@@ -170,8 +156,6 @@ def reconcile_schema(
                     TableReconciliationResult(
                         table_name=maintenance_table.table_name,
                         category=maintenance_table.category,
-                        model_name=maintenance_table.model_name,
-                        model_module=maintenance_table.model_module,
                         status="missing",
                         issue_count=1,
                         detail="Table is missing from the target database.",
@@ -181,10 +165,7 @@ def reconcile_schema(
                 continue
 
             expected_table = _schema_table(maintenance_table.table, db_schema)
-            expected_columns = {
-                column.name: column
-                for column in expected_table.columns
-            }
+            expected_columns = {column.name: column for column in expected_table.columns}
             actual_columns = {
                 str(column["name"]): column
                 for column in inspector.get_columns(maintenance_table.table_name, schema=db_schema)
@@ -273,22 +254,18 @@ def reconcile_schema(
                     )
                 )
 
-            expected_foreign_keys = _expected_foreign_keys(expected_table)
-            actual_foreign_keys = _actual_foreign_keys(
-                inspector,
-                maintenance_table.table_name,
-                db_schema,
-            )
+            expected_fks = _expected_foreign_keys(expected_table)
+            actual_fks = _actual_foreign_keys(inspector, maintenance_table.table_name, db_schema)
 
-            for signature, constraint in expected_foreign_keys.items():
-                if signature not in actual_foreign_keys:
+            for signature, constraint in expected_fks.items():
+                if signature not in actual_fks:
                     constrained_columns, referred_table, referred_columns = signature
                     table_issues.append(
                         ReconciliationIssue(
                             table_name=maintenance_table.table_name,
                             category=maintenance_table.category,
                             component="foreign_key",
-                            object_name=constraint.name or ",".join(constrained_columns),
+                            object_name=constraint.name if isinstance(constraint.name, str) else ",".join(constrained_columns),
                             status="missing",
                             expected=f"{','.join(constrained_columns)} -> {referred_table}({','.join(referred_columns)})",
                             actual=None,
@@ -296,8 +273,8 @@ def reconcile_schema(
                         )
                     )
 
-            for signature, foreign_key in actual_foreign_keys.items():
-                if signature not in expected_foreign_keys:
+            for signature, foreign_key in actual_fks.items():
+                if signature not in expected_fks:
                     constrained_columns, referred_table, referred_columns = signature
                     table_issues.append(
                         ReconciliationIssue(
@@ -312,15 +289,11 @@ def reconcile_schema(
                         )
                     )
 
-            expected_indexes = _expected_indexes(expected_table)
-            actual_indexes = _actual_indexes(
-                inspector,
-                maintenance_table.table_name,
-                db_schema,
-            )
+            expected_idxs = _expected_indexes(expected_table)
+            actual_idxs = _actual_indexes(inspector, maintenance_table.table_name, db_schema)
 
-            for index_name, index in expected_indexes.items():
-                if index_name not in actual_indexes:
+            for index_name, index in expected_idxs.items():
+                if index_name not in actual_idxs:
                     table_issues.append(
                         ReconciliationIssue(
                             table_name=maintenance_table.table_name,
@@ -335,9 +308,9 @@ def reconcile_schema(
                     )
                     continue
 
-                actual_index = actual_indexes[index_name]
+                actual_index = actual_idxs[index_name]
                 expected_columns_for_index = tuple(column.name for column in index.columns)
-                actual_columns_for_index = tuple(actual_index.get("column_names") or [])
+                actual_columns_for_index = tuple(c for c in (actual_index.get("column_names") or []) if c is not None)
                 if expected_columns_for_index != actual_columns_for_index:
                     table_issues.append(
                         ReconciliationIssue(
@@ -365,8 +338,8 @@ def reconcile_schema(
                         )
                     )
 
-            for index_name, index in actual_indexes.items():
-                if index_name not in expected_indexes:
+            for index_name, index in actual_idxs.items():
+                if index_name not in expected_idxs:
                     table_issues.append(
                         ReconciliationIssue(
                             table_name=maintenance_table.table_name,
@@ -375,17 +348,17 @@ def reconcile_schema(
                             object_name=index_name,
                             status="unexpected",
                             expected=None,
-                            actual=", ".join(index.get("column_names") or []),
+                            actual=", ".join(c for c in (index.get("column_names") or []) if c is not None),
                             detail="Index exists in the database but is not defined in ORM metadata.",
                         )
                     )
 
-            if engine.dialect.name == Dialect.POSTGRESQL:
+            if backend_supports(_backend, "get_clustered_index_name"):
                 expected_cluster = _cluster_target_name(maintenance_table)
-                actual_cluster = _actual_cluster_index_name(
+                actual_cluster = _backend.get_clustered_index_name(
                     connection,
-                    table_name=maintenance_table.table_name,
-                    db_schema=db_schema,
+                    maintenance_table.table_name,
+                    db_schema,
                 )
                 if expected_cluster != actual_cluster:
                     table_issues.append(
@@ -412,8 +385,6 @@ def reconcile_schema(
                 TableReconciliationResult(
                     table_name=maintenance_table.table_name,
                     category=maintenance_table.category,
-                    model_name=maintenance_table.model_name,
-                    model_module=maintenance_table.model_module,
                     status=table_status,
                     issue_count=len(table_issues),
                     detail=(

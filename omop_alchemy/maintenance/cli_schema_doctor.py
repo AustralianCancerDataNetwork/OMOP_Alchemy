@@ -1,22 +1,35 @@
+"""Health check domain: connection readiness, schema drift, FK trigger state, and FK validation checks with prioritised recommendations."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
 
-from omop_alchemy import create_engine_with_dependencies, get_engine_name, load_environment
+from omop_alchemy.backends.resolve import SupportedDialect
 
-from ..backend_support import Dialect
-from .foreign_keys import (
+from .cli_foreign_keys import (
     ForeignKeyStatusResult,
     ForeignKeyValidationReport,
     collect_foreign_key_trigger_status,
     validate_foreign_key_constraints,
 )
-from .info import MaintenanceInfo, collect_maintenance_info
-from .reconcile import SchemaReconciliationReport, reconcile_schema
+from .cli_schema_info import (
+    MaintenanceInfo,
+    collect_maintenance_info,
+)
+from .cli_schema_reconcile import (
+    SchemaReconciliationReport,
+    reconcile_schema,
+)
 
+
+# ---------------------------------------------------------------------------
+# doctor
+# ---------------------------------------------------------------------------
 
 @dataclass(frozen=True)
 class DoctorCheck:
+    """Result of a single named maintenance health check (e.g. 'managed tables', 'schema drift')."""
+
     name: str
     status: str
     detail: str
@@ -24,6 +37,8 @@ class DoctorCheck:
 
 @dataclass(frozen=True)
 class DoctorRecommendation:
+    """Actionable recommendation derived from health check results, with an optional CLI command hint."""
+
     status: str
     summary: str
     action: str | None
@@ -31,6 +46,8 @@ class DoctorRecommendation:
 
 @dataclass(frozen=True)
 class DoctorReport:
+    """Complete doctor report: health checks, prioritised recommendations, and optional deep-inspection data."""
+
     info: MaintenanceInfo
     checks: tuple[DoctorCheck, ...]
     recommendations: tuple[DoctorRecommendation, ...]
@@ -46,6 +63,7 @@ def _build_recommendations(
     foreign_key_status: tuple[ForeignKeyStatusResult, ...] | None,
     foreign_key_validation: ForeignKeyValidationReport | None,
 ) -> tuple[DoctorRecommendation, ...]:
+    """Derive a prioritised list of actionable recommendations from the doctor check results."""
     recommendations: list[DoctorRecommendation] = []
 
     if not info.connection_ready:
@@ -77,8 +95,7 @@ def _build_recommendations(
         )
 
     if foreign_key_status is not None and any(
-        item.disabled_trigger_count > 0
-        for item in foreign_key_status
+        item.disabled_trigger_count > 0 for item in foreign_key_status
     ):
         recommendations.append(
             DoctorRecommendation(
@@ -100,7 +117,7 @@ def _build_recommendations(
             )
         )
 
-    if info.backend == Dialect.POSTGRESQL and info.pg_dump_path is None:
+    if info.backend == SupportedDialect.POSTGRESQL and info.pg_dump_path is None:
         recommendations.append(
             DoctorRecommendation(
                 status="warning",
@@ -110,7 +127,7 @@ def _build_recommendations(
         )
 
     if (
-        info.backend == Dialect.POSTGRESQL
+        info.backend == SupportedDialect.POSTGRESQL
         and info.pg_restore_path is None
         and info.psql_path is None
     ):
@@ -136,19 +153,11 @@ def _build_recommendations(
 
 def collect_doctor_report(
     *,
-    engine_schema: str | None = None,
-    db_schema: str | None = None,
-    dotenv: str | None = None,
     vocabulary_included: bool = True,
     deep: bool = False,
 ) -> DoctorReport:
-    load_environment(dotenv or "")
-    info = collect_maintenance_info(
-        engine_schema=engine_schema,
-        db_schema=db_schema,
-        dotenv=dotenv,
-        vocabulary_included=vocabulary_included,
-    )
+    """Run all maintenance health checks and return a prioritised report with recommendations."""
+    info = collect_maintenance_info(vocabulary_included=vocabulary_included)
 
     checks = [
         DoctorCheck(
@@ -167,10 +176,10 @@ def collect_doctor_report(
     foreign_key_validation: ForeignKeyValidationReport | None = None
 
     if info.connection_ready:
-        engine = create_engine_with_dependencies(
-            get_engine_name(engine_schema),
-            future=True,
-        )
+        from omop_alchemy.config import create_cdm_engine, get_cdm_context
+        _, resolved = get_cdm_context()
+        engine = create_cdm_engine(resolved)
+        db_schema = resolved.cdm_schema
         try:
             missing_table_count = info.missing_table_count or 0
             checks.append(
@@ -211,7 +220,7 @@ def collect_doctor_report(
                     )
                 )
 
-            if info.backend == Dialect.POSTGRESQL:
+            if info.backend == SupportedDialect.POSTGRESQL:
                 foreign_key_status = tuple(
                     collect_foreign_key_trigger_status(
                         engine,
@@ -220,8 +229,7 @@ def collect_doctor_report(
                     )
                 )
                 disabled_tables = sum(
-                    item.disabled_trigger_count > 0
-                    for item in foreign_key_status
+                    item.disabled_trigger_count > 0 for item in foreign_key_status
                 )
                 checks.append(
                     DoctorCheck(
@@ -242,8 +250,7 @@ def collect_doctor_report(
                         vocabulary_included=vocabulary_included,
                     )
                     violating_tables = sum(
-                        result.status == "failed"
-                        for result in foreign_key_validation.results
+                        result.status == "failed" for result in foreign_key_validation.results
                     )
                     checks.append(
                         DoctorCheck(
@@ -307,7 +314,7 @@ def collect_doctor_report(
             )
         )
 
-    if info.backend == Dialect.POSTGRESQL:
+    if info.backend == SupportedDialect.POSTGRESQL:
         backup_tools_ready = info.pg_dump_path is not None and (
             info.pg_restore_path is not None or info.psql_path is not None
         )

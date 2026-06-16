@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from typing import TYPE_CHECKING
 
 from rich import box
 from rich.console import Console, Group, RenderableType
@@ -8,31 +9,37 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
-from omop_alchemy.cdm.handlers.fulltext import FullTextResult
+from omop_alchemy.backends.base import FullTextResult
 
-from .analyze_tables import AnalyzeTableResult
+from ..backends.resolve import _DIALECT_TO_BACKEND_MAP, SupportedDialect as _SupportedDialect
+
 from .ascii import render_banner
-from .backup import DatabaseBackupResult, DatabaseRestoreResult
-from ..backend_support import backend_label
-from .create_tables import TableCreationResult
-from .data_summary import TableSummaryResult
-from .defaults import ConnectionDefaults
-from .doctor import DoctorCheck, DoctorRecommendation, DoctorReport
-from .foreign_keys import (
-    ForeignKeyAction,
-    ForeignKeyManagementResult,
-    ForeignKeyStatusResult,
-    ForeignKeyConstraintViolation,
-    ForeignKeyValidationReport,
-    ForeignKeyValidationResult,
-)
-from .info import CommandSupport, MaintenanceInfo
-from .indexes import IndexAction, IndexManagementResult
-from .load_vocab import VocabularyLoadReport, VocabularyLoadResult
-from .reconcile import ReconciliationIssue, SchemaReconciliationReport, TableReconciliationResult
-from .reset_sequences import SequenceResetResult
 from .tables import TableCategory
-from .truncate_tables import TruncateTableResult
+
+if TYPE_CHECKING:
+    from .cli_backup import BackupResult
+    from .cli_foreign_keys import (
+        ForeignKeyConstraintViolation,
+        ForeignKeyManagementResult,
+        ForeignKeyStatusResult,
+        ForeignKeyValidationReport,
+        ForeignKeyValidationResult,
+    )
+    from .cli_indexes import IndexManagementResult
+    from .cli_schema import (
+        CommandSupport,
+        DoctorCheck,
+        DoctorRecommendation,
+        DoctorReport,
+        MaintenanceInfo,
+        ReconciliationIssue,
+        SchemaReconciliationReport,
+        TableCreationResult,
+        TableReconciliationResult,
+        TableSummaryResult,
+    )
+    from .cli_tables import AnalyzeTableResult, SequenceResetResult, TruncateTableResult
+    from .cli_vocab import VocabularyLoadReport, VocabularyLoadResult
 
 console = Console()
 
@@ -68,6 +75,13 @@ CATEGORY_STYLES = {
 }
 
 
+def _backend_label(dialect_name: str) -> str:
+    try:
+        return _DIALECT_TO_BACKEND_MAP[_SupportedDialect(dialect_name)].name
+    except (ValueError, KeyError):
+        return dialect_name
+
+
 def _bool_label(value: bool) -> Text:
     return Text("yes" if value else "no", style="green" if value else "dim")
 
@@ -82,7 +96,7 @@ def _category_label(category: TableCategory) -> Text:
 def render_command_header(
     *,
     command_name: str,
-    engine_schema: str | None,
+    engine_url: str | None,
     db_schema: str | None,
     vocabulary_included: bool | None,
     mode_label: str,
@@ -95,7 +109,7 @@ def render_command_header(
     grid.add_column(style="bold cyan")
     grid.add_column()
     grid.add_row("Command", command_name)
-    grid.add_row("Engine", engine_schema or "default ENGINE")
+    grid.add_row("Connection", engine_url or "(none)")
     grid.add_row("DB schema", db_schema or "default search_path")
     if vocabulary_included is not None:
         grid.add_row("Vocabulary", _bool_label(vocabulary_included))
@@ -124,23 +138,6 @@ def render_error(message: str, *, title: str = "Error") -> Panel:
         border_style="red",
     )
 
-
-def render_connection_defaults(
-    defaults: ConnectionDefaults,
-    *,
-    path: str,
-    title: str = "Connection Defaults",
-) -> Panel:
-    grid = Table.grid(padding=(0, 2))
-    grid.add_column(style="bold cyan")
-    grid.add_column()
-    grid.add_row("File", path)
-    grid.add_row("dotenv", defaults.dotenv or "-")
-    grid.add_row("engine_schema", defaults.engine_schema or "-")
-    grid.add_row("db_schema", defaults.db_schema or "-")
-    grid.add_row("athena_source", defaults.athena_source or "-")
-    grid.add_row("logging", defaults.logging or "file")
-    return Panel.fit(grid, title=f"[bold]{title}[/bold]", border_style="blue")
 
 
 def _status_text(status: str) -> Text:
@@ -175,16 +172,14 @@ def render_info_environment(info: MaintenanceInfo) -> Panel:
     grid.add_row("pg_restore", info.pg_restore_path or "not on PATH")
     grid.add_row("psql", info.psql_path or "not on PATH")
     grid.add_row(
-        "Defaults file",
+        "Config file",
         Text(
-            info.defaults_file,
-            style="green" if info.defaults_exists else "yellow",
+            info.config_file,
+            style="green" if info.config_exists else "yellow",
         ),
     )
-    grid.add_row("dotenv", info.dotenv_path or "-")
-    grid.add_row("dotenv exists", _optional_bool_label(info.dotenv_exists))
-    grid.add_row("engine_schema", info.engine_schema or "-")
-    grid.add_row("db_schema", info.db_schema or "default search_path")
+    grid.add_row("Resource", info.resource_name)
+    grid.add_row("CDM schema", info.db_schema or "default search_path")
     return Panel.fit(grid, title="[bold]Environment[/bold]", border_style="magenta")
 
 
@@ -193,7 +188,7 @@ def render_info_database(info: MaintenanceInfo) -> Panel:
     grid.add_column(style="bold cyan")
     grid.add_column()
     grid.add_row("Engine URL", info.engine_url or "-")
-    grid.add_row("Backend", backend_label(info.backend) if info.backend else "-")
+    grid.add_row("Backend", _backend_label(info.backend) if info.backend else "-")
     grid.add_row("Engine created", _bool_label(info.engine_created))
     grid.add_row("Connection ready", _bool_label(info.connection_ready))
 
@@ -230,32 +225,32 @@ def render_info_dependencies(info: MaintenanceInfo) -> RenderableType:
     return table
 
 
-def render_backup_result(result: DatabaseBackupResult) -> Panel:
+def render_backup_result(result: BackupResult) -> Panel:
     grid = Table.grid(padding=(0, 2))
     grid.add_column(style="bold cyan")
     grid.add_column()
     grid.add_row("Status", _status_text(result.status))
-    grid.add_row("Backend", backend_label(result.backend))
+    grid.add_row("Backend", _backend_label(result.backend))
     grid.add_row("Database", result.database_name)
     grid.add_row("Schema", result.schema_name or "all schemas")
-    grid.add_row("Format", result.format.value)
-    grid.add_row("Output", result.output_path)
+    grid.add_row("Format", result.backup_format.value)
+    grid.add_row("Output", result.file_path)
     grid.add_row("Tool", result.tool_path)
     grid.add_row("Detail", result.detail)
     return Panel.fit(grid, title="[bold]Backup[/bold]", border_style="green" if result.status == "created" else "cyan")
 
 
-def render_backup_summary(result: DatabaseBackupResult, *, dry_run: bool) -> Panel:
+def render_backup_summary(result: BackupResult, *, dry_run: bool) -> Panel:
     restore_hint = (
-        f"Restore with `pg_restore -d <target_database> {result.output_path}`."
-        if result.format.value == "custom"
-        else f"Restore with `psql -d <target_database> -f {result.output_path}`."
+        f"Restore with `pg_restore -d <target_database> {result.file_path}`."
+        if result.backup_format.value == "custom"
+        else f"Restore with `psql -d <target_database> -f {result.file_path}`."
     )
     grid = Table.grid(padding=(0, 2))
     grid.add_column(style="bold cyan")
     grid.add_column()
-    grid.add_row("Artifact", result.output_path)
-    grid.add_row("Format", result.format.value)
+    grid.add_row("Artifact", result.file_path)
+    grid.add_row("Format", result.backup_format.value)
     grid.add_row("Restore", restore_hint)
     grid.add_row(
         "Summary",
@@ -264,27 +259,27 @@ def render_backup_summary(result: DatabaseBackupResult, *, dry_run: bool) -> Pan
     return Panel.fit(grid, title="[bold]Summary[/bold]", border_style="cyan" if dry_run else "green")
 
 
-def render_restore_result(result: DatabaseRestoreResult) -> Panel:
+def render_restore_result(result: BackupResult) -> Panel:
     grid = Table.grid(padding=(0, 2))
     grid.add_column(style="bold cyan")
     grid.add_column()
     grid.add_row("Status", _status_text(result.status))
-    grid.add_row("Backend", backend_label(result.backend))
+    grid.add_row("Backend", _backend_label(result.backend))
     grid.add_row("Database", result.database_name)
     grid.add_row("Schema", result.schema_name or "all schemas")
-    grid.add_row("Format", result.format.value)
-    grid.add_row("Input", result.input_path)
+    grid.add_row("Format", result.backup_format.value)
+    grid.add_row("Input", result.file_path)
     grid.add_row("Tool", result.tool_path)
     grid.add_row("Detail", result.detail)
     return Panel.fit(grid, title="[bold]Restore[/bold]", border_style="green" if result.status == "applied" else "cyan")
 
 
-def render_restore_summary(result: DatabaseRestoreResult, *, dry_run: bool) -> Panel:
+def render_restore_summary(result: BackupResult, *, dry_run: bool) -> Panel:
     grid = Table.grid(padding=(0, 2))
     grid.add_column(style="bold cyan")
     grid.add_column()
-    grid.add_row("Artifact", result.input_path)
-    grid.add_row("Format", result.format.value)
+    grid.add_row("Artifact", result.file_path)
+    grid.add_row("Format", result.backup_format.value)
     grid.add_row(
         "Summary",
         "Restore planned; no changes were applied to the target database."
@@ -355,7 +350,7 @@ def render_reconciliation_summary(report: SchemaReconciliationReport) -> Panel:
     grid = Table.grid(padding=(0, 2))
     grid.add_column(style="bold cyan")
     grid.add_column()
-    grid.add_row("Backend", backend_label(report.backend))
+    grid.add_row("Backend", _backend_label(report.backend))
     grid.add_row("Tables", str(len(report.table_results)))
     if matched:
         grid.add_row("Matched", str(matched))
@@ -649,7 +644,7 @@ def render_foreign_key_results(results: Iterable[ForeignKeyManagementResult]) ->
         style = STATUS_STYLES.get(result.status, "white")
         table.add_row(
             Text(result.status.upper(), style=style),
-            result.action.value,
+            "Enable" if result.enable else "Disable",
             result.table_name,
             _category_label(result.category),
             str(result.outgoing_constraint_count),
@@ -661,7 +656,7 @@ def render_foreign_key_results(results: Iterable[ForeignKeyManagementResult]) ->
 
 def render_foreign_key_summary(results: Iterable[ForeignKeyManagementResult], *, dry_run: bool) -> Panel:
     items = list(results)
-    action = items[0].action.value if items else "manage"
+    action = "Enable" if items and items[0].enable else "Disable"
     failed = sum(item.status == "failed" for item in items)
     skipped = sum(item.status == "skipped" for item in items)
     grid = Table.grid(padding=(0, 2))
@@ -686,8 +681,8 @@ def render_foreign_key_summary(results: Iterable[ForeignKeyManagementResult], *,
     return Panel.fit(grid, title="[bold]Summary[/bold]", border_style=border_style)
 
 
-def render_foreign_key_note(action: ForeignKeyAction, *, strict: bool = False) -> Panel:
-    if action is ForeignKeyAction.DISABLE:
+def render_foreign_key_note(enable: bool, *, strict: bool = False) -> Panel:
+    if not enable:
         body = (
             "PostgreSQL keeps the foreign key constraints defined in metadata. "
             "This command disables the internal RI triggers that enforce them."
@@ -886,7 +881,7 @@ def render_index_results(results: Iterable[IndexManagementResult]) -> Renderable
         table.add_row(
             Text(result.status.upper(), style=style),
             result.operation,
-            result.action.value,
+            "Enable" if result.enable else "Disable",
             result.table_name,
             result.index_name,
             _category_label(result.category),
@@ -895,10 +890,10 @@ def render_index_results(results: Iterable[IndexManagementResult]) -> Renderable
     return table
 
 
-def render_index_note(action: IndexAction) -> Panel:
+def render_index_note(enable: bool) -> Panel:
     body = (
         "This command drops SQLAlchemy metadata-defined secondary indexes that currently exist in the database. Primary keys and constraints are not removed."
-        if action is IndexAction.DISABLE
+        if not enable
         else "This command recreates SQLAlchemy metadata-defined secondary indexes that are currently missing from the database and applies PostgreSQL clustering declared in ORM metadata when the backend supports it."
     )
     return Panel.fit(body, title="[bold]Note[/bold]", border_style="yellow")
@@ -917,9 +912,10 @@ def render_index_summary(results: Iterable[IndexManagementResult], *, dry_run: b
     if skipped:
         grid.add_row("Skipped", str(skipped))
     grid.add_row("Tables", str(len({item.table_name for item in items})))
+    action = ("enable" if items[0].enable else "disable") if items else "manage"
     grid.add_row(
         "Summary",
-        f"{'Planned' if dry_run else 'Applied'} {(items[0].action.value if items else 'manage')} on {len(items)} metadata operation(s).",
+        f"{'Planned' if dry_run else 'Applied'} {action} on {len(items)} metadata operation(s).",
     )
     return Panel.fit(grid, title="[bold]Summary[/bold]", border_style="green" if not dry_run else "cyan")
 

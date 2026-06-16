@@ -7,12 +7,6 @@ the immutability and interpretability of the underlying CDM tables.
 
 ---
 
-## Read-Only Views
-
-- [Views](views.md)
-
----
-
 ## Timelines & Longitudinal Analysis
 
 - [Event Timelines](timelines.md)
@@ -23,4 +17,3 @@ the immutability and interpretability of the underlying CDM tables.
 
 - [Backend Compatibility](backends.md)
 - [PostgreSQL Full-Text Search](fulltext.md)
-- [Query Patterns](query_patterns.md)

@@ -1,4 +1,4 @@
-from typing import Type, TypeVar
+from typing import TypeVar
 from .cdm_table_base import CDMTableBase
 
 T = TypeVar("T", bound=type)

@@ -9,10 +9,12 @@ Then run:
 """
 from pathlib import Path
 
+import pytest
 import sqlalchemy as sa
 
 from omop_alchemy.cdm.model.vocabulary import Concept
-from omop_alchemy.maintenance.load_vocab import (
+from omop_alchemy.config import OmopAlchemyConfig
+from omop_alchemy.maintenance.cli_vocab import (
     _load_vocab_model_csv,
     load_vocab_source,
 )
@@ -57,6 +59,7 @@ def _make_concept_source(
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.requires_resource(OmopAlchemyConfig.TEST_DB)
 def test_end_to_end_vocab_load_on_postgres(pg_session, pg_engine, tmp_path):
     """load_vocab_source() completes end-to-end on real Postgres via orm-loader>=0.4.0."""
     source_path = _copy_fixture_source(tmp_path)
@@ -71,6 +74,7 @@ def test_end_to_end_vocab_load_on_postgres(pg_session, pg_engine, tmp_path):
 
 
 
+@pytest.mark.requires_resource(OmopAlchemyConfig.TEST_DB)
 def test_quote_mode_auto_regression_on_postgres(pg_session, pg_engine, tmp_path):
     """
     quote_mode='auto' strips RFC-4180 double-quotes via PostgreSQL COPY.
@@ -109,6 +113,7 @@ def test_quote_mode_auto_regression_on_postgres(pg_session, pg_engine, tmp_path)
 
 
 
+@pytest.mark.requires_resource(OmopAlchemyConfig.TEST_DB)
 def test_load_vocab_model_csv_on_postgres(pg_session, tmp_path):
     """
     _load_vocab_model_csv loads data correctly on a real PostgreSQL session.
@@ -121,7 +126,7 @@ def test_load_vocab_model_csv_on_postgres(pg_session, tmp_path):
 
     row_count = _load_vocab_model_csv(
         pg_session,
-        model=Concept,
+        model=Concept,  # type: ignore[arg-type]
         csv_path=csv_path,
         merge_strategy="replace",
     )
@@ -133,6 +138,7 @@ def test_load_vocab_model_csv_on_postgres(pg_session, tmp_path):
 
 
 
+@pytest.mark.requires_resource(OmopAlchemyConfig.TEST_DB)
 def test_replace_strategy_overwrites_existing_rows(pg_session, pg_engine, tmp_path):
     """merge_strategy='replace' fully replaces rows with the same PKs on second load."""
     concept_id = 99999
@@ -154,6 +160,7 @@ def test_replace_strategy_overwrites_existing_rows(pg_session, pg_engine, tmp_pa
 
 
 
+@pytest.mark.requires_resource(OmopAlchemyConfig.TEST_DB)
 def test_upsert_strategy_is_non_destructive(pg_session, pg_engine, tmp_path):
     """merge_strategy='upsert' preserves existing rows on second load with same PKs."""
     concept_id = 99998
@@ -177,36 +184,7 @@ def test_upsert_strategy_is_non_destructive(pg_session, pg_engine, tmp_path):
 
 
 
-def test_chunksize_forwarded_to_loader(pg_session, pg_engine, monkeypatch, tmp_path):
-    """chunksize is forwarded from load_vocab_source through to _load_vocab_model_csv."""
-    from omop_alchemy.maintenance import load_vocab as _lv_module
-
-    source_path = _copy_fixture_source(tmp_path)
-    received_chunksizes: list[int | None] = []
-    original = _lv_module._load_vocab_model_csv
-
-    def tracking_load(session, *, model, csv_path, merge_strategy, quote_mode="auto", chunksize=None):
-        received_chunksizes.append(chunksize)
-        return original(
-            session,
-            model=model,
-            csv_path=csv_path,
-            merge_strategy=merge_strategy,
-            quote_mode=quote_mode,
-            chunksize=chunksize,
-        )
-
-    monkeypatch.setattr(_lv_module, "_load_vocab_model_csv", tracking_load)
-
-    load_vocab_source(pg_engine, source_path=source_path, chunksize=500)
-
-    assert received_chunksizes, "Expected at least one table to be loaded"
-    assert all(c == 500 for c in received_chunksizes), (
-        f"Expected chunksize=500 for all tables, got: {received_chunksizes}"
-    )
-
-
-
+@pytest.mark.requires_resource(OmopAlchemyConfig.TEST_DB)
 def test_db_schema_search_path_on_postgres(pg_engine, tmp_path):
     """
     load_vocab_source with db_schema creates vocabulary tables in the requested

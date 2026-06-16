@@ -2,10 +2,9 @@ import sqlalchemy as sa
 import pytest
 from typer.testing import CliRunner
 
-from omop_alchemy.maintenance.analyze_tables import AnalyzeTableResult, analyze_tables
-from omop_alchemy.maintenance.cli import app
-from omop_alchemy.maintenance.create_tables import create_missing_tables
-from omop_alchemy.maintenance.tables import TableCategory, TableScope
+from omop_alchemy.maintenance.cli_tables import analyze_tables
+from omop_alchemy.maintenance.cli_schema import create_missing_tables
+from omop_alchemy.maintenance.tables import TableScope
 
 runner = CliRunner()
 
@@ -40,5 +39,5 @@ def test_analyze_tables_rejects_vacuum_on_sqlite(tmp_path):
     with pytest.raises(RuntimeError) as exc_info:
         analyze_tables(engine, scope=TableScope.CLINICAL, vacuum=True)
 
-    assert "VACUUM ANALYZE is only supported for PostgreSQL" in str(exc_info.value)
+    assert "not supported by the SQLite backend" in str(exc_info.value)
 

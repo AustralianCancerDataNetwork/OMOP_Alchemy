@@ -1,9 +1,12 @@
+"""Table creation domain: detecting and creating ORM-managed OMOP tables that are absent from the target database."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
 
 import sqlalchemy as sa
 
+from ._cli_utils import dry_label, dry_status, ensure_schema
 from .tables import (
     MaintenanceTable,
     TableCategory,
@@ -15,15 +18,17 @@ from .tables import (
 
 @dataclass(frozen=True)
 class TableCreationResult:
+    """Outcome of attempting to create one missing ORM-managed table from SQLAlchemy metadata."""
+
     table_name: str
     category: TableCategory
     model_name: str
-    model_module: str
     status: str
     detail: str
 
 
 def _table_dependencies(table: MaintenanceTable) -> tuple[str, ...]:
+    """Return the sorted names of tables that this table's ORM FK constraints refer to."""
     return tuple(
         sorted(
             {
@@ -40,6 +45,7 @@ def collect_missing_tables(
     db_schema: str | None = None,
     vocabulary_included: bool = True,
 ) -> list[MaintenanceTable]:
+    """Return ORM-managed tables that are absent from the target database."""
     inspector = sa.inspect(engine)
     return missing_maintenance_tables(
         inspector,
@@ -55,6 +61,9 @@ def create_missing_tables(
     vocabulary_included: bool = True,
     dry_run: bool = False,
 ) -> list[TableCreationResult]:
+    """Create any ORM-managed tables missing from the target database. Skips tables with unresolved FK dependencies."""
+    if not dry_run:
+        ensure_schema(engine, db_schema)
     inspector = sa.inspect(engine)
     missing_tables = collect_missing_tables(
         engine,
@@ -62,10 +71,7 @@ def create_missing_tables(
         vocabulary_included=vocabulary_included,
     )
     existing_table_names = set(inspector.get_table_names(schema=db_schema))
-    missing_table_names = {
-        table.table_name
-        for table in missing_tables
-    }
+    missing_table_names = {table.table_name for table in missing_tables}
 
     blocked_dependencies: dict[str, tuple[str, ...]] = {}
     for maintenance_table in missing_tables:
@@ -93,10 +99,7 @@ def create_missing_tables(
             )
             metadata.create_all(
                 bind=connection,
-                tables=[
-                    adjusted_tables[table.table_name]
-                    for table in creatable_tables
-                ],
+                tables=[adjusted_tables[table.table_name] for table in creatable_tables],
                 checkfirst=True,
             )
 
@@ -107,21 +110,15 @@ def create_missing_tables(
                     table_name=maintenance_table.table_name,
                     category=maintenance_table.category,
                     model_name=maintenance_table.model_name,
-                    model_module=maintenance_table.model_module,
                     status=(
                         "blocked"
                         if blocked is not None
-                        else "planned"
-                        if dry_run
-                        else "created"
+                        else dry_status(dry_run, applied="created")
                     ),
                     detail=(
-                        "table blocked by unresolved dependencies: "
-                        + ", ".join(blocked)
+                        "table blocked by unresolved dependencies: " + ", ".join(blocked)
                         if blocked is not None
-                        else "table would be created from ORM metadata"
-                        if dry_run
-                        else "table created from ORM metadata"
+                        else dry_label(dry_run, "table would be created from ORM metadata", "table created from ORM metadata")
                     ),
                 )
             )

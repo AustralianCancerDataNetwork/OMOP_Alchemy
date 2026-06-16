@@ -1,4 +1,3 @@
-
 from typing import Protocol, ClassVar, runtime_checkable, TYPE_CHECKING, Optional, Iterable
 from sqlalchemy.orm import DeclarativeMeta
 from datetime import date

@@ -1,11 +1,11 @@
 import sqlalchemy as sa
 from typer.testing import CliRunner
+from oa_configurator import StackConfig, DatabaseConfig
 
 from omop_alchemy.cdm.base.indexing import OMOP_CLUSTER_INDEX_INFO_KEY, omop_index_name
 from omop_alchemy.maintenance.cli import app
-from omop_alchemy.maintenance.create_tables import create_missing_tables
-from omop_alchemy.maintenance.indexes import (
-    IndexAction,
+from omop_alchemy.maintenance.cli_schema import create_missing_tables
+from omop_alchemy.maintenance.cli_indexes import (
     IndexManagementResult,
     collect_index_targets,
     manage_indexes,
@@ -65,7 +65,7 @@ def test_orm_index_metadata_carries_cluster_configuration():
         index.name: index
         for index in episode.table.indexes
     }
-    assert episode_indexes[EPISODE_PERSON_INDEX].info[OMOP_CLUSTER_INDEX_INFO_KEY] is True
+    assert episode_indexes[EPISODE_PERSON_INDEX].info[OMOP_CLUSTER_INDEX_INFO_KEY] is True  # type: ignore[index]
 
 
 def test_manage_indexes_disable_and_enable_on_sqlite(tmp_path):
@@ -81,7 +81,7 @@ def test_manage_indexes_disable_and_enable_on_sqlite(tmp_path):
 
     disabled = manage_indexes(
         engine,
-        action=IndexAction.DISABLE,
+        enable=False,
     )
     assert disabled
 
@@ -94,7 +94,7 @@ def test_manage_indexes_disable_and_enable_on_sqlite(tmp_path):
 
     enabled = manage_indexes(
         engine,
-        action=IndexAction.ENABLE,
+        enable=True,
     )
     assert enabled
     assert any(
@@ -117,30 +117,28 @@ def test_manage_indexes_disable_and_enable_on_sqlite(tmp_path):
 
 def test_disable_indexes_cli_invokes_management(monkeypatch):
     """Test disable indexes cli invokes management."""
+
     calls: dict[str, object] = {}
 
-    def fake_load_environment(dotenv: str) -> None:
-        calls["dotenv"] = dotenv
-
-    def fake_get_engine_name(schema: str | None = None) -> str:
-        calls["engine_schema"] = schema
-        return "postgresql+psycopg://example"
-
-    def fake_create_engine(url: str, *, future: bool) -> str:
-        calls["engine_url"] = url
-        calls["future"] = future
-        return "ENGINE"
+    cfg = StackConfig.for_session(
+        databases={"db": DatabaseConfig(dialect="sqlite", database_name=":memory:")},
+        resources={"cdm_db": {"database": "db", "cdm_schema": "main"}},
+    )
+    monkeypatch.setattr(
+        "omop_alchemy.config.load_stack_config",
+        lambda: cfg,
+    )
 
     def fake_manage_indexes(
         engine: object,
         *,
-        action: IndexAction,
+        enable: bool,
         db_schema: str | None = None,
         vocabulary_included: bool = False,
         dry_run: bool = False,
     ) -> list[IndexManagementResult]:
         calls["engine"] = engine
-        calls["action"] = action
+        calls["enable"] = enable
         calls["db_schema"] = db_schema
         calls["vocabulary_included"] = vocabulary_included
         calls["dry_run"] = dry_run
@@ -149,32 +147,18 @@ def test_disable_indexes_cli_invokes_management(monkeypatch):
                 operation="index",
                 table_name="person",
                 category=TableCategory.CLINICAL,
-                model_name="Person",
-                model_module="omop_alchemy.cdm.model.clinical.person",
                 index_name=PERSON_GENDER_INDEX,
                 column_names=("gender_concept_id",),
                 unique=False,
                 clustered=False,
-                action=IndexAction.DISABLE,
+                enable=enable,
                 status="planned",
                 detail="metadata-defined index would be dropped",
             )
         ]
 
     monkeypatch.setattr(
-        "omop_alchemy.maintenance.cli.load_environment",
-        fake_load_environment,
-    )
-    monkeypatch.setattr(
-        "omop_alchemy.maintenance.cli.get_engine_name",
-        fake_get_engine_name,
-    )
-    monkeypatch.setattr(
-        "omop_alchemy.maintenance.cli.create_engine_with_dependencies",
-        fake_create_engine,
-    )
-    monkeypatch.setattr(
-        "omop_alchemy.maintenance.cli.manage_indexes",
+        "omop_alchemy.maintenance.cli_indexes.manage_indexes",
         fake_manage_indexes,
     )
 
@@ -183,10 +167,6 @@ def test_disable_indexes_cli_invokes_management(monkeypatch):
         [
             "indexes",
             "disable",
-            "--dotenv",
-            ".env.test",
-            "--engine-schema",
-            "cdm",
             "--dry-run",
         ],
     )
