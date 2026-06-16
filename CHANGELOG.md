@@ -99,3 +99,12 @@
 - **breaking:** `load-vocab-source` CLI now defaults `--merge-strategy` to `replace` (was `upsert`) to match the Python API default and ensure retired concepts are purged on vocabulary refresh; pass `--merge-strategy upsert` to restore the previous behaviour
 - **breaking:** CLI entry point renamed from `omop-maint` to `omop-alchemy`; update any scripts or aliases accordingly (saved `.omop-maint.toml` defaults files are unaffected)
 - remove stale notebooks from repository
+
+## 0.7.0
+- major CLI overhaul: new `backends/` package (`Backend` ABC, `PostgresBackend`, `SQLiteBackend`) centralises all dialect-specific SQL, replacing logic scattered across CLI files
+- new `@omop_command` decorator removes repeated connection/error-handling boilerplate from all CLI commands
+- split the monolithic `cli_schema.py` into focused modules (`cli_schema_info`, `cli_schema_doctor`, `cli_schema_reconcile`, `cli_schema_tables`, `cli_schema_summary`); old import path kept as a re-export shim
+- **breaking:** DB/engine configuration now goes entirely through `oa-configurator`'s config file; CLI commands no longer accept `--dotenv` or env-var based connection config
+- accelerated vocabulary ingestion: pooled/reloaded connections, FK-trigger and index management around bulk loads, schema-qualified staging tables
+- added PostgreSQL full-text sidecar (`tsvector`) install/populate/drop commands
+- expanded CLI and API documentation: architecture overview and full command reference
