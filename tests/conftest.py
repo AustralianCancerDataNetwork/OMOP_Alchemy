@@ -393,8 +393,8 @@ def session(engine) -> Session:  # type: ignore
 
     try:
         yield session  # type: ignore
-        session.rollback()
     finally:
+        session.rollback()
         session.close()
 
 

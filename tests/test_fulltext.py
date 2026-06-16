@@ -166,7 +166,7 @@ def test_drop_fulltext_columns_drops_schema_objects_and_unregisters_metadata():
     assert [result.action for result in results] == [FullTextAction.DROP, FullTextAction.DROP]
     assert all(result.status == "applied" for result in results)
     statements = [call[1] for call in engine.connection.calls]
-    assert any("DROP INDEX IF EXISTS public.idx_gin_concept_name_tsvector" in statement for statement in statements)
+    assert any('DROP INDEX IF EXISTS "public"."idx_gin_concept_name_tsvector"' in statement for statement in statements)
     assert any(
         'ALTER TABLE "public"."concept" DROP COLUMN IF EXISTS concept_name_tsvector' in statement
         for statement in statements

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import sqlalchemy as sa
 
-from .base import Backend, BackendNotSupportedError
+from .base import Backend, FeatureNotSupportedError
 
 
 class SQLiteBackend(Backend):
@@ -24,5 +24,5 @@ class SQLiteBackend(Backend):
         vacuum: bool = False,
     ) -> None:
         if vacuum:
-            raise BackendNotSupportedError("VACUUM ANALYZE", self)
+            raise FeatureNotSupportedError("VACUUM ANALYZE", self)
         conn.exec_driver_sql(f'ANALYZE "{table_name}"')

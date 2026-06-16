@@ -3,7 +3,7 @@ from enum import StrEnum
 
 import sqlalchemy as sa
 
-from .base import Backend
+from .base import Backend, BackendNotSupportedError
 from .postgres import PostgresBackend
 from .sqlite import SQLiteBackend
 
@@ -22,7 +22,7 @@ def resolve_backend(engine: sa.Engine) -> Backend:
     try:
         supported_dialect = SupportedDialect(dialect)
     except ValueError:
-        raise RuntimeError(
+        raise BackendNotSupportedError(
             f"Unsupported database dialect: '{dialect}'. "
             f"Supported dialects: {', '.join(sorted(SupportedDialect))}."
         )

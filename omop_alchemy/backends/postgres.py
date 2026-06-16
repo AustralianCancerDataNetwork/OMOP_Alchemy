@@ -17,6 +17,12 @@ def _qualified(table_name: str, db_schema: str | None) -> str:
     return f'"{table_name}"'
 
 
+def _qualified_index(index_name: str, db_schema: str | None) -> str:
+    if db_schema:
+        return f'"{db_schema}"."{index_name}"'
+    return f'"{index_name}"'
+
+
 class PostgresBackend(Backend):
 
     @property
@@ -333,8 +339,7 @@ class PostgresBackend(Backend):
         drop_indexes: bool,
     ) -> None:
         if drop_indexes:
-            qualified_index = f"{db_schema}.{index_name}" if db_schema else index_name
-            conn.exec_driver_sql(f"DROP INDEX IF EXISTS {qualified_index}")
+            conn.exec_driver_sql(f"DROP INDEX IF EXISTS {_qualified_index(index_name, db_schema)}")
         conn.exec_driver_sql(
             f"ALTER TABLE {_qualified(table_name, db_schema)}"
             f" DROP COLUMN IF EXISTS {vector_column_name}"

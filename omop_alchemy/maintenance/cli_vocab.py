@@ -332,124 +332,128 @@ def load_vocab_source(
             created_table_count = _create_missing_vocabulary_tables(pre_conn, db_schema=db_schema)
             pre_conn.commit()
 
-    for model in all_models:
-        csv_path = _find_vocab_csv_path(resolved_source_path, model.__tablename__)
-        required = model in REQUIRED_VOCAB_MODELS
+    try:
+        for model in all_models:
+            csv_path = _find_vocab_csv_path(resolved_source_path, model.__tablename__)
+            required = model in REQUIRED_VOCAB_MODELS
 
-        if csv_path is None:
+            if csv_path is None:
+                results.append(VocabularyLoadResult(
+                    table_name=model.__tablename__,
+                    status="skipped",
+                    row_count=None,
+                    csv_path=None,
+                    required=required,
+                    detail="optional Athena CSV not found; table skipped",
+                ))
+                continue
+
+            table_index += 1
+
+            _emit(
+                progress_callback,
+                f"Loading {model.__tablename__} ({table_index}/{table_count})...",
+                (table_index - 1) / table_count * 100,
+                table_name=model.__tablename__,
+                table_count=table_count,
+            )
+
+            if dry_run:
+                results.append(VocabularyLoadResult(
+                    table_name=model.__tablename__,
+                    status="planned",
+                    row_count=None,
+                    csv_path=str(csv_path),
+                    required=required,
+                    detail="Athena CSV would be loaded via staged ORM CSV loader using tab-delimited input and auto-detected quote mode",
+                ))
+                continue
+
+            recovery_hint = (
+                " Indexes and FK triggers may still be disabled; run "
+                "'omop-alchemy indexes enable --vocab' and 'omop-alchemy foreign-keys enable' to recover."
+                if _use_bulk_mode else ""
+            )
+
+            row_count = 0
+            _prev_attempt_was_crash = False
+            for attempt in range(3):
+                try:
+                    with so.Session(load_engine) as session:
+                        if _prev_attempt_was_crash and merge_strategy == "insert_if_empty":
+                            # A DB crash left partial data committed in this table.
+                            # Truncate so insert_if_empty can retry cleanly. Safe because
+                            # bulk_mode's manage_foreign_key_triggers ran ALTER TABLE ...
+                            # DISABLE TRIGGER ALL on all vocabulary tables, and that state
+                            # persists across crash+recovery in pg_trigger.tgenabled.
+                            # Schema-qualified explicitly so this targets the CDM table
+                            # regardless of search_path ordering.
+                            table_ref = f'"{db_schema}"."{model.__tablename__}"' if db_schema else f'"{model.__tablename__}"'
+                            session.execute(sa.text(f"TRUNCATE TABLE {table_ref}"))
+                            session.commit()
+                        row_count = _load_vocab_model_csv(
+                            session,
+                            model=model,
+                            csv_path=csv_path,
+                            merge_strategy=merge_strategy,
+                            quote_mode="auto",
+                            index_strategy="keep" if _use_bulk_mode else "auto",
+                            chunksize=chunksize,
+                            merge_batch_size=merge_batch_size,
+                        )
+                        session.commit()
+                    break
+                except Exception as exc:
+                    if attempt < 2 and _is_retryable_error(exc):
+                        _prev_attempt_was_crash = True
+                        time.sleep(10)
+                        continue
+                    raise VocabularyLoadError(
+                        "Athena vocabulary load failed for "
+                        f"table `{model.__tablename__}` from `{csv_path}` "
+                        f"using merge strategy `{merge_strategy}` on backend `{engine.dialect.name}`. "
+                        f"Underlying error: {exc.__class__.__name__}: {exc}"
+                        + recovery_hint
+                    ) from exc
+
+            rows_cumulative += row_count
             results.append(VocabularyLoadResult(
                 table_name=model.__tablename__,
-                status="skipped",
-                row_count=None,
-                csv_path=None,
-                required=required,
-                detail="optional Athena CSV not found; table skipped",
-            ))
-            continue
-
-        table_index += 1
-
-        _emit(
-            progress_callback,
-            f"Loading {model.__tablename__} ({table_index}/{table_count})...",
-            (table_index - 1) / table_count * 100,
-            table_name=model.__tablename__,
-            table_count=table_count,
-        )
-
-        if dry_run:
-            results.append(VocabularyLoadResult(
-                table_name=model.__tablename__,
-                status="planned",
-                row_count=None,
+                status="loaded",
+                row_count=row_count,
                 csv_path=str(csv_path),
                 required=required,
-                detail="Athena CSV would be loaded via staged ORM CSV loader using tab-delimited input and auto-detected quote mode",
+                detail="Athena CSV loaded via staged ORM CSV loader using tab-delimited input and auto-detected quote mode",
             ))
-            continue
 
-        recovery_hint = (
-            " Indexes and FK triggers may still be disabled; run "
-            "'omop-alchemy indexes enable --vocab' and 'omop-alchemy foreign-keys enable' to recover."
-            if _use_bulk_mode else ""
-        )
-
-        row_count = 0
-        _prev_attempt_was_crash = False
-        for attempt in range(3):
-            try:
-                with so.Session(load_engine) as session:
-                    if _prev_attempt_was_crash and merge_strategy == "insert_if_empty":
-                        # A DB crash left partial data committed in this table.
-                        # Truncate so insert_if_empty can retry cleanly. Safe because
-                        # bulk_mode's manage_foreign_key_triggers ran ALTER TABLE ...
-                        # DISABLE TRIGGER ALL on all vocabulary tables, and that state
-                        # persists across crash+recovery in pg_trigger.tgenabled.
-                        session.execute(sa.text(f'TRUNCATE TABLE "{model.__tablename__}"'))
-                        session.commit()
-                    row_count = _load_vocab_model_csv(
-                        session,
-                        model=model,
-                        csv_path=csv_path,
-                        merge_strategy=merge_strategy,
-                        quote_mode="auto",
-                        index_strategy="keep" if _use_bulk_mode else "auto",
-                        chunksize=chunksize,
-                        merge_batch_size=merge_batch_size,
-                    )
-                    session.commit()
-                break
-            except Exception as exc:
-                if attempt < 2 and _is_retryable_error(exc):
-                    _prev_attempt_was_crash = True
-                    time.sleep(10)
-                    continue
-                raise VocabularyLoadError(
-                    "Athena vocabulary load failed for "
-                    f"table `{model.__tablename__}` from `{csv_path}` "
-                    f"using merge strategy `{merge_strategy}` on backend `{engine.dialect.name}`. "
-                    f"Underlying error: {exc.__class__.__name__}: {exc}"
-                    + recovery_hint
-                ) from exc
-
-        rows_cumulative += row_count
-        results.append(VocabularyLoadResult(
-            table_name=model.__tablename__,
-            status="loaded",
-            row_count=row_count,
-            csv_path=str(csv_path),
-            required=required,
-            detail="Athena CSV loaded via staged ORM CSV loader using tab-delimited input and auto-detected quote mode",
-        ))
-
-        _emit(
-            progress_callback,
-            f"Loaded {model.__tablename__} ({table_index}/{table_count})",
-            table_index / table_count * 100,
-            table_done=True,
-            table_name=model.__tablename__,
-            rows_this_table=row_count,
-            table_count=table_count,
-        )
-
-    if _use_bulk_mode:
-        _emit(progress_callback, "Rebuilding indexes on vocabulary tables (may take 15+ min)...", 100.0, table_count=table_count)
-        manage_indexes(
-            engine,
-            enable=True,
-            vocabulary_included=True,
-            db_schema=db_schema,
-            dry_run=False,
-            cluster=False,
-        )
-        _emit(progress_callback, "Re-enabling FK trigger checks...", 100.0, table_count=table_count)
-        manage_foreign_key_triggers(
-            engine,
-            enable=True,
-            vocabulary_included=True,
-            db_schema=db_schema,
-            dry_run=False,
-        )
+            _emit(
+                progress_callback,
+                f"Loaded {model.__tablename__} ({table_index}/{table_count})",
+                table_index / table_count * 100,
+                table_done=True,
+                table_name=model.__tablename__,
+                rows_this_table=row_count,
+                table_count=table_count,
+            )
+    finally:
+        if _use_bulk_mode:
+            _emit(progress_callback, "Rebuilding indexes on vocabulary tables (may take 15+ min)...", 100.0, table_count=table_count)
+            manage_indexes(
+                engine,
+                enable=True,
+                vocabulary_included=True,
+                db_schema=db_schema,
+                dry_run=False,
+                cluster=False,
+            )
+            _emit(progress_callback, "Re-enabling FK trigger checks...", 100.0, table_count=table_count)
+            manage_foreign_key_triggers(
+                engine,
+                enable=True,
+                vocabulary_included=True,
+                db_schema=db_schema,
+                dry_run=False,
+            )
 
     _emit(progress_callback, "Athena vocabulary load complete", 100.0, table_count=table_count)
 

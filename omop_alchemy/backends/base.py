@@ -50,7 +50,11 @@ class FullTextError(RuntimeError):
 # ── Backend errors ────────────────────────────────────────────────────────────
 
 class BackendNotSupportedError(RuntimeError):
-    """Raised when the active backend does not implement a required operation."""
+    """Raised when no backend exists for a dialect, or a backend does not implement a required operation."""
+
+
+class FeatureNotSupportedError(BackendNotSupportedError):
+    """Raised when a backend exists but doesn't implement a specific feature."""
 
     def __init__(self, feature: str, backend: "Backend") -> None:
         super().__init__(f"'{feature}' is not supported by the {backend.name} backend.")
@@ -64,9 +68,9 @@ def backend_supports(backend: "Backend", method_name: str) -> bool:
 
 
 def require_backend_support(backend: "Backend", method_name: str, feature: str) -> None:
-    """Raise BackendNotSupportedError if this backend does not override *method_name*."""
+    """Raise FeatureNotSupportedError if this backend does not override *method_name*."""
     if not backend_supports(backend, method_name):
-        raise BackendNotSupportedError(feature, backend)
+        raise FeatureNotSupportedError(feature, backend)
 
 
 def backend_support_note(method_name: str) -> str:
@@ -103,7 +107,7 @@ class Backend(ABC):
         *,
         enable: bool,
     ) -> None:
-        raise BackendNotSupportedError("FK trigger management", self)
+        raise FeatureNotSupportedError("FK trigger management", self)
 
     def get_fk_trigger_counts(
         self,
@@ -112,7 +116,7 @@ class Backend(ABC):
         db_schema: str | None,
     ) -> tuple[int, int]:
         """Return (disabled_count, enabled_count) for RI triggers on the table."""
-        raise BackendNotSupportedError("FK trigger status inspection", self)
+        raise FeatureNotSupportedError("FK trigger status inspection", self)
 
     def count_fk_violations(
         self,
@@ -123,7 +127,7 @@ class Backend(ABC):
         referred_cols: list[str],
         db_schema: str | None,
     ) -> int:
-        raise BackendNotSupportedError("FK constraint violation counting", self)
+        raise FeatureNotSupportedError("FK constraint violation counting", self)
 
     # ── Clustering ───────────────────────────────────────────────────────────
 
@@ -134,7 +138,7 @@ class Backend(ABC):
         index_name: str,
         db_schema: str | None,
     ) -> None:
-        raise BackendNotSupportedError("Table clustering", self)
+        raise FeatureNotSupportedError("Table clustering", self)
 
     def get_clustered_index_name(
         self,
@@ -142,7 +146,7 @@ class Backend(ABC):
         table_name: str,
         db_schema: str | None,
     ) -> str | None:
-        raise BackendNotSupportedError("Cluster index inspection", self)
+        raise FeatureNotSupportedError("Cluster index inspection", self)
 
     # ── Table operations ─────────────────────────────────────────────────────
 
@@ -165,7 +169,7 @@ class Backend(ABC):
         restart_identities: bool,
         cascade: bool,
     ) -> None:
-        raise BackendNotSupportedError("TRUNCATE with RESTART IDENTITY / CASCADE", self)
+        raise FeatureNotSupportedError("TRUNCATE with RESTART IDENTITY / CASCADE", self)
 
     # ── Sequence management ──────────────────────────────────────────────────
 
@@ -176,7 +180,7 @@ class Backend(ABC):
         column_name: str,
         db_schema: str | None,
     ) -> str | None:
-        raise BackendNotSupportedError("Owned sequence lookup", self)
+        raise FeatureNotSupportedError("Owned sequence lookup", self)
 
     def set_sequence_value(
         self,
@@ -184,7 +188,7 @@ class Backend(ABC):
         sequence_name: str,
         value: int,
     ) -> None:
-        raise BackendNotSupportedError("Sequence value reset", self)
+        raise FeatureNotSupportedError("Sequence value reset", self)
 
     # ── Schema context ───────────────────────────────────────────────────────
 
@@ -211,23 +215,23 @@ class Backend(ABC):
 
     def register_fulltext_metadata(self) -> None:
         """Append tsvector sidecar columns to SQLAlchemy ORM metadata for this backend's targets."""
-        raise BackendNotSupportedError("Full-text metadata registration", self)
+        raise FeatureNotSupportedError("Full-text metadata registration", self)
 
     def unregister_fulltext_metadata(self) -> None:
         """Remove tsvector sidecar columns from SQLAlchemy ORM metadata."""
-        raise BackendNotSupportedError("Full-text metadata unregistration", self)
+        raise FeatureNotSupportedError("Full-text metadata unregistration", self)
 
     def concept_name_tsvector_expression(
         self, *, regconfig: str = "english"
     ) -> "ColumnElement[Any]":
         """Return a SQLAlchemy expression for the concept_name tsvector."""
-        raise BackendNotSupportedError("Full-text search expression", self)
+        raise FeatureNotSupportedError("Full-text search expression", self)
 
     def concept_synonym_name_tsvector_expression(
         self, *, regconfig: str = "english"
     ) -> "ColumnElement[Any]":
         """Return a SQLAlchemy expression for the concept_synonym_name tsvector."""
-        raise BackendNotSupportedError("Full-text search expression", self)
+        raise FeatureNotSupportedError("Full-text search expression", self)
 
     def install_fulltext_on_table(
         self,
@@ -240,7 +244,7 @@ class Backend(ABC):
         create_indexes: bool,
         fastupdate: bool,
     ) -> None:
-        raise BackendNotSupportedError("Full-text search", self)
+        raise FeatureNotSupportedError("Full-text search", self)
 
     def populate_fulltext_on_table(
         self,
@@ -252,7 +256,7 @@ class Backend(ABC):
         db_schema: str | None,
         regconfig: str,
     ) -> int | None:
-        raise BackendNotSupportedError("Full-text search", self)
+        raise FeatureNotSupportedError("Full-text search", self)
 
     def drop_fulltext_on_table(
         self,
@@ -264,7 +268,7 @@ class Backend(ABC):
         db_schema: str | None,
         drop_indexes: bool,
     ) -> None:
-        raise BackendNotSupportedError("Full-text search", self)
+        raise FeatureNotSupportedError("Full-text search", self)
 
     # ── Backup / restore ─────────────────────────────────────────────────────
 
@@ -276,7 +280,7 @@ class Backend(ABC):
         db_schema: str | None,
     ) -> tuple[str, list[str], dict[str, str], str]:
         """Return (tool_path, command, env, database_name). subprocess.run stays in CLI."""
-        raise BackendNotSupportedError("Database backup", self)
+        raise FeatureNotSupportedError("Database backup", self)
 
     def prepare_restore(
         self,
@@ -286,6 +290,6 @@ class Backend(ABC):
         db_schema: str | None,
     ) -> tuple[str, list[str], dict[str, str], str]:
         """Return (tool_path, command, env, database_name). subprocess.run stays in CLI."""
-        raise BackendNotSupportedError("Database restore", self)
+        raise FeatureNotSupportedError("Database restore", self)
 
 

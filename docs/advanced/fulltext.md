@@ -20,13 +20,14 @@ The current full-text support targets:
 - `concept.concept_name`
 - `concept_synonym.concept_synonym_name`
 
-The handler module lives under:
+These helpers are methods on the resolved `Backend` instance:
 
 ```python
-from omop_alchemy.cdm.handlers import (
-    concept_name_tsvector_expression,
-    concept_synonym_name_tsvector_expression,
-)
+from omop_alchemy.backends import resolve_backend
+
+backend = resolve_backend(engine)
+backend.concept_name_tsvector_expression()
+backend.concept_synonym_name_tsvector_expression()
 ```
 
 These helpers return the best available expression for the configured environment:
@@ -66,9 +67,10 @@ If your running Python process should use the stored sidecar columns through ORM
 metadata, register them once at startup:
 
 ```python
-from omop_alchemy.cdm.handlers import register_optional_fulltext_columns
+from omop_alchemy.backends import resolve_backend
 
-register_optional_fulltext_columns()
+backend = resolve_backend(engine)
+backend.register_fulltext_metadata()
 ```
 
 That is enough to activate the feature. The rest of this page explains when to use it
@@ -118,15 +120,16 @@ This requires no schema changes.
 import sqlalchemy as sa
 from sqlalchemy.orm import Session
 
-from omop_alchemy.cdm.handlers import concept_name_tsvector_expression
+from omop_alchemy.backends import resolve_backend
 from omop_alchemy.cdm.model.vocabulary import Concept
 
+backend = resolve_backend(engine)
 query = sa.func.plainto_tsquery("english", "edoxaban")
 
 with Session(engine) as session:
     rows = (
         session.query(Concept)
-        .filter(concept_name_tsvector_expression() == query)
+        .filter(backend.concept_name_tsvector_expression() == query)
         .all()
     )
 ```
@@ -135,7 +138,7 @@ In practice you will often want the PostgreSQL full-text match operator rather t
 equality:
 
 ```python
-vector = concept_name_tsvector_expression()
+vector = backend.concept_name_tsvector_expression()
 query = sa.func.plainto_tsquery("english", "edoxaban")
 
 stmt = sa.select(Concept).where(vector.op("@@")(query))
@@ -214,10 +217,11 @@ A typical PostgreSQL query looks like this:
 import sqlalchemy as sa
 from sqlalchemy.orm import Session
 
-from omop_alchemy.cdm.handlers import concept_name_tsvector_expression
+from omop_alchemy.backends import resolve_backend
 from omop_alchemy.cdm.model.vocabulary import Concept
 
-vector = concept_name_tsvector_expression()
+backend = resolve_backend(engine)
+vector = backend.concept_name_tsvector_expression()
 query = sa.func.plainto_tsquery("english", "direct oral anticoagulant")
 
 stmt = (
@@ -235,7 +239,7 @@ with Session(engine) as session:
     rows = session.execute(stmt).all()
 ```
 
-The same idea applies to `concept_synonym_name_tsvector_expression()`.
+The same idea applies to `backend.concept_synonym_name_tsvector_expression()`.
 
 ---
 
@@ -245,18 +249,17 @@ If your process will use the stored sidecar columns directly, register them into
 metadata:
 
 ```python
-from omop_alchemy.cdm.handlers import register_optional_fulltext_columns
+from omop_alchemy.backends import resolve_backend
 
-register_optional_fulltext_columns()
+backend = resolve_backend(engine)
+backend.register_fulltext_metadata()
 ```
 
 If you later remove the columns from the database in the same process and want query
 helpers to fall back cleanly again:
 
 ```python
-from omop_alchemy.cdm.handlers import unregister_optional_fulltext_columns
-
-unregister_optional_fulltext_columns()
+backend.unregister_fulltext_metadata()
 ```
 
 This only affects SQLAlchemy metadata in the current Python process. It does not alter
