@@ -1,7 +1,9 @@
+import pytest
 import sqlalchemy as sa
 from typer.testing import CliRunner
 from oa_configurator import StackConfig, DatabaseConfig
 
+from omop_alchemy.backends.sqlite import SQLiteBackend
 from omop_alchemy.cdm.base.indexing import OMOP_CLUSTER_INDEX_INFO_KEY, omop_index_name
 from omop_alchemy.maintenance.cli import app
 from omop_alchemy.maintenance.cli_schema import create_missing_tables
@@ -18,6 +20,8 @@ runner = CliRunner()
 PERSON_GENDER_INDEX = omop_index_name("person", "gender_concept_id")
 CONCEPT_DOMAIN_INDEX = omop_index_name("concept", "domain_id")
 EPISODE_PERSON_INDEX = omop_index_name("episode", "person_id")
+CONCEPT_NAME_LOWER_INDEX = "ix_concept_concept_name_lower"
+CONCEPT_SYNONYM_NAME_LOWER_INDEX = "ix_concept_synonym_concept_synonym_name_lower"
 
 
 def _fresh_engine(tmp_path):
@@ -39,6 +43,9 @@ def test_collect_index_targets_excludes_vocabulary_by_default(tmp_path):
     assert ("concept", CONCEPT_DOMAIN_INDEX) not in targets
 
 
+@pytest.mark.filterwarnings(
+    "ignore:Skipped unsupported reflection of expression-based index:sqlalchemy.exc.SAWarning"
+)
 def test_collect_index_targets_can_include_vocabulary(tmp_path):
     """Test collect index targets can include vocabulary."""
     engine = _fresh_engine(tmp_path)
@@ -48,6 +55,12 @@ def test_collect_index_targets_can_include_vocabulary(tmp_path):
     }
 
     assert ("concept", CONCEPT_DOMAIN_INDEX) in targets
+    # Note: collect_index_targets relies on SQLAlchemy's reflection, which
+    # cannot describe expression-based indexes on SQLite (a documented
+    # SQLAlchemy limitation, not specific to this project) -- so the
+    # lower(concept_name) index is invisible here even though it exists.
+    # See test_manage_indexes_enable_is_idempotent_for_expression_indexes
+    # for coverage of the indexes themselves.
 
 
 def test_orm_index_metadata_carries_cluster_configuration():
@@ -115,6 +128,73 @@ def test_manage_indexes_disable_and_enable_on_sqlite(tmp_path):
     assert PERSON_GENDER_INDEX in after_enable
 
 
+def test_manage_indexes_enable_analyzes_tables_with_new_indexes(tmp_path, monkeypatch):
+    """Test manage indexes enable analyzes tables with new indexes."""
+    engine = _fresh_engine(tmp_path)
+    manage_indexes(engine, enable=False)
+
+    analyzed_tables: list[str] = []
+    original_analyze = SQLiteBackend.analyze_table
+
+    def recording_analyze(self, conn, table_name, db_schema, *, vacuum=False):
+        analyzed_tables.append(table_name)
+        return original_analyze(self, conn, table_name, db_schema, vacuum=vacuum)
+
+    monkeypatch.setattr(SQLiteBackend, "analyze_table", recording_analyze)
+
+    manage_indexes(engine, enable=True)
+
+    assert "person" in analyzed_tables
+
+
+def test_manage_indexes_enable_skips_analyze_when_nothing_created(tmp_path, monkeypatch):
+    """Test manage indexes enable skips analyze when nothing created."""
+    engine = _fresh_engine(tmp_path)
+
+    analyzed_tables: list[str] = []
+    monkeypatch.setattr(
+        SQLiteBackend,
+        "analyze_table",
+        lambda self, conn, table_name, db_schema, *, vacuum=False: analyzed_tables.append(table_name),
+    )
+
+    # All ORM-defined indexes already exist on a freshly created schema, so
+    # enabling again should be a no-op and must not trigger any ANALYZE calls.
+    manage_indexes(engine, enable=True)
+
+    assert analyzed_tables == []
+
+
+@pytest.mark.filterwarnings(
+    "ignore:Skipped unsupported reflection of expression-based index:sqlalchemy.exc.SAWarning"
+)
+def test_manage_indexes_enable_is_idempotent_for_expression_indexes(tmp_path):
+    """Test manage indexes enable is idempotent for expression indexes.
+
+    SQLite cannot reflect expression-based indexes (e.g. lower(concept_name)),
+    so manage_indexes can never see them as already existing via
+    inspector.get_indexes(). Re-running 'enable' must not crash on the
+    resulting duplicate-create attempt and must report it as skipped rather
+    than falsely claiming the index was (re)created.
+    """
+    engine = _fresh_engine(tmp_path)
+
+    for _ in range(2):
+        results = manage_indexes(engine, enable=True, vocabulary_included=True)
+        lower_index_results = {
+            result.index_name: result
+            for result in results
+            if result.index_name in (CONCEPT_NAME_LOWER_INDEX, CONCEPT_SYNONYM_NAME_LOWER_INDEX)
+        }
+        assert set(lower_index_results) == {
+            CONCEPT_NAME_LOWER_INDEX,
+            CONCEPT_SYNONYM_NAME_LOWER_INDEX,
+        }
+        for result in lower_index_results.values():
+            assert result.status == "skipped"
+            assert "already exists" in result.detail
+
+
 def test_disable_indexes_cli_invokes_management(monkeypatch):
     """Test disable indexes cli invokes management."""
 
@@ -177,3 +257,66 @@ def test_disable_indexes_cli_invokes_management(monkeypatch):
     assert "disable" in result.stdout
     assert "PLANNED" in result.stdout
     assert "Planned disable on 1 metadata operation(s)." in result.stdout
+
+
+def test_enable_indexes_cli_no_cluster_flag_passes_through(monkeypatch):
+    """Test enable indexes cli no cluster flag passes through."""
+
+    calls: dict[str, object] = {}
+
+    cfg = StackConfig.for_session(
+        databases={"db": DatabaseConfig(dialect="sqlite", database_name=":memory:")},
+        resources={"cdm_db": {"database": "db", "cdm_schema": "main"}},
+    )
+    monkeypatch.setattr(
+        "omop_alchemy.config.load_stack_config",
+        lambda: cfg,
+    )
+
+    def fake_manage_indexes(
+        engine: object,
+        *,
+        enable: bool,
+        db_schema: str | None = None,
+        vocabulary_included: bool = False,
+        dry_run: bool = False,
+        cluster: bool = True,
+    ) -> list[IndexManagementResult]:
+        calls["enable"] = enable
+        calls["vocabulary_included"] = vocabulary_included
+        calls["dry_run"] = dry_run
+        calls["cluster"] = cluster
+        return [
+            IndexManagementResult(
+                operation="index",
+                table_name="person",
+                category=TableCategory.CLINICAL,
+                index_name=PERSON_GENDER_INDEX,
+                column_names=("gender_concept_id",),
+                unique=False,
+                clustered=False,
+                enable=enable,
+                status="planned",
+                detail="metadata-defined index would be created",
+            )
+        ]
+
+    monkeypatch.setattr(
+        "omop_alchemy.maintenance.cli_indexes.manage_indexes",
+        fake_manage_indexes,
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "indexes",
+            "enable",
+            "--no-cluster",
+            "--dry-run",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert calls["cluster"] is False
+    assert calls["enable"] is True
+    assert calls["dry_run"] is True
