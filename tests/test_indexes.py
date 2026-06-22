@@ -47,7 +47,17 @@ def test_collect_index_targets_excludes_vocabulary_by_default(tmp_path):
     "ignore:Skipped unsupported reflection of expression-based index:sqlalchemy.exc.SAWarning"
 )
 def test_collect_index_targets_can_include_vocabulary(tmp_path):
-    """Test collect index targets can include vocabulary."""
+    """Test collect index targets can include vocabulary.
+    
+    Notes
+    -----
+    collect_index_targets relies on SQLAlchemy's reflection, which cannot describe
+    expression-based indexes on SQLite (e.g. concept.py ix_concept_concept_name_lower).
+    The lower(concept_name) index is invisible to collect_index_targets even though it exists. 
+    See test_manage_indexes_enable_is_idempotent_for_expression_indexes
+    for coverage of the indexes themselves.
+    
+    """
     engine = _fresh_engine(tmp_path)
     targets = {
         (target.table_name, target.index_name)
@@ -55,12 +65,6 @@ def test_collect_index_targets_can_include_vocabulary(tmp_path):
     }
 
     assert ("concept", CONCEPT_DOMAIN_INDEX) in targets
-    # Note: collect_index_targets relies on SQLAlchemy's reflection, which
-    # cannot describe expression-based indexes on SQLite (a documented
-    # SQLAlchemy limitation, not specific to this project) -- so the
-    # lower(concept_name) index is invisible here even though it exists.
-    # See test_manage_indexes_enable_is_idempotent_for_expression_indexes
-    # for coverage of the indexes themselves.
 
 
 def test_orm_index_metadata_carries_cluster_configuration():

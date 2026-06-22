@@ -34,6 +34,8 @@ class Concept(
         omop_index(__tablename__, "vocabulary_id"),
         omop_index(__tablename__, "domain_id"),
         omop_index(__tablename__, "concept_class_id"),
+        # Has to be wrapped in func.lower() as that is the common query
+        # as it prevents captialisation mismatches between query and data.
         omop_index(
             __tablename__,
             sa.func.lower(sa.column("concept_name")),

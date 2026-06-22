@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import sqlalchemy as sa
+from sqlalchemy.exc import DBAPIError
 import typer
 
 from omop_alchemy.cdm.base.indexing import OMOP_CLUSTER_INDEX_INFO_KEY
@@ -178,15 +179,13 @@ def manage_indexes(
             already_present = False
             if not dry_run:
                 # Each index gets its own transaction so WAL is committed and
-                # checkpointable before the next index build begins. One large
-                # transaction for all indexes would accumulate 5+ GB of WAL
-                # on vocabulary tables before any checkpoint can reclaim it.
+                # checkpointable before the next index build begins.
                 with engine.begin() as connection:
                     if not enable:
                         schema_index.drop(bind=connection, checkfirst=True)
                     else:
                         # SQLite's reflection cannot describe expression-based
-                        # indexes (e.g. our lower(concept_name) index), so
+                        # indexes (see concept.py ix_concept_concept_name_lower), so
                         # `existing_index_names` never includes them and
                         # checkfirst alone can't prevent a duplicate-create
                         # attempt on a table that already has one. Fall back to
@@ -195,7 +194,7 @@ def manage_indexes(
                         savepoint = connection.begin_nested()
                         try:
                             schema_index.create(bind=connection, checkfirst=True)
-                        except sa.exc.DBAPIError as exc:
+                        except DBAPIError as exc:
                             savepoint.rollback()
                             if "already exists" not in str(exc.orig).lower():
                                 raise
@@ -231,8 +230,7 @@ def manage_indexes(
             )
 
         if created_any:
-            # A new index doesn't help until the planner knows about it: without
-            # ANALYZE the old scan plan persists even though the index now exists.
+            # Make sure the planner knows about the new index
             with engine.connect() as connection:
                 backend.analyze_table(connection, table.table_name, db_schema)
                 connection.commit()
