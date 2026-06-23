@@ -115,3 +115,6 @@
 - harden `merge_table_args()` to filter on `is None` rather than truthiness, so a Constraint/Index built from unresolved column-name strings can no longer be silently dropped from `__table_args__`
 - **breaking:** removed the `index: bool` parameter from `required_concept_fk()`, `optional_concept_fk()`, `optional_fk()` (`cdm/base/column_helpers.py`); it produced schema-unsafe implicit index names and had no remaining call sites — index FK columns via an explicit `omop_index(...)` in `__table_args__` instead
 - Added functional indices for lower() search on `concept` and `concept_synonym` tables
+- `manage_indexes()` now runs `ANALYZE` immediately after creating any new index, so the planner picks it up right away instead of waiting on autovacuum
+- added `--cluster/--no-cluster` flag to `indexes enable`, to skip the full heap rewrite on large vocabulary tables when disk headroom is limited
+- `indexes enable` now reports a pre-existing expression-based index as skipped instead of raising, since SQLite's reflection can't see it to begin with (affects the new functional indexes under the test backend)
