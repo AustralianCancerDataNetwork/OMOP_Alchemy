@@ -108,3 +108,10 @@
 - accelerated vocabulary ingestion: pooled/reloaded connections, FK-trigger and index management around bulk loads, schema-qualified staging tables
 - added PostgreSQL full-text sidecar (`tsvector`) install/populate/drop commands
 - expanded CLI and API documentation: architecture overview and full command reference
+
+## 0.7.1
+- fix `manage_indexes()` raising `KeyError` for `cost.cost_type_concept_id` under any schema-qualified connection: `cost` was the only model using an implicitly-named column index (`required_concept_fk(index=True)`), whose auto-generated name embeds the schema and drifts from the unqualified name the maintenance CLI looks up by
+- fix `fact_relationship`'s primary key silently excluding `fact_id_1`/`fact_id_2`: `merge_table_args()` dropped the explicit `PrimaryKeyConstraint` because it's falsy (zero-length `.columns`) until attached to a table; the constraint never took effect and the table's real PK was only 3 of its intended 5 columns
+- harden `merge_table_args()` to filter on `is None` rather than truthiness, so a Constraint/Index built from unresolved column-name strings can no longer be silently dropped from `__table_args__`
+- **breaking:** removed the `index: bool` parameter from `required_concept_fk()`, `optional_concept_fk()`, `optional_fk()` (`cdm/base/column_helpers.py`); it produced schema-unsafe implicit index names and had no remaining call sites — index FK columns via an explicit `omop_index(...)` in `__table_args__` instead
+- Added functional indices for lower() search on `concept` and `concept_synonym` tables
