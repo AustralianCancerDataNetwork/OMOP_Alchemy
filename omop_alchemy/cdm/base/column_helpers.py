@@ -1,7 +1,7 @@
 import sqlalchemy as sa
 import sqlalchemy.orm as so
 
-def required_concept_fk(*, index: bool = False):
+def required_concept_fk():
     """
     *required_concept_fk*
 
@@ -16,40 +16,48 @@ def required_concept_fk(*, index: bool = False):
     - Unknown allowed (concept_id = 0)
     - Matches CDM Field-Level spec
     - foreign key to `concept.concept_id`
-    - indexing is opt-in when explicitly requested
+
+    To index this column, add an explicit `omop_index(...)` to the
+    model's `__table_args__` rather than indexing the column directly —
+    see `omop_alchemy.cdm.base.indexing`.
 
     """
     return so.mapped_column(
         sa.ForeignKey("concept.concept_id"),
         nullable=False,
         default=0,
-        index=index,
     )
 
-def optional_concept_fk(*, index: bool = False):
+def optional_concept_fk():
     """
     *optional_concept_fk*
 
     Used when a concept reference is genuinely optional.
-    
+
+    To index this column, add an explicit `omop_index(...)` to the
+    model's `__table_args__` rather than indexing the column directly —
+    see `omop_alchemy.cdm.base.indexing`.
+
     """
     return so.mapped_column(
         sa.ForeignKey("concept.concept_id"),
         nullable=True,
-        index=index,
     )
 
-def optional_fk(target: str, *, index: bool = False):
+def optional_fk(target: str):
     """
     *optional_fk*
-    
+
     Optional foreign keys to non-concept tables.
+
+    To index this column, add an explicit `omop_index(...)` to the
+    model's `__table_args__` rather than indexing the column directly —
+    see `omop_alchemy.cdm.base.indexing`.
 
     """
     return so.mapped_column(
         sa.ForeignKey(target),
         nullable=True,
-        index=index,
     )
 
 def required_int():

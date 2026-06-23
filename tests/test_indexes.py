@@ -9,11 +9,13 @@ from omop_alchemy.maintenance.cli import app
 from omop_alchemy.maintenance.cli_schema import create_missing_tables
 from omop_alchemy.maintenance.cli_indexes import (
     IndexManagementResult,
+    _schema_metadata_indexes,
     collect_index_targets,
     manage_indexes,
 )
 from omop_alchemy.maintenance.tables import collect_maintenance_tables
 from omop_alchemy.maintenance.tables import TableCategory
+from omop_alchemy.maintenance.tables import select_omop_tables
 
 
 runner = CliRunner()
@@ -83,6 +85,23 @@ def test_orm_index_metadata_carries_cluster_configuration():
         for index in episode.table.indexes
     }
     assert episode_indexes[EPISODE_PERSON_INDEX].info[OMOP_CLUSTER_INDEX_INFO_KEY] is True  # type: ignore[index]
+
+
+def test_schema_metadata_indexes_keys_match_unadjusted_indexes():
+    """Test schema metadata indexes keys match unadjusted indexes.
+
+    manage_indexes() looks up schema-adjusted indexes using names taken from
+    the original, unadjusted ORM tables. If a column's index name is resolved
+    implicitly (e.g. via `index=True` rather than an explicit omop_index()),
+    SQLAlchemy's naming convention embeds the schema into the generated name,
+    so the schema-adjusted copy gets a different name and the lookup misses.
+    """
+    tables = select_omop_tables(vocabulary_included=True)
+    indexes = _schema_metadata_indexes(tables, db_schema="public")
+
+    for table in tables:
+        for index in table.table.indexes:
+            assert (table.table_name, str(index.name)) in indexes
 
 
 def test_manage_indexes_disable_and_enable_on_sqlite(tmp_path):
