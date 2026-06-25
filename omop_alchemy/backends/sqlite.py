@@ -15,6 +15,18 @@ class SQLiteBackend(Backend):
     def dialect(self) -> str:
         return "sqlite"
 
+    def index_exists(
+        self,
+        conn: sa.Connection,
+        index_name: str,
+        db_schema: str | None,
+    ) -> bool:
+        row = conn.exec_driver_sql(
+            "SELECT 1 FROM sqlite_master WHERE type='index' AND name=?",
+            (index_name,),
+        ).fetchone()
+        return row is not None
+
     def analyze_table(
         self,
         conn: sa.Connection,

@@ -160,6 +160,19 @@ class Backend(ABC):
         vacuum: bool = False,
     ) -> None: ...
 
+    def index_exists(
+        self,
+        conn: sa.Connection,
+        index_name: str,
+        db_schema: str | None,
+    ) -> bool:
+        """Return True when the named index currently exists on the database.
+
+        Backends should implement this with native catalog queries rather than
+        SQLAlchemy reflection so expression-based indexes are handled correctly.
+        """
+        raise FeatureNotSupportedError("Index existence check", self)
+
     def drop_index_if_exists(
         self,
         conn: sa.Connection,
@@ -305,5 +318,4 @@ class Backend(ABC):
     ) -> tuple[str, list[str], dict[str, str], str]:
         """Return (tool_path, command, env, database_name). subprocess.run stays in CLI."""
         raise FeatureNotSupportedError("Database restore", self)
-
 

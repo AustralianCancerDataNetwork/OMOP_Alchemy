@@ -178,12 +178,15 @@ def manage_indexes(
 
             schema_index = metadata_indexes[(table.table_name, index_name)]
             already_present = False
+            already_absent = False
             if not dry_run:
                 # Each index gets its own transaction so WAL is committed and
                 # checkpointable before the next index build begins.
                 with engine.begin() as connection:
                     if not enable:
+                        existed_before_drop = backend.index_exists(connection, index_name, db_schema)
                         backend.drop_index_if_exists(connection, index_name, db_schema)
+                        already_absent = not existed_before_drop
                     else:
                         savepoint = connection.begin_nested()
                         try:
@@ -199,6 +202,9 @@ def manage_indexes(
 
             if already_present:
                 detail = "metadata-defined index already exists (skipped)"
+                status = "skipped"
+            elif already_absent:
+                detail = "metadata-defined index already absent (skipped)"
                 status = "skipped"
             else:
                 status = dry_status(dry_run)

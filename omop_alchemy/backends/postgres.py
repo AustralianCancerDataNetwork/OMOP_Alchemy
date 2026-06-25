@@ -155,6 +155,21 @@ class PostgresBackend(Backend):
         operation = "VACUUM ANALYZE" if vacuum else "ANALYZE"
         conn.exec_driver_sql(f"{operation} {_qualified(table_name, db_schema)}")
 
+    def index_exists(
+        self,
+        conn: sa.Connection,
+        index_name: str,
+        db_schema: str | None,
+    ) -> bool:
+        qualified_index_name = _qualified_index(index_name, db_schema)
+        return bool(
+            conn.scalar(
+                sa.select(
+                    sa.func.to_regclass(qualified_index_name).is_not(None)
+                )
+            )
+        )
+
     def drop_index_if_exists(self, conn: sa.Connection, index_name: str, db_schema: str | None) -> None:
         conn.exec_driver_sql(f"DROP INDEX IF EXISTS {_qualified_index(index_name, db_schema)}")
 

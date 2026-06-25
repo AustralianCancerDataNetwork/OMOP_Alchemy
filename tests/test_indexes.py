@@ -261,6 +261,35 @@ def test_manage_indexes_disable_drops_expression_indexes_on_sqlite(tmp_path):
     assert not _index_exists(CONCEPT_SYNONYM_NAME_LOWER_INDEX)
 
 
+@pytest.mark.filterwarnings(
+    "ignore:Skipped unsupported reflection of expression-based index:sqlalchemy.exc.SAWarning"
+)
+def test_manage_indexes_disable_is_idempotent_on_sqlite(tmp_path):
+    """A second disable run should report already-absent indexes as skipped."""
+    engine = _fresh_engine(tmp_path)
+
+    first_results = manage_indexes(engine, enable=False, vocabulary_included=True)
+    second_results = manage_indexes(engine, enable=False, vocabulary_included=True)
+
+    first_lower = {
+        result.index_name: result
+        for result in first_results
+        if result.index_name in (CONCEPT_NAME_LOWER_INDEX, CONCEPT_SYNONYM_NAME_LOWER_INDEX)
+    }
+    second_lower = {
+        result.index_name: result
+        for result in second_results
+        if result.index_name in (CONCEPT_NAME_LOWER_INDEX, CONCEPT_SYNONYM_NAME_LOWER_INDEX)
+    }
+
+    for result in first_lower.values():
+        assert result.status == "applied"
+
+    for result in second_lower.values():
+        assert result.status == "skipped"
+        assert "already absent" in result.detail
+
+
 def test_manage_indexes_enable_clusters_then_analyzes(tmp_path, monkeypatch):
     """Test manage indexes enable clusters then analyzes, even with nothing created.
 
