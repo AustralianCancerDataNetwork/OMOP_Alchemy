@@ -13,13 +13,6 @@ from omop_alchemy.cdm.base import (
 class Fact_Relationship(CDMTableBase, Base):
     __tablename__ = "fact_relationship"
     __table_args__ = merge_table_args(
-        sa.PrimaryKeyConstraint(
-            "domain_concept_id_1",
-            "fact_id_1",
-            "domain_concept_id_2",
-            "fact_id_2",
-            "relationship_concept_id",
-        ),
         omop_index(__tablename__, "domain_concept_id_1"),
         omop_index(__tablename__, "domain_concept_id_2"),
         omop_index(__tablename__, "relationship_concept_id"),
@@ -30,13 +23,13 @@ class Fact_Relationship(CDMTableBase, Base):
         primary_key=True,
         nullable=False,
     )
-    fact_id_1: so.Mapped[int] = so.mapped_column(sa.Integer,nullable=False)
+    fact_id_1: so.Mapped[int] = so.mapped_column(sa.Integer, primary_key=True, nullable=False)
     domain_concept_id_2: so.Mapped[int] = so.mapped_column(
         sa.ForeignKey("concept.concept_id"),
         primary_key=True,
         nullable=False,
     )
-    fact_id_2: so.Mapped[int] = so.mapped_column(sa.Integer,nullable=False)
+    fact_id_2: so.Mapped[int] = so.mapped_column(sa.Integer, primary_key=True, nullable=False)
     relationship_concept_id: so.Mapped[int] = so.mapped_column(
         sa.ForeignKey("concept.concept_id"),
         primary_key=True,

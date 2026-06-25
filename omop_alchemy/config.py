@@ -4,7 +4,14 @@ from typing import ClassVar
 
 import sqlalchemy as sa
 from pydantic import Field
-from oa_configurator import PackageConfigBase, ResourceSpec, Resolver, ResolvedResource, load_stack_config
+from oa_configurator import (
+    DatabaseConfig,
+    PackageConfigBase,
+    ResourceSpec,
+    Resolver,
+    ResolvedResource,
+    load_stack_config,
+)
 
 
 # Mapping of PostgreSQL SQLAlchemy drivernames to the Python module they require.
@@ -51,15 +58,15 @@ class OmopAlchemyConfig(PackageConfigBase):
             "Tests drop and recreate the entire public schema on every run."
         ),
         connection_name_hint="pg_test",
-        defaults={
-            "dialect": "postgresql+psycopg",
-            "host": "localhost",
-            "port": "55432",
-            "user": "test",
-            "password": "test",
-            "database_name": "test_db",
-            "cdm_schema": "public",
-        },
+        cdm_schema_default="public",
+        connection_defaults=DatabaseConfig(
+            dialect="postgresql+psycopg",
+            host="localhost",
+            port=55432,
+            user="test",
+            password="test",
+            database_name="test_db",
+        ),
     )
 
     tool_name: ClassVar[str] = "omop_alchemy"

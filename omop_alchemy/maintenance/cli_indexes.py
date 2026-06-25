@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import sqlalchemy as sa
+from sqlalchemy.exc import DBAPIError
 import typer
 
 from omop_alchemy.cdm.base.indexing import OMOP_CLUSTER_INDEX_INFO_KEY
@@ -160,11 +161,14 @@ def manage_indexes(
             for index in inspector.get_indexes(table.table_name, schema=db_schema)
         }
 
+        created_any = False
+        clustered_now = False
+
         for metadata_index in sorted(table.table.indexes, key=lambda idx: idx.name or ""):
             index_name = str(metadata_index.name)
             exists = index_name in existing_index_names
             should_apply = (
-                not enable and exists
+                not enable
             ) or (
                 enable and not exists
             )
@@ -173,16 +177,42 @@ def manage_indexes(
                 continue
 
             schema_index = metadata_indexes[(table.table_name, index_name)]
+            already_present = False
+            already_absent = False
             if not dry_run:
                 # Each index gets its own transaction so WAL is committed and
-                # checkpointable before the next index build begins. One large
-                # transaction for all indexes would accumulate 5+ GB of WAL
-                # on vocabulary tables before any checkpoint can reclaim it.
+                # checkpointable before the next index build begins.
                 with engine.begin() as connection:
                     if not enable:
-                        schema_index.drop(bind=connection, checkfirst=True)
+                        existed_before_drop = backend.index_exists(connection, index_name, db_schema)
+                        backend.drop_index_if_exists(connection, index_name, db_schema)
+                        already_absent = not existed_before_drop
                     else:
-                        schema_index.create(bind=connection, checkfirst=True)
+                        savepoint = connection.begin_nested()
+                        try:
+                            schema_index.create(bind=connection, checkfirst=True)
+                        except DBAPIError as exc:
+                            savepoint.rollback()
+                            if "already exists" not in str(exc.orig).lower():
+                                raise
+                            already_present = True
+                        else:
+                            savepoint.commit()
+                            created_any = True
+
+            if already_present:
+                detail = "metadata-defined index already exists (skipped)"
+                status = "skipped"
+            elif already_absent:
+                detail = "metadata-defined index already absent (skipped)"
+                status = "skipped"
+            else:
+                status = dry_status(dry_run)
+                detail = dry_label(
+                    dry_run,
+                    "metadata-defined index would be dropped" if not enable else "metadata-defined index would be created",
+                    "metadata-defined index dropped" if not enable else "metadata-defined index created",
+                )
 
             results.append(
                 IndexManagementResult(
@@ -194,60 +224,59 @@ def manage_indexes(
                     unique=bool(metadata_index.unique),
                     clustered=metadata_index.info.get(OMOP_CLUSTER_INDEX_INFO_KEY) is True,
                     enable=enable,
-                    status=dry_status(dry_run),
-                    detail=dry_label(
-                        dry_run,
-                        "metadata-defined index would be dropped" if not enable else "metadata-defined index would be created",
-                        "metadata-defined index dropped" if not enable else "metadata-defined index created",
-                    ),
+                    status=status,
+                    detail=detail,
                 )
             )
 
         if enable:
             cluster_index_name = _cluster_target_name(table)
-            if cluster_index_name is None:
-                continue
-
-            cluster_columns = _cluster_column_names(table, cluster_index_name)
-            if not clustering_supported or not cluster:
-                results.append(
-                    IndexManagementResult(
-                        operation="cluster",
-                        table_name=table.table_name,
-                        category=table.category,
-                        index_name=cluster_index_name,
-                        column_names=cluster_columns,
-                        unique=False,
-                        clustered=True,
-                        enable=enable,
-                        status="skipped",
-                        detail=(
-                            f"cluster metadata present but unsupported on {backend.name}"
-                            if not clustering_supported
-                            else "clustering skipped (run 'indexes cluster' to apply)"
-                        ),
+            if cluster_index_name is not None:
+                cluster_columns = _cluster_column_names(table, cluster_index_name)
+                if not clustering_supported or not cluster:
+                    results.append(
+                        IndexManagementResult(
+                            operation="cluster",
+                            table_name=table.table_name,
+                            category=table.category,
+                            index_name=cluster_index_name,
+                            column_names=cluster_columns,
+                            unique=False,
+                            clustered=True,
+                            enable=enable,
+                            status="skipped",
+                            detail=(
+                                f"cluster metadata present but unsupported on {backend.name}"
+                                if not clustering_supported
+                                else "clustering skipped (run 'indexes cluster' to apply)"
+                            ),
+                        )
                     )
-                )
-                continue
+                else:
+                    if not dry_run:
+                        with engine.begin() as connection:
+                            backend.cluster_table(connection, table.table_name, cluster_index_name, db_schema)
+                        clustered_now = True
 
-            if not dry_run:
-                with engine.begin() as connection:
-                    backend.cluster_table(connection, table.table_name, cluster_index_name, db_schema)
+                    results.append(
+                        IndexManagementResult(
+                            operation="cluster",
+                            table_name=table.table_name,
+                            category=table.category,
+                            index_name=cluster_index_name,
+                            column_names=cluster_columns,
+                            unique=False,
+                            clustered=True,
+                            enable=enable,
+                            status=dry_status(dry_run),
+                            detail=dry_label(dry_run, "table would be clustered using ORM-defined metadata", "table clustered using ORM-defined metadata"),
+                        )
+                    )
 
-            results.append(
-                IndexManagementResult(
-                    operation="cluster",
-                    table_name=table.table_name,
-                    category=table.category,
-                    index_name=cluster_index_name,
-                    column_names=cluster_columns,
-                    unique=False,
-                    clustered=True,
-                    enable=enable,
-                    status=dry_status(dry_run),
-                    detail=dry_label(dry_run, "table would be clustered using ORM-defined metadata", "table clustered using ORM-defined metadata"),
-                )
-            )
+        if not dry_run and (created_any or clustered_now):
+            with engine.connect() as connection:
+                backend.analyze_table(connection, table.table_name, db_schema)
+                connection.commit()
 
     return results
 
@@ -294,12 +323,18 @@ def enable_indexes_command(
         "--vocab/--no-vocab",
         help="Include OMOP vocabulary tables in the selection.",
     ),
+    cluster: bool = typer.Option(
+        True,
+        "--cluster/--no-cluster",
+        help="Also CLUSTER tables using their ORM-designated cluster index. Use --no-cluster to skip the full heap rewrite on large vocabulary tables.",
+    ),
     dry_run: bool = False,
 ) -> None:
     """Recreate all ORM-defined secondary indexes. Also CLUSTERs tables on PostgreSQL where metadata specifies it.
 
     Note: CLUSTER rewrites the full heap and requires ~2× the table size in free disk space.
-    On large vocabulary tables, run 'indexes cluster' as a separate step instead.
+    Pass --no-cluster to create/recreate indexes only, or run 'indexes cluster' as a
+    separate step once you've confirmed sufficient disk headroom for large vocabulary tables.
     """
     with console.status("Managing metadata-defined indexes..."):
         results = manage_indexes(
@@ -308,6 +343,7 @@ def enable_indexes_command(
             db_schema=conn.db_schema,
             vocabulary_included=vocabulary_included,
             dry_run=dry_run,
+            cluster=cluster,
         )
     console.print(render_index_results(results))
     console.print(render_index_summary(results, dry_run=dry_run))

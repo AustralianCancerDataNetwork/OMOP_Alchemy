@@ -14,6 +14,13 @@ class Concept_Synonym(Base, ReferenceTable, CDMTableBase):
     __tablename__ = "concept_synonym"
     __table_args__ = merge_table_args(
         omop_index(__tablename__, "concept_id", cluster=True),
+        # Has to be wrapped in func.lower() as that is the common query
+        # as it prevents captialisation mismatches between query and data.
+        omop_index(
+            __tablename__,
+            sa.func.lower(sa.column("concept_synonym_name")),
+            name="ix_concept_synonym_concept_synonym_name_lower",
+        ),
     )
     concept_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey("concept.concept_id"),primary_key=True)
     concept_synonym_name: so.Mapped[str] = so.mapped_column(sa.String(1000),primary_key=True)

@@ -208,7 +208,11 @@ def merge_table_args(*parts: TableArg) -> tuple[TableArg, ...]:
     merged_info: dict[str, object] = {}
 
     def consume(part: TableArg) -> None:
-        if not part:
+        # A Constraint/Index built from unresolved string column names 
+        # (e.g. PrimaryKeyConstraint("col_a")) has an empty .columns 
+        # collection and is falsy until it's attached to a Table,
+        #  which would silently drop it from __table_args__.
+        if part is None:
             return
 
         if isinstance(part, Mapping):

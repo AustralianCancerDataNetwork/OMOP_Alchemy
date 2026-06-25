@@ -160,6 +160,33 @@ class Backend(ABC):
         vacuum: bool = False,
     ) -> None: ...
 
+    def index_exists(
+        self,
+        conn: sa.Connection,
+        index_name: str,
+        db_schema: str | None,
+    ) -> bool:
+        """Return True when the named index currently exists on the database.
+
+        Backends should implement this with native catalog queries rather than
+        SQLAlchemy reflection so expression-based indexes are handled correctly.
+        """
+        raise FeatureNotSupportedError("Index existence check", self)
+
+    def drop_index_if_exists(
+        self,
+        conn: sa.Connection,
+        index_name: str,
+        db_schema: str | None,
+    ) -> None:
+        """Drop an index by name without relying on SQLAlchemy's reflection-based checkfirst.
+
+        Some backends (e.g. SQLite) can't reflect expression-based indexes, so
+        Index.drop(checkfirst=True) would silently no-op on them. IF EXISTS is
+        evaluated by the database itself, not by reflection.
+        """
+        conn.exec_driver_sql(f'DROP INDEX IF EXISTS "{index_name}"')
+
     def truncate_table_batch(
         self,
         conn: sa.Connection,
@@ -291,5 +318,4 @@ class Backend(ABC):
     ) -> tuple[str, list[str], dict[str, str], str]:
         """Return (tool_path, command, env, database_name). subprocess.run stays in CLI."""
         raise FeatureNotSupportedError("Database restore", self)
-
 

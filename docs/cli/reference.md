@@ -143,6 +143,7 @@ Recreate all ORM-defined secondary indexes. Also CLUSTERs tables on PostgreSQL w
 | Flag | Type / Choices | Default | Description |
 |---|---|---|---|
 | `--vocab` / `--no-vocab` | bool | `False` | Include OMOP vocabulary tables in the selection. |
+| `--cluster` / `--no-cluster` | bool | `True` | Also CLUSTER tables using their ORM-designated cluster index. Use `--no-cluster` to skip the full heap rewrite on large vocabulary tables. |
 | `--dry-run` | bool | `False` | Preview planned actions without applying any changes to the database. |
 
 ---
