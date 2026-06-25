@@ -162,12 +162,13 @@ def manage_indexes(
         }
 
         created_any = False
+        clustered_now = False
 
         for metadata_index in sorted(table.table.indexes, key=lambda idx: idx.name or ""):
             index_name = str(metadata_index.name)
             exists = index_name in existing_index_names
             should_apply = (
-                not enable and exists
+                not enable
             ) or (
                 enable and not exists
             )
@@ -182,15 +183,8 @@ def manage_indexes(
                 # checkpointable before the next index build begins.
                 with engine.begin() as connection:
                     if not enable:
-                        schema_index.drop(bind=connection, checkfirst=True)
+                        backend.drop_index_if_exists(connection, index_name, db_schema)
                     else:
-                        # SQLite's reflection cannot describe expression-based
-                        # indexes (see concept.py ix_concept_concept_name_lower), so
-                        # `existing_index_names` never includes them and
-                        # checkfirst alone can't prevent a duplicate-create
-                        # attempt on a table that already has one. Fall back to
-                        # a savepoint so a harmless "already exists" doesn't
-                        # poison the rest of this table's transaction.
                         savepoint = connection.begin_nested()
                         try:
                             schema_index.create(bind=connection, checkfirst=True)
@@ -231,49 +225,47 @@ def manage_indexes(
 
         if enable:
             cluster_index_name = _cluster_target_name(table)
-            if cluster_index_name is None:
-                continue
-
-            cluster_columns = _cluster_column_names(table, cluster_index_name)
-            if not clustering_supported or not cluster:
-                results.append(
-                    IndexManagementResult(
-                        operation="cluster",
-                        table_name=table.table_name,
-                        category=table.category,
-                        index_name=cluster_index_name,
-                        column_names=cluster_columns,
-                        unique=False,
-                        clustered=True,
-                        enable=enable,
-                        status="skipped",
-                        detail=(
-                            f"cluster metadata present but unsupported on {backend.name}"
-                            if not clustering_supported
-                            else "clustering skipped (run 'indexes cluster' to apply)"
-                        ),
+            if cluster_index_name is not None:
+                cluster_columns = _cluster_column_names(table, cluster_index_name)
+                if not clustering_supported or not cluster:
+                    results.append(
+                        IndexManagementResult(
+                            operation="cluster",
+                            table_name=table.table_name,
+                            category=table.category,
+                            index_name=cluster_index_name,
+                            column_names=cluster_columns,
+                            unique=False,
+                            clustered=True,
+                            enable=enable,
+                            status="skipped",
+                            detail=(
+                                f"cluster metadata present but unsupported on {backend.name}"
+                                if not clustering_supported
+                                else "clustering skipped (run 'indexes cluster' to apply)"
+                            ),
+                        )
                     )
-                )
-                continue
+                else:
+                    if not dry_run:
+                        with engine.begin() as connection:
+                            backend.cluster_table(connection, table.table_name, cluster_index_name, db_schema)
+                        clustered_now = True
 
-            if not dry_run:
-                with engine.begin() as connection:
-                    backend.cluster_table(connection, table.table_name, cluster_index_name, db_schema)
-
-            results.append(
-                IndexManagementResult(
-                    operation="cluster",
-                    table_name=table.table_name,
-                    category=table.category,
-                    index_name=cluster_index_name,
-                    column_names=cluster_columns,
-                    unique=False,
-                    clustered=True,
-                    enable=enable,
-                    status=dry_status(dry_run),
-                    detail=dry_label(dry_run, "table would be clustered using ORM-defined metadata", "table clustered using ORM-defined metadata"),
-                )
-            )
+                    results.append(
+                        IndexManagementResult(
+                            operation="cluster",
+                            table_name=table.table_name,
+                            category=table.category,
+                            index_name=cluster_index_name,
+                            column_names=cluster_columns,
+                            unique=False,
+                            clustered=True,
+                            enable=enable,
+                            status=dry_status(dry_run),
+                            detail=dry_label(dry_run, "table would be clustered using ORM-defined metadata", "table clustered using ORM-defined metadata"),
+                        )
+                    )
 
         if not dry_run and (created_any or clustered_now):
             with engine.connect() as connection:

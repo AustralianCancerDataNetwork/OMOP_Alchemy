@@ -1,7 +1,7 @@
 import pytest
 import sqlalchemy as sa
 from typer.testing import CliRunner
-from oa_configurator import StackConfig, DatabaseConfig
+from oa_configurator import StackConfig, DatabaseConfig, ResourceConfig
 
 from omop_alchemy.backends.sqlite import SQLiteBackend
 from omop_alchemy.cdm.base.indexing import OMOP_CLUSTER_INDEX_INFO_KEY, omop_index_name
@@ -218,6 +218,80 @@ def test_manage_indexes_enable_is_idempotent_for_expression_indexes(tmp_path):
             assert "already exists" in result.detail
 
 
+@pytest.mark.filterwarnings(
+    "ignore:Skipped unsupported reflection of expression-based index:sqlalchemy.exc.SAWarning"
+)
+def test_manage_indexes_disable_drops_expression_indexes_on_sqlite(tmp_path):
+    """Test manage indexes disable drops expression indexes on sqlite.
+
+    SQLite can't reflect expression-based indexes, so `disable` must not gate
+    the drop on inspector.get_indexes() (`exists` would always be False) and
+    must not rely on Index.drop(checkfirst=True) either, since checkfirst
+    does its own reflection-based check internally and would silently no-op
+    the same way. The index must actually be removed, and a result row must
+    always be reported.
+    """
+    engine = _fresh_engine(tmp_path)
+
+    def _index_exists(name: str) -> bool:
+        with engine.connect() as connection:
+            row = connection.exec_driver_sql(
+                "SELECT name FROM sqlite_master WHERE type='index' AND name=?",
+                (name,),
+            ).fetchone()
+        return row is not None
+
+    assert _index_exists(CONCEPT_NAME_LOWER_INDEX)
+    assert _index_exists(CONCEPT_SYNONYM_NAME_LOWER_INDEX)
+
+    results = manage_indexes(engine, enable=False, vocabulary_included=True)
+    lower_index_results = {
+        result.index_name: result
+        for result in results
+        if result.index_name in (CONCEPT_NAME_LOWER_INDEX, CONCEPT_SYNONYM_NAME_LOWER_INDEX)
+    }
+    assert set(lower_index_results) == {
+        CONCEPT_NAME_LOWER_INDEX,
+        CONCEPT_SYNONYM_NAME_LOWER_INDEX,
+    }
+    for result in lower_index_results.values():
+        assert result.status == "applied"
+
+    assert not _index_exists(CONCEPT_NAME_LOWER_INDEX)
+    assert not _index_exists(CONCEPT_SYNONYM_NAME_LOWER_INDEX)
+
+
+def test_manage_indexes_enable_clusters_then_analyzes(tmp_path, monkeypatch):
+    """Test manage indexes enable clusters then analyzes, even with nothing created.
+
+    `indexes enable --cluster` must ANALYZE a table whenever it was clustered,
+    not only when a new index was created (a table can be selected for
+    clustering with all its indexes already in place), and must do so *after*
+    clustering so planner stats reflect the final physical layout -- matching
+    the standalone `indexes cluster` command's order.
+    """
+    engine = _fresh_engine(tmp_path)
+
+    calls: list[str] = []
+
+    def fake_cluster_table(self, conn, table_name, index_name, db_schema):
+        calls.append(f"cluster:{table_name}")
+
+    def fake_analyze_table(self, conn, table_name, db_schema, *, vacuum=False):
+        calls.append(f"analyze:{table_name}")
+
+    monkeypatch.setattr(SQLiteBackend, "cluster_table", fake_cluster_table)
+    monkeypatch.setattr(SQLiteBackend, "analyze_table", fake_analyze_table)
+
+    # All ORM-defined indexes already exist on a freshly created schema, so
+    # `created_any` stays False -- only the cluster step causes any change.
+    manage_indexes(engine, enable=True, cluster=True)
+
+    assert "cluster:person" in calls
+    assert "analyze:person" in calls
+    assert calls.index("cluster:person") < calls.index("analyze:person")
+
+
 def test_disable_indexes_cli_invokes_management(monkeypatch):
     """Test disable indexes cli invokes management."""
 
@@ -225,7 +299,7 @@ def test_disable_indexes_cli_invokes_management(monkeypatch):
 
     cfg = StackConfig.for_session(
         databases={"db": DatabaseConfig(dialect="sqlite", database_name=":memory:")},
-        resources={"cdm_db": {"database": "db", "cdm_schema": "main"}},
+        resources={"cdm_db": ResourceConfig(database="db", cdm_schema="main")},
     )
     monkeypatch.setattr(
         "omop_alchemy.config.load_stack_config",
@@ -289,7 +363,7 @@ def test_enable_indexes_cli_no_cluster_flag_passes_through(monkeypatch):
 
     cfg = StackConfig.for_session(
         databases={"db": DatabaseConfig(dialect="sqlite", database_name=":memory:")},
-        resources={"cdm_db": {"database": "db", "cdm_schema": "main"}},
+        resources={"cdm_db": ResourceConfig(database="db", cdm_schema="main")},
     )
     monkeypatch.setattr(
         "omop_alchemy.config.load_stack_config",
