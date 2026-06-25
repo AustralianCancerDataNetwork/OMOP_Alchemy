@@ -1081,7 +1081,7 @@ requires-dist = [
     { name = "myst-parser", marker = "extra == 'docs'" },
     { name = "oa-configurator", specifier = "==0.1.2" },
     { name = "oa-configurator", extras = ["dev", "postgres"], marker = "extra == 'dev'", specifier = "==0.1.2" },
-    { name = "orm-loader", specifier = "==0.5.0" },
+    { name = "orm-loader", specifier = "==0.5.1" },
     { name = "pandas", specifier = ">=2.0" },
     { name = "psycopg", extras = ["binary"], marker = "extra == 'postgres'", specifier = ">=3.2" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=9.0.3" },
@@ -1098,7 +1098,7 @@ provides-extras = ["postgres", "dev", "docs"]
 
 [[package]]
 name = "orm-loader"
-version = "0.5.0"
+version = "0.5.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "chardet" },
@@ -1107,9 +1107,9 @@ dependencies = [
     { name = "pyarrow" },
     { name = "sqlalchemy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/2f/5f/83140f757da2a46c688678cd77202c751c71e47126a8a0a642326b0469a8/orm_loader-0.5.0.tar.gz", hash = "sha256:bb7790e91dba2fb26115d1260742e399d905a383bcbe7d1cf62ccfd2bc1b5c2c", size = 39881, upload-time = "2026-06-15T22:37:39.55Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a9/04/a85b019eb07524547b73505286a6ad19b953edda79791935b779d956f0a7/orm_loader-0.5.1.tar.gz", hash = "sha256:885f13a804dad1272bbe0377a5ae0501d8403081254660552663cd13009ee542", size = 39873, upload-time = "2026-06-25T01:01:04.161Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c8/5e/07a42f13a7b996cd4cf1ac1b82e3101dfcd1639995b3a266bafecc5115af/orm_loader-0.5.0-py3-none-any.whl", hash = "sha256:2cecb11a86f5b46956e0f72eb4f855beff3c9f711e083ec386b34c4037cdb5fb", size = 55064, upload-time = "2026-06-15T22:37:38.207Z" },
+    { url = "https://files.pythonhosted.org/packages/2f/4f/b9ccba8f63ca2e7f466bbce7cfb09b11e7df048854097e82e0178b970dd4/orm_loader-0.5.1-py3-none-any.whl", hash = "sha256:da6359fab5afc5a32e4d21a66064aed503a7d9b185967e5df2ed84ecbb4d0da7", size = 55058, upload-time = "2026-06-25T01:01:02.751Z" },
 ]
 
 [[package]]
