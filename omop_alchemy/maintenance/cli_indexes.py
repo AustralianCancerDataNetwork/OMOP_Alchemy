@@ -229,12 +229,6 @@ def manage_indexes(
                 )
             )
 
-        if created_any:
-            # Make sure the planner knows about the new index
-            with engine.connect() as connection:
-                backend.analyze_table(connection, table.table_name, db_schema)
-                connection.commit()
-
         if enable:
             cluster_index_name = _cluster_target_name(table)
             if cluster_index_name is None:
@@ -280,6 +274,11 @@ def manage_indexes(
                     detail=dry_label(dry_run, "table would be clustered using ORM-defined metadata", "table clustered using ORM-defined metadata"),
                 )
             )
+
+        if not dry_run and (created_any or clustered_now):
+            with engine.connect() as connection:
+                backend.analyze_table(connection, table.table_name, db_schema)
+                connection.commit()
 
     return results
 
