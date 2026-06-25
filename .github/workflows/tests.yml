@@ -62,7 +62,12 @@ jobs:
       - name: Install dependencies (including postgres extra)
         run: pip install -e ".[dev,postgres]"
 
+      - name: Provision test_cdm_db
+        run: |
+          omop-config configure omop_alchemy \
+            --test-dialect postgresql+psycopg --test-database test_cdm \
+            --test-host localhost --test-port 55432 --test-cdm-schema public \
+            --test-user test --test-password test --test-database-name test_db
+
       - name: Run tests
         run: pytest -v
-        env:
-          ENGINE_CDM: postgresql+psycopg://test:test@localhost:55432/test_db
