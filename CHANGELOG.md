@@ -121,5 +121,5 @@
 
 
 ## 0.8.1
-- change to handling for vocab files by default
-- bump orm loader version
+- Default vocabulary load quote mode is now `by_delimiter` (tab-delimited Athena files preserve literal double-quotes; comma-delimited files use RFC-4180 CSV quoting). Add `--quote-mode {by_delimiter,auto,csv,literal}` to override.
+- bump orm-loader version to 0.5.2
