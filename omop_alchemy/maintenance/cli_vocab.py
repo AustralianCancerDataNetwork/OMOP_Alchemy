@@ -44,6 +44,7 @@ from .ui import (
 )
 
 MergeStrategy: TypeAlias = Literal["replace", "upsert", "insert_if_empty"]
+QuoteMode: TypeAlias = Literal["by_delimiter", "auto", "csv", "literal"]
 
 VocabularyModel: TypeAlias = type[CSVTableProtocol]
 VocabularyLoadProgressCallback: TypeAlias = Callable[["VocabularyLoadProgress"], None]
@@ -250,6 +251,7 @@ def load_vocab_source(
     db_schema: str | None = None,
     dry_run: bool = False,
     merge_strategy: MergeStrategy = "replace",
+    quote_mode: QuoteMode = "by_delimiter",
     chunksize: int | None = 100_000,
     bulk_mode: bool = True,
     merge_batch_size: int | None = None,
@@ -365,7 +367,7 @@ def load_vocab_source(
                     row_count=None,
                     csv_path=str(csv_path),
                     required=required,
-                    detail="Athena CSV would be loaded via staged ORM CSV loader using tab-delimited input and auto-detected quote mode",
+                    detail=f"Athena CSV would be loaded via staged ORM CSV loader (quote_mode={quote_mode!r})",
                 ))
                 continue
 
@@ -396,7 +398,7 @@ def load_vocab_source(
                             model=model,
                             csv_path=csv_path,
                             merge_strategy=merge_strategy,
-                            quote_mode="auto",
+                            quote_mode=quote_mode,
                             index_strategy="keep" if _use_bulk_mode else "auto",
                             chunksize=chunksize,
                             merge_batch_size=merge_batch_size,
@@ -423,7 +425,7 @@ def load_vocab_source(
                 row_count=row_count,
                 csv_path=str(csv_path),
                 required=required,
-                detail="Athena CSV loaded via staged ORM CSV loader using tab-delimited input and auto-detected quote mode",
+                detail=f"Athena CSV loaded via staged ORM CSV loader (quote_mode={quote_mode!r})",
             ))
 
             _emit(
@@ -503,6 +505,17 @@ def load_vocab_source_command(
             "`insert_if_empty` is the fast path for a fresh empty target."
         ),
     ),
+    quote_mode: QuoteMode = typer.Option(
+        "by_delimiter",
+        help=(
+            "How the vocabulary CSV loader interprets double-quotes. `by_delimiter` (default) "
+            "derives the mode from the delimiter with no content scan: tab-delimited input "
+            "is treated as literal (double-quotes are data), comma-delimited input uses "
+            "RFC-4180 quoting. This is deterministic and safe for a fresh full vocabulary "
+            "load. `auto` sniffs a sample of rows and can misfire when quoting first appears "
+            "beyond the sample window. `csv` / `literal` force one mode for every file."
+        ),
+    ),
     staging_chunk_size: int | None = typer.Option(
         100_000,
         help=(
@@ -578,6 +591,7 @@ def load_vocab_source_command(
             db_schema=conn.db_schema,
             dry_run=dry_run,
             merge_strategy=merge_strategy,
+            quote_mode=quote_mode,
             chunksize=None if staging_chunk_size == 0 else staging_chunk_size,
             bulk_mode=bulk_mode,
             merge_batch_size=merge_batch_size,

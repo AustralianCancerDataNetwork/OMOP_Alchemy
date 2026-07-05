@@ -11,6 +11,7 @@ from omop_alchemy.maintenance.cli_vocab import (
     OPTIONAL_VOCAB_MODELS,
     REQUIRED_VOCAB_MODELS,
     MergeStrategy,
+    QuoteMode,
     _load_vocab_model_csv,
     load_vocab_source,
 )
@@ -93,7 +94,7 @@ def test_load_vocab_source_on_sqlite_creates_tables_and_reports_loaded_results(
     assert all(result_by_name[model.__tablename__].status == "loaded" for model in REQUIRED_VOCAB_MODELS)
     assert all(result_by_name[model.__tablename__].status == "skipped" for model in OPTIONAL_VOCAB_MODELS)
     assert all(merge_strategy == "replace" for _, merge_strategy, _, _ in loaded_tables)
-    assert all(quote_mode == "auto" for _, _, quote_mode, _ in loaded_tables)
+    assert all(quote_mode == "by_delimiter" for _, _, quote_mode, _ in loaded_tables)
     assert {table_name for table_name, _, _, _ in loaded_tables} == {
         model.__tablename__
         for model in REQUIRED_VOCAB_MODELS
@@ -176,6 +177,7 @@ def test_load_vocab_source_cli_uses_configured_athena_source(monkeypatch, tmp_pa
         db_schema: str | None = None,
         dry_run: bool = False,
         merge_strategy: MergeStrategy = "replace",
+        quote_mode: QuoteMode = "by_delimiter",
         chunksize: int | None = None,
         bulk_mode: bool = True,
         merge_batch_size: int = 1_000_000,
@@ -458,32 +460,23 @@ def test_load_vocab_source_cli_surfaces_database_error_detail(monkeypatch):
     assert "value too long for type character varying(255)" in result.stdout
 
 
-def test_load_vocab_source_uses_auto_not_literal_quote_mode(monkeypatch, tmp_path):
-    """Regression: Athena load must use auto quote mode so that quoted concept_name
-    values are not padded with surrounding double-quote characters, which would
-    cause 'value too long for type character varying(255)' on CONCEPT.csv."""
-    engine = sa.create_engine(f"sqlite:///{tmp_path / 'quote_mode_regression.db'}", future=True)
+def test_load_vocab_source_defaults_to_by_delimiter_quote_mode(monkeypatch, tmp_path):
+    """The vocab load must default to `by_delimiter`, never `auto`/`csv`.
 
-    # Build a tab-delimited CSV where concept_name is exactly 255 chars when
-    # unquoted, but would be 257 chars if the surrounding CSV quotes were kept
-    # as literal characters (the literal-mode bug).
-    source_path = tmp_path / "athena_source"
-    source_path.mkdir()
-
-    long_name = "A" * 255
-    for model in REQUIRED_VOCAB_MODELS:
-        table_name = model.__tablename__.upper()
-        csv_path = source_path / f"{table_name}.csv"
-        if table_name == "CONCEPT":
-            csv_path.write_text(
-                "concept_id\tconcept_name\tdomain_id\tvocabulary_id\t"
-                "concept_class_id\tstandard_concept\tconcept_code\t"
-                "valid_start_date\tvalid_end_date\tinvalid_reason\n"
-                f'4715176\t"{long_name}"\t...\t...\t...\t\t...\t20000101\t20991231\t\n',
-                encoding="utf-8",
-            )
-        else:
-            csv_path.write_text("stub\n", encoding="utf-8")
+    Real Athena vocabulary CSVs are tab-delimited with double-quotes as *literal*
+    data characters, not RFC-4180 field wrappers — e.g. CONCEPT_SYNONYM rows such
+    as '"Morning after" intrauterine contraceptive device fitted'. Interpreting
+    them as csv/RFC-4180 (which `auto` may pick, since its sample can miss the
+    discriminating rows) silently strips those quotes, which:
+      * corrupts concept/synonym names, and
+      * collapses two genuinely-distinct synonyms of the same concept into an
+        identical (concept_id, concept_synonym_name, language_concept_id) tuple,
+        violating Concept_Synonym's composite primary key on load.
+    `by_delimiter` resolves tab-delimited input to literal (quotes preserved) and
+    comma-delimited input to csv, deterministically and per file.
+    """
+    engine = sa.create_engine(f"sqlite:///{tmp_path / 'quote_mode_default.db'}", future=True)
+    source_path = _build_required_athena_source(tmp_path)
 
     received_quote_modes: list[str] = []
 
@@ -508,7 +501,8 @@ def test_load_vocab_source_uses_auto_not_literal_quote_mode(monkeypatch, tmp_pat
 
     load_vocab_source(engine, source_path=source_path)
 
-    assert all(mode == "auto" for mode in received_quote_modes), (
-        f"Expected all tables to use quote_mode='auto', got: {received_quote_modes}"
+    assert all(mode == "by_delimiter" for mode in received_quote_modes), (
+        f"Expected all tables to use quote_mode='by_delimiter', got: {received_quote_modes}"
     )
-    assert "literal" not in received_quote_modes
+    assert "auto" not in received_quote_modes
+    assert "csv" not in received_quote_modes

@@ -118,3 +118,8 @@
 - `manage_indexes()` now runs `ANALYZE` immediately after creating any new index, so the planner picks it up right away instead of waiting on autovacuum
 - added `--cluster/--no-cluster` flag to `indexes enable`, to skip the full heap rewrite on large vocabulary tables when disk headroom is limited
 - `indexes enable` now reports a pre-existing expression-based index as skipped instead of raising, since SQLite's reflection can't see it to begin with (affects the new functional indexes under the test backend)
+
+
+## 0.8.1
+- **breaking:** `load-vocab-source` now defaults `quote_mode` to `by_delimiter` (was `auto`). For tab-delimited Athena input this resolves to `literal`: double-quotes are treated as data and preserved verbatim, rather than sniffed and potentially stripped. This is deterministic and avoids `auto` misfiring when quoting first appears beyond the sample window. Sources that genuinely RFC-4180-wrap fields (see 0.6.3) must now pass `--quote-mode csv` (or `auto`) explicitly to strip wrapping quotes and avoid overflowing `VARCHAR(255)` columns such as `concept_name`.
+- bump orm loader version
