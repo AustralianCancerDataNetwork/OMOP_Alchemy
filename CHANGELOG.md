@@ -118,3 +118,8 @@
 - `manage_indexes()` now runs `ANALYZE` immediately after creating any new index, so the planner picks it up right away instead of waiting on autovacuum
 - added `--cluster/--no-cluster` flag to `indexes enable`, to skip the full heap rewrite on large vocabulary tables when disk headroom is limited
 - `indexes enable` now reports a pre-existing expression-based index as skipped instead of raising, since SQLite's reflection can't see it to begin with (affects the new functional indexes under the test backend)
+
+
+## 0.8.1
+- change to handling for vocab files by default
+- bump orm loader version

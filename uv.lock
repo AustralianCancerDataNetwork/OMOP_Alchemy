@@ -1048,7 +1048,7 @@ postgres = [
 
 [[package]]
 name = "omop-alchemy"
-version = "0.8.0"
+version = "0.8.1"
 source = { editable = "." }
 dependencies = [
     { name = "oa-configurator" },
@@ -1093,7 +1093,7 @@ requires-dist = [
     { name = "myst-parser", marker = "extra == 'docs'" },
     { name = "oa-configurator", specifier = "==0.1.2" },
     { name = "oa-configurator", extras = ["dev", "postgres"], marker = "extra == 'dev'", specifier = "==0.1.2" },
-    { name = "orm-loader", specifier = "==0.5.1" },
+    { name = "orm-loader", specifier = "==0.5.2" },
     { name = "pandas", specifier = ">=2.0" },
     { name = "psycopg", extras = ["binary"], marker = "extra == 'postgres'", specifier = ">=3.2" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=9.0.3" },
@@ -1110,7 +1110,7 @@ provides-extras = ["postgres", "dev", "docs"]
 
 [[package]]
 name = "orm-loader"
-version = "0.5.1"
+version = "0.5.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "chardet" },
@@ -1119,9 +1119,9 @@ dependencies = [
     { name = "pyarrow" },
     { name = "sqlalchemy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a9/04/a85b019eb07524547b73505286a6ad19b953edda79791935b779d956f0a7/orm_loader-0.5.1.tar.gz", hash = "sha256:885f13a804dad1272bbe0377a5ae0501d8403081254660552663cd13009ee542", size = 39873, upload-time = "2026-06-25T01:01:04.161Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/82/12/7e7edd85675755340ca7365137b0128ba7ff9f38912544e05a311bbb6a2c/orm_loader-0.5.2.tar.gz", hash = "sha256:ea5b127d930f0c90623558b1b7dd53a3503e9d95944b3bb119a460da43e173b6", size = 40520, upload-time = "2026-07-05T13:27:44.919Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/2f/4f/b9ccba8f63ca2e7f466bbce7cfb09b11e7df048854097e82e0178b970dd4/orm_loader-0.5.1-py3-none-any.whl", hash = "sha256:da6359fab5afc5a32e4d21a66064aed503a7d9b185967e5df2ed84ecbb4d0da7", size = 55058, upload-time = "2026-06-25T01:01:02.751Z" },
+    { url = "https://files.pythonhosted.org/packages/87/5f/ef09bcc838ecf0bf5bd68db95ab251395d70ef3501427cc2d4cfb06e14ff/orm_loader-0.5.2-py3-none-any.whl", hash = "sha256:cfcd68cb4c407adb1ff1ca2f9f6bb803505d1ec8973658edeed4b980abf048a9", size = 55781, upload-time = "2026-07-05T13:27:43.659Z" },
 ]
 
 [[package]]
