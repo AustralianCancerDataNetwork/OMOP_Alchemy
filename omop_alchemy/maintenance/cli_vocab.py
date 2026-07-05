@@ -508,7 +508,7 @@ def load_vocab_source_command(
     quote_mode: QuoteMode = typer.Option(
         "by_delimiter",
         help=(
-            "How the COPY fast-path interprets double-quotes. `by_delimiter` (default) "
+            "How the vocabulary CSV loader interprets double-quotes. `by_delimiter` (default) "
             "derives the mode from the delimiter with no content scan: tab-delimited input "
             "is treated as literal (double-quotes are data), comma-delimited input uses "
             "RFC-4180 quoting. This is deterministic and safe for a fresh full vocabulary "
