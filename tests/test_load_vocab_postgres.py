@@ -75,41 +75,79 @@ def test_end_to_end_vocab_load_on_postgres(pg_session, pg_engine, tmp_path):
 
 
 @pytest.mark.requires_resource(OmopAlchemyConfig.TEST_DB)
-def test_quote_mode_auto_regression_on_postgres(pg_session, pg_engine, tmp_path):
+def test_default_quote_mode_preserves_literal_quotes_on_postgres(pg_session, pg_engine, tmp_path):
     """
-    quote_mode='auto' strips RFC-4180 double-quotes via PostgreSQL COPY.
+    The default quote_mode='by_delimiter' treats double-quotes in tab-delimited
+    Athena input as literal data, not RFC-4180 field wrappers, so a
+    concept_name containing double-quotes is stored verbatim via COPY.
 
-    Under the old quote_mode='literal' a concept_name of exactly 255 chars
-    wrapped in double-quotes would be stored as 257 chars and violate the
-    VARCHAR(255) constraint. This test would fail under literal mode.
+    Athena vocabulary exports are tab-delimited and do not RFC-4180-quote
+    fields, so a double-quote in the source is part of the value and must
+    survive the load intact. (Callers with genuinely quote-wrapped sources can
+    opt into stripping with quote_mode='csv' — see the companion test below.)
     """
     source_path = tmp_path / "athena_source"
     source_path.mkdir()
 
-    long_name = "A" * 255  # exactly at VARCHAR(255) limit when unquoted
+    # Begins and ends with a literal double-quote: under RFC-4180 (csv) these
+    # boundary quotes would be stripped as wrappers; under the by_delimiter
+    # default (tab -> literal) they are data and must be preserved verbatim.
+    # Comfortably within VARCHAR(255).
+    quoted_name = '"BRCA1 positive"'
 
-    # All tables except concept get the standard fixture data.
     for table_name, data in _ATHENA_FIXTURE_DATA.items():
         if table_name != "concept":
             _write_fixture_csv(source_path, table_name, data)
 
-    # Concept gets a single row whose name is wrapped in RFC-4180 double-quotes
-    # so the raw file value is 257 chars. quote_mode='auto' must strip them.
+    concept_cols = list(_ATHENA_FIXTURE_DATA["concept"].keys())
+    concept_row = [1, quoted_name, "Gender", "Gender", "Gender", "S", "TEST", "19700101", "20991231", None]
+    _write_fixture_csv(source_path, "concept", {col: (val,) for col, val in zip(concept_cols, concept_row)})
+
+    # Default quote_mode resolves by_delimiter -> literal for tab-delimited input.
+    load_vocab_source(pg_engine, source_path=source_path)
+
+    concept_name = pg_session.execute(
+        sa.text("SELECT concept_name FROM concept WHERE concept_id = 1")
+    ).scalar()
+    assert concept_name == quoted_name, (
+        f"by_delimiter default must preserve literal double-quotes verbatim; got {concept_name!r}"
+    )
+
+
+@pytest.mark.requires_resource(OmopAlchemyConfig.TEST_DB)
+def test_explicit_csv_quote_mode_strips_quotes_on_postgres(pg_session, pg_engine, tmp_path):
+    """
+    Passing quote_mode='csv' explicitly still applies RFC-4180 stripping via
+    PostgreSQL COPY, for sources that genuinely wrap fields in double-quotes.
+
+    A concept_name of exactly 255 chars wrapped in quotes is 257 chars in the
+    file; csv mode strips the wrappers back to 255 so it fits VARCHAR(255).
+    Under the by_delimiter default this same input would overflow, which is the
+    reason the opt-in exists (see CHANGELOG 0.6.3 / 0.8.1).
+    """
+    source_path = tmp_path / "athena_source"
+    source_path.mkdir()
+
+    long_name = "A" * 255  # exactly at the VARCHAR(255) limit once unwrapped
+
+    for table_name, data in _ATHENA_FIXTURE_DATA.items():
+        if table_name != "concept":
+            _write_fixture_csv(source_path, table_name, data)
+
     concept_cols = list(_ATHENA_FIXTURE_DATA["concept"].keys())
     concept_row = [1, f'"{long_name}"', "Gender", "Gender", "Gender", "S", "TEST", "19700101", "20991231", None]
     _write_fixture_csv(source_path, "concept", {col: (val,) for col, val in zip(concept_cols, concept_row)})
 
-    # Should not raise: literal mode would produce a 257-char value and fail.
-    load_vocab_source(pg_engine, source_path=source_path)
+    load_vocab_source(pg_engine, source_path=source_path, quote_mode="csv")
 
     concept_name = pg_session.execute(
         sa.text("SELECT concept_name FROM concept WHERE concept_id = 1")
     ).scalar()
     assert concept_name is not None
     assert len(concept_name) == 255, (
-        f"Expected 255-char name; got {len(concept_name)}: {concept_name!r}"
+        f"Expected 255-char name after csv stripping; got {len(concept_name)}: {concept_name!r}"
     )
-    assert not concept_name.startswith('"'), "Surrounding quotes were not stripped"
+    assert not concept_name.startswith('"'), "csv mode should strip surrounding quotes"
 
 
 

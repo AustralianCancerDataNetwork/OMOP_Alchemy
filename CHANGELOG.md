@@ -121,5 +121,5 @@
 
 
 ## 0.8.1
-- Default vocabulary load quote mode is now `by_delimiter` (tab-delimited Athena files preserve literal double-quotes; comma-delimited files use RFC-4180 CSV quoting). Add `--quote-mode {by_delimiter,auto,csv,literal}` to override.
-- bump orm-loader version to 0.5.2
+- **breaking:** `load-vocab-source` now defaults `quote_mode` to `by_delimiter` (was `auto`). For tab-delimited Athena input this resolves to `literal`: double-quotes are treated as data and preserved verbatim, rather than sniffed and potentially stripped. This is deterministic and avoids `auto` misfiring when quoting first appears beyond the sample window. Sources that genuinely RFC-4180-wrap fields (see 0.6.3) must now pass `--quote-mode csv` (or `auto`) explicitly to strip wrapping quotes and avoid overflowing `VARCHAR(255)` columns such as `concept_name`.
+- bump orm loader version
