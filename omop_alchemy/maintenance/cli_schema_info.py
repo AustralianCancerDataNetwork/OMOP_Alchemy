@@ -344,7 +344,7 @@ def collect_maintenance_info(
         resolver = Resolver(stack)
         resolved = resolver.resolve_resource(resource_name)
         db_schema = resolved.cdm_schema
-        raw_url = sa.engine.make_url(resolved.database.url)
+        raw_url = sa.engine.make_url(resolved.database.build_url())
         engine_url = raw_url.render_as_string(hide_password=True)
         backend = raw_url.get_backend_name()
         from omop_alchemy.config import create_cdm_engine
