@@ -1,0 +1,33 @@
+name-template: 'v$RESOLVED_VERSION'
+tag-template: 'v$RESOLVED_VERSION'
+commitish: main
+
+categories:
+  - title: Breaking Changes
+    labels: ['breaking']
+  - title: Features
+    labels: ['feature']
+  - title: Fixes
+    labels: ['fix']
+  - title: Dependencies
+    labels: ['dependencies']
+
+template: |
+  $CHANGES
+
+change-template: |
+  - **$TITLE** (#$NUMBER) by @$AUTHOR
+  $BODY
+
+version-resolver:
+  major:
+    labels: ['breaking']
+  minor:
+    labels: ['feature']
+  patch:
+    labels: ['fix', 'dependencies']
+  default: patch
+
+exclude-labels: ['chore']
+
+autolabeler: []

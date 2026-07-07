@@ -1,3 +1,6 @@
+> [!NOTE]
+> This file is no longer maintained. Release history from this point forward is in [GitHub Releases](https://github.com/AustralianCancerDataNetwork/OMOP_Alchemy/releases).
+
 ## 0.2.0
 - Initial public release
 - SQLAlchemy 2.0 typed OMOP CDM models

@@ -1,0 +1,13 @@
+name: Release Update
+on:
+  pull_request:
+    types: [closed]
+jobs:
+  sync-description:
+    if: github.event.pull_request.merged == true
+    uses: AustralianCancerDataNetwork/cava-devops/.github/workflows/sync-pr-description.yml@main
+  draft:
+    needs: [sync-description]
+    if: needs.sync-description.result == 'success'
+    uses: AustralianCancerDataNetwork/cava-devops/.github/workflows/release-drafter.yml@main
+    secrets: inherit
