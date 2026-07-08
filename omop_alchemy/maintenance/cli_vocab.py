@@ -14,6 +14,7 @@ import sqlalchemy.event as sae
 from sqlalchemy.exc import OperationalError
 import typer
 from sqlalchemy.pool import NullPool
+from orm_loader.backends import STAGING_SCHEMA, resolve_backend
 from orm_loader.tables.typing import CSVTableProtocol
 from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn, TextColumn, TimeElapsedColumn
 
@@ -140,9 +141,10 @@ def _is_missing_staging_table_error(
     exc: Exception,
     *,
     model: VocabularyModel,
+    session: so.Session,
 ) -> bool:
     """Return True if the exception is a ProgrammingError caused by the staging table not existing yet."""
-    staging_table_name = model.staging_tablename()
+    staging_table_name = resolve_backend(session).staging_name_for_table(model.__tablename__)
     message = str(exc).lower()
     return (
         exc.__class__.__name__ == "ProgrammingError"
@@ -175,7 +177,7 @@ def _load_vocab_model_csv(
     try:
         return int(model.load_csv(session, csv_path, **load_kwargs))  # type: ignore[arg-type]
     except Exception as exc:
-        if not _is_missing_staging_table_error(exc, model=model):
+        if not _is_missing_staging_table_error(exc, model=model, session=session):
             raise
 
         session.rollback()
@@ -269,9 +271,15 @@ def load_vocab_source(
             + ", ".join(sorted(missing_required))
         )
 
+    if db_schema == STAGING_SCHEMA:
+        raise ValueError(
+            f"db_schema cannot be {STAGING_SCHEMA!r}: that name is reserved "
+            "for the orm-loader staging schema."
+        )
+
     if not dry_run:
         ensure_schema(engine, db_schema)
-        ensure_schema(engine, "staging")
+        ensure_schema(engine, STAGING_SCHEMA)
 
     # NullPool: each session/connection is opened fresh and closed immediately after
     # use. No stale pooled connections survive between tables, which prevents
@@ -282,12 +290,14 @@ def load_vocab_source(
         # SET search_path on the first checkout doesn't survive into the next
         # checkout (e.g. after create_staging_table's commit). Re-apply on every
         # new connection via an engine-level connect event so COPY and raw-cursor
-        # operations always target the right schema.
+        # operations always target the right schema. The staging schema no longer
+        # needs to be on the path because orm-loader now qualifies staging
+        # table identifiers explicitly.
         _quoted_schema = '"' + db_schema.replace('"', '""') + '"'
         @sae.listens_for(load_engine, "connect")
         def _set_search_path(dbapi_conn, _record):
             cur = dbapi_conn.cursor()
-            cur.execute(f"SET search_path TO staging, {_quoted_schema}")
+            cur.execute(f"SET search_path TO {_quoted_schema}")
             cur.close()
 
     all_models = REQUIRED_VOCAB_MODELS + OPTIONAL_VOCAB_MODELS
