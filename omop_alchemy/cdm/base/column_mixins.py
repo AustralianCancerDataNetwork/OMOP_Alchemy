@@ -46,48 +46,21 @@ class ValueMixin:
     """
     `ValueMixin`
 
-    Encodes the OMOP pattern where a value may be represented *either numerically or categorically*.
+    Encodes the OMOP pattern where a value may be represented *either numerically or categorically*,
+    via `value_as_number` and/or `value_as_concept_id`.
 
-    Structural guarantees:
-
-    - at least one value must be present
-    - enforced via a check constraint
-    - validated at assignment time
+    This mixin only supplies the two columns. It does NOT enforce that either is
+    populated: OMOP CDM v5.4 does not mandate a value on every row for every
+    table this mixin is used by (e.g. `Measurement`, `Metadata`), and some
+    tables represent a third value form (`Observation.value_as_string`) that
+    this mixin has no way to know about. Subclasses that need a "some value
+    must be present" guarantee should declare their own check constraint and
+    `@validates` covering exactly the value columns they actually have.
 
     This helps when building generic tooling that needs to handle values flexibly but then normalise for analysis.
-
-    Examples
-    --------
-    >>> from omop_alchemy.cdm.model.clinical.measurement import Measurement
-    >>> m = Measurement()
-    >>> m.value_as_number = 42.0
-    >>> m.value_as_concept_id = None  # OK
-    >>> m.value_as_number = None  # Raises ValueError
-
     """
     value_as_number: so.Mapped[Optional[float]] = so.mapped_column(sa.Float, nullable=True)
     value_as_concept_id: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey("concept.concept_id"), nullable=True)
-
-    __table_args__ = (
-        sa.CheckConstraint(
-            "value_as_number IS NOT NULL OR value_as_concept_id IS NOT NULL",
-            name="ck_value_present",
-        ),
-    )
-
-    @so.validates("value_as_number", "value_as_concept_id")
-    def _validate_value(self, key, value):
-        other = (
-            self.value_as_concept_id
-            if key == "value_as_number"
-            else self.value_as_number
-        )
-
-        if value is None and other is None:
-            raise ValueError(
-                "At least one of value_as_number or value_as_concept_id must be set"
-            )
-        return value
 
 class DatedEvent:
     """

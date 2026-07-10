@@ -18,7 +18,10 @@ from omop_alchemy.cdm.base import (
 class Observation(Base, CDMTableBase, ValueMixin):
     __tablename__ = "observation"
     __table_args__ = merge_table_args(
-        ValueMixin.__table_args__,
+        sa.CheckConstraint(
+            "value_as_number IS NOT NULL OR value_as_concept_id IS NOT NULL OR value_as_string IS NOT NULL",
+            name="ck_value_present",
+        ),
         omop_index(__tablename__, "person_id", cluster=True),
         omop_index(__tablename__, "observation_concept_id"),
         omop_index(__tablename__, "visit_occurrence_id"),
@@ -54,3 +57,17 @@ class Observation(Base, CDMTableBase, ValueMixin):
     @hybrid_property
     def modifier_of_field_concept_id(self) -> Optional[int]:
         return self.obs_event_field_concept_id
+
+    @so.validates("value_as_number", "value_as_concept_id", "value_as_string")
+    def _validate_value(self, key, value):
+        others = [
+            getattr(self, other_key)
+            for other_key in ("value_as_number", "value_as_concept_id", "value_as_string")
+            if other_key != key
+        ]
+        if value is None and all(other is None for other in others):
+            raise ValueError(
+                "At least one of value_as_number, value_as_concept_id, or "
+                "value_as_string must be set"
+            )
+        return value

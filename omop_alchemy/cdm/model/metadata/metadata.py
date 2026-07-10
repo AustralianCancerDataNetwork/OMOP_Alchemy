@@ -17,7 +17,6 @@ from omop_alchemy.cdm.base import (
 class Metadata(CDMTableBase, Base, ValueMixin):
     __tablename__ = "metadata"
     __table_args__ = merge_table_args(
-        ValueMixin.__table_args__,
         omop_index(__tablename__, "metadata_concept_id", cluster=True),
         omop_index(__tablename__, "metadata_type_concept_id"),
     )
