@@ -123,6 +123,15 @@ def ensure_schema(engine: sa.Engine, schema: str | None) -> None:
 
 
 def handle_error(exc: Exception) -> None:
+    if isinstance(exc, FileNotFoundError):
+        console.print(
+            render_error(
+                "No omop-alchemy configuration found. "
+                "Run `omop-config configure omop_alchemy` to set it up.",
+                title="Not configured",
+            )
+        )
+        raise typer.Exit(code=1) from exc
     if isinstance(exc, BackendNotSupportedError):
         console.print(render_error(f"Not supported: {exc}"))
         raise typer.Exit(code=1) from exc
