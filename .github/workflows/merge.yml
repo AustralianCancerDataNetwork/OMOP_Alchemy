@@ -2,6 +2,7 @@ name: Release Update
 on:
   pull_request:
     types: [closed]
+    branches: [main]
 jobs:
   sync-description:
     if: github.event.pull_request.merged == true
