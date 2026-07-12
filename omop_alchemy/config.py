@@ -9,6 +9,7 @@ from oa_configurator import (
     PackageConfigBase,
     ResolvedCDMResource,
     ResourceSpec,
+    ResourceKind,
     Resolver,
     load_stack_config,
 )
@@ -48,6 +49,7 @@ class OmopAlchemyConfig(PackageConfigBase):
         semantic_name="cdm_db",
         display_name="OMOP CDM Database",
         description="Database containing the OMOP CDM tables and vocabulary.",
+        resource_kind=ResourceKind.cdm,
         connection_name_hint="cdm",
     )
     TEST_DB: ClassVar[ResourceSpec] = ResourceSpec(
@@ -57,6 +59,7 @@ class OmopAlchemyConfig(PackageConfigBase):
             "Dedicated PostgreSQL database for running integration tests. "
             "Tests drop and recreate the entire public schema on every run."
         ),
+        resource_kind=ResourceKind.cdm,
         connection_name_hint="pg_test",
         connection_defaults=DatabaseConfig(
             dialect="postgresql+psycopg",

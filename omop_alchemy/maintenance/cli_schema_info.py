@@ -10,7 +10,7 @@ import shutil
 import sqlalchemy as sa
 from sqlalchemy.exc import SQLAlchemyError
 
-from oa_configurator import Resolver, load_stack_config
+from oa_configurator import ResolvedCDMResource, Resolver, load_stack_config
 from oa_configurator.loader import DEFAULT_CONFIG_PATH
 from omop_alchemy.backends.resolve import SupportedDialect
 from omop_alchemy.config import OmopAlchemyConfig
@@ -343,6 +343,10 @@ def collect_maintenance_info(
         resource_name = (tool.default_resource if tool else None) or resource_name
         resolver = Resolver(stack)
         resolved = resolver.resolve_resource(resource_name)
+        if not isinstance(resolved, ResolvedCDMResource):
+            raise TypeError(
+                f"Resource {resource_name!r} resolved to {type(resolved).__name__}, expected ResolvedCDMResource."
+            )
         db_schema = resolved.cdm_schema
         raw_url = sa.engine.make_url(resolved.database.build_url())
         engine_url = raw_url.render_as_string(hide_password=True)
