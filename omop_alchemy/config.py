@@ -7,9 +7,9 @@ from pydantic import Field
 from oa_configurator import (
     DatabaseConfig,
     PackageConfigBase,
-    ResolvedCDMResource,
     ResourceSpec,
     Resolver,
+    ResolvedResource,
     load_stack_config,
 )
 
@@ -58,6 +58,7 @@ class OmopAlchemyConfig(PackageConfigBase):
             "Tests drop and recreate the entire public schema on every run."
         ),
         connection_name_hint="pg_test",
+        cdm_schema_default="public",
         connection_defaults=DatabaseConfig(
             dialect="postgresql+psycopg",
             host="localhost",
@@ -80,7 +81,7 @@ class OmopAlchemyConfig(PackageConfigBase):
     )
 
 
-def get_cdm_context() -> tuple[OmopAlchemyConfig, ResolvedCDMResource]:
+def get_cdm_context() -> tuple[OmopAlchemyConfig, ResolvedResource]:
     """Return (pkg_config, resolved_cdm_resource), loading config once.
 
     The resource is taken from tools.omop_alchemy.default_resource when set;
@@ -91,19 +92,15 @@ def get_cdm_context() -> tuple[OmopAlchemyConfig, ResolvedCDMResource]:
     tool = stack.tools.get(OmopAlchemyConfig.tool_name)
     resource_name = (tool.default_resource if tool else None) or OmopAlchemyConfig.CDM_DB.semantic_name
     resolved = Resolver(stack).resolve_resource(resource_name)
-    if not isinstance(resolved, ResolvedCDMResource):
-        raise TypeError(
-            f"Resource {resource_name!r} resolved to {type(resolved).__name__}, expected ResolvedCDMResource."
-        )
     return pkg_config, resolved
 
 
-def create_cdm_engine(resolved: ResolvedCDMResource) -> sa.Engine:
+def create_cdm_engine(resolved: ResolvedResource) -> sa.Engine:
     """Create the CDM SQLAlchemy engine with helpful PostgreSQL driver error messages."""
     try:
         return resolved.create_engine()
     except ModuleNotFoundError as exc:
-        msg = _missing_driver_message(resolved.database.build_url(), exc)
+        msg = _missing_driver_message(resolved.database.url, exc)
         if msg is not None:
             raise RuntimeError(msg) from exc
         raise

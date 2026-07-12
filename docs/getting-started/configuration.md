@@ -29,9 +29,8 @@ password      = "changeme"
 database_name = "omop_cdm"
 
 [resources.cdm_db]
-resource_kind = "cdm"
-database      = "cdm"
-cdm_schema    = "omop"
+database   = "cdm"
+cdm_schema = "omop"
 ```
 
 You can also write or edit this file manually.
