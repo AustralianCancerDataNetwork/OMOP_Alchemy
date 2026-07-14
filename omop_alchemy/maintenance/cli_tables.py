@@ -8,7 +8,7 @@ import sqlalchemy as sa
 import typer
 
 from ..backends import resolve_backend, require_backend_support, backend_support_note
-from ._cli_utils import Status, dry_label, dry_status, omop_command, resolve_selection
+from ._cli_utils import Status, dry_label, dry_status, omop_command, reject_reserved_schema, resolve_selection
 from .tables import (
     TableCategory,
     TableScope,
@@ -55,6 +55,7 @@ def analyze_tables(
     dry_run: bool = False,
 ) -> list[AnalyzeTableResult]:
     """Run ANALYZE (or VACUUM ANALYZE) on selected ORM-managed tables to refresh planner statistics."""
+    reject_reserved_schema(db_schema)
     if scope is not None and table_names is not None:
         raise RuntimeError("Use either `scope` or `table_names`, not both.")
 
@@ -165,6 +166,7 @@ def truncate_tables(
     dry_run: bool = False,
 ) -> list[TruncateTableResult]:
     """Truncate selected ORM-managed tables. Raises if non-selected tables hold blocking FK references."""
+    reject_reserved_schema(db_schema)
     if scope is not None and table_names is not None:
         raise RuntimeError("Use either `scope` or `table_names`, not both.")
     if scope is None and table_names is None:
@@ -285,6 +287,7 @@ def reset_model_sequences(
     dry_run: bool = False,
 ) -> list[SequenceResetResult]:
     """Reset each owned sequence to MAX(pk_column) + 1 to prevent insert conflicts after bulk loads."""
+    reject_reserved_schema(db_schema)
     backend = resolve_backend(engine)
     require_backend_support(backend, "find_sequence_name", "Sequence reset")
     inspector = sa.inspect(engine)

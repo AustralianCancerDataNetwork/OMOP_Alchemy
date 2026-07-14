@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 import sqlalchemy as sa
 
-from ._cli_utils import Status, dry_label, dry_status, ensure_schema
+from ._cli_utils import Status, dry_label, dry_status, ensure_schema, reject_reserved_schema
 from .tables import (
     MaintenanceTable,
     TableCategory,
@@ -62,6 +62,7 @@ def create_missing_tables(
     dry_run: bool = False,
 ) -> list[TableCreationResult]:
     """Create any ORM-managed tables missing from the target database. Skips tables with unresolved FK dependencies."""
+    reject_reserved_schema(db_schema)
     if not dry_run:
         ensure_schema(engine, db_schema)
     inspector = sa.inspect(engine)
