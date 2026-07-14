@@ -21,6 +21,7 @@ from .cli_schema_info import (
 )
 from .cli_schema_reconcile import (
     SchemaReconciliationReport,
+    is_blocking_issue,
     reconcile_schema,
 )
 
@@ -88,14 +89,16 @@ def _build_recommendations(
             )
         )
 
-    if reconciliation is not None and reconciliation.issues:
-        recommendations.append(
-            DoctorRecommendation(
-                status="warning",
-                summary=f"Schema reconciliation found {len(reconciliation.issues)} difference(s) against ORM metadata.",
-                action="Review `omop-alchemy reconcile-schema` output before continuing with ETL or maintenance work.",
+    if reconciliation is not None:
+        blocking_issue_count = sum(1 for issue in reconciliation.issues if is_blocking_issue(issue))
+        if blocking_issue_count:
+            recommendations.append(
+                DoctorRecommendation(
+                    status="warning",
+                    summary=f"Schema reconciliation found {blocking_issue_count} difference(s) against ORM metadata.",
+                    action="Review `omop-alchemy reconcile-schema` output before continuing with ETL or maintenance work.",
+                )
             )
-        )
 
     if foreign_key_status is not None and any(
         item.disabled_trigger_count > 0 for item in foreign_key_status
@@ -227,14 +230,17 @@ def collect_doctor_report(
                     db_schema=db_schema,
                     vocabulary_included=vocabulary_included,
                 )
+                blocking_issue_count = sum(
+                    1 for issue in reconciliation.issues if is_blocking_issue(issue)
+                )
                 checks.append(
                     DoctorCheck(
                         name="schema drift",
-                        status="passed" if not reconciliation.issues else "warning",
+                        status="passed" if not blocking_issue_count else "warning",
                         detail=(
                             "ORM metadata matches the target database."
-                            if not reconciliation.issues
-                            else f"{len(reconciliation.issues)} difference(s) detected."
+                            if not blocking_issue_count
+                            else f"{blocking_issue_count} difference(s) detected."
                         ),
                     )
                 )

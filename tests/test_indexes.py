@@ -13,10 +13,13 @@ from omop_alchemy.maintenance.cli_indexes import (
     IndexManagementResult,
     _DROPPED_INDEXES_TABLE_NAME,
     get_bookkeeping_schema,
+    _cluster_index_unique,
     _describe_shape_conflict,
     _find_equivalent_index,
     _find_shape_conflict,
     _is_plain_index,
+    _record_captured_index,
+    _resolve_physical_cluster_name,
     _schema_metadata_indexes,
     collect_index_targets,
     manage_indexes,
@@ -617,9 +620,6 @@ def test_manage_indexes_disable_captures_and_drops_foreign_equivalent_index(tmp_
     assert bookkeeping[0]["index_name"] == "idx_gender"
 
 
-@pytest.mark.filterwarnings(
-    "ignore:Skipped unsupported reflection of expression-based index:sqlalchemy.exc.SAWarning"
-)
 def test_manage_indexes_enable_restores_captured_foreign_index(tmp_path):
     engine = _fresh_engine(tmp_path)
     _replace_with_foreign_index(engine, foreign_name="idx_gender")
@@ -643,9 +643,6 @@ def test_manage_indexes_enable_restores_captured_foreign_index(tmp_path):
     assert _dropped_indexes_rows(engine) == []
 
 
-@pytest.mark.filterwarnings(
-    "ignore:Skipped unsupported reflection of expression-based index:sqlalchemy.exc.SAWarning"
-)
 def test_manage_indexes_disable_enable_round_trip_is_idempotent_with_capture(tmp_path):
     engine = _fresh_engine(tmp_path)
     _replace_with_foreign_index(engine, foreign_name="idx_gender")
@@ -688,9 +685,6 @@ def test_bookkeeping_table_not_created_when_nothing_to_capture(tmp_path):
     )
 
 
-@pytest.mark.filterwarnings(
-    "ignore:Skipped unsupported reflection of expression-based index:sqlalchemy.exc.SAWarning"
-)
 def test_manage_indexes_enable_cluster_uses_restored_physical_name(tmp_path, monkeypatch):
     engine = _fresh_engine(tmp_path)
 
@@ -818,3 +812,151 @@ def test_render_index_summary_omits_warnings_row_when_none():
     )
     text = _render_to_text(render_index_summary([ok_result], dry_run=False))
     assert "Warnings" not in text
+
+
+# ── Review-round-2 regression tests ──────────────────────────────────────────────
+
+
+def test_is_plain_index_false_for_constraint_backed_index():
+    """A foreign index reflecting with duplicates_constraint set backs a UNIQUE/
+    PRIMARY KEY constraint. PostgreSQL refuses DROP INDEX on those, so it must
+    never be treated as a safe capture-and-drop equivalent."""
+    constraint_backed = {
+        "name": "person_pkey",
+        "column_names": ["person_id"],
+        "unique": True,
+        "duplicates_constraint": "person_pkey",
+    }
+    assert _is_plain_index(constraint_backed) is False
+    assert _find_equivalent_index([constraint_backed], ("person_id",), True) is None
+    assert _find_shape_conflict([constraint_backed], ("person_id",), True) is constraint_backed
+    assert "constraint" in _describe_shape_conflict(constraint_backed)
+
+
+def test_manage_indexes_disable_second_run_without_enable_degrades_to_warning(tmp_path):
+    """A second `disable` run, without an intervening `enable`, that finds a
+    *different* foreign index than the one already captured must not crash. 
+    It must leave the second index in place and report a warning, since the
+    bookkeeping table can only track one pending capture per table/column-set."""
+    engine = _fresh_engine(tmp_path)
+    _replace_with_foreign_index(engine, foreign_name="idx_gender_v1")
+
+    first = manage_indexes(engine, enable=False)
+    assert _person_gender_result(first).status == "captured"
+
+    with engine.begin() as connection:
+        connection.exec_driver_sql("CREATE INDEX idx_gender_v2 ON person (gender_concept_id)")
+
+    second = manage_indexes(engine, enable=False)
+    result = _person_gender_result(second)
+    assert result.status == "warning"
+    assert "idx_gender_v2" in result.detail
+
+    inspector = sa.inspect(engine)
+    index_names = {index["name"] for index in inspector.get_indexes("person")}
+    assert "idx_gender_v2" in index_names, "the untrackable second foreign index must be left in place"
+
+    # The originally captured index (idx_gender_v1) must still be restorable.
+    third = manage_indexes(engine, enable=True, cluster=False)
+    restored = _person_gender_result(third)
+    assert restored.status == "restored"
+    assert restored.index_name == "idx_gender_v1"
+
+
+def test_record_captured_index_scopes_by_db_schema(tmp_path):
+    """Two different schemas capturing an equivalent foreign index for a
+    same-named table/column-set must not collide. Each capture is independent
+    and neither should be rejected by the other's bookkeeping row."""
+    engine = _fresh_engine(tmp_path)
+    backend = SQLiteBackend()
+
+    with engine.begin() as connection:
+        captured_a = _record_captured_index(
+            connection, backend,
+            table_name="person", db_schema="site_a", index_name="idx_a",
+            column_names=("gender_concept_id",), unique=False,
+        )
+        captured_b = _record_captured_index(
+            connection, backend,
+            table_name="person", db_schema="site_b", index_name="idx_b",
+            column_names=("gender_concept_id",), unique=False,
+        )
+
+    assert captured_a is True
+    assert captured_b is True
+
+    # Capturing again for the *same* schema, with a different foreign name, must
+    # still be rejected (this is the case test_manage_indexes_disable_second_run_
+    # without_enable_degrades_to_warning covers end-to-end).
+    with engine.begin() as connection:
+        captured_a_again = _record_captured_index(
+            connection, backend,
+            table_name="person", db_schema="site_a", index_name="idx_a_v2",
+            column_names=("gender_concept_id",), unique=False,
+        )
+    assert captured_a_again is False
+
+
+def test_resolve_physical_cluster_name_prefers_own_name():
+    existing = [{"name": "ix_person_gender_concept_id", "column_names": ["gender_concept_id"], "unique": False}]
+    assert (
+        _resolve_physical_cluster_name(existing, "ix_person_gender_concept_id", ("gender_concept_id",), False)
+        == "ix_person_gender_concept_id"
+    )
+
+
+def test_resolve_physical_cluster_name_falls_back_to_equivalent():
+    existing = [{"name": "idx_gender", "column_names": ["gender_concept_id"], "unique": False}]
+    assert (
+        _resolve_physical_cluster_name(existing, "ix_person_gender_concept_id", ("gender_concept_id",), False)
+        == "idx_gender"
+    )
+
+
+def test_resolve_physical_cluster_name_falls_back_to_own_name_when_nothing_matches():
+    assert _resolve_physical_cluster_name([], "ix_person_gender_concept_id", ("gender_concept_id",), False) == (
+        "ix_person_gender_concept_id"
+    )
+
+
+def test_cluster_index_unique_defaults_true_for_primary_key_target():
+    tables = {table.table_name: table for table in collect_maintenance_tables()}
+    person = tables["person"]
+    # "pk_person" is the primary-key-based cluster target and is never one of
+    # person's secondary indexes.
+    assert _cluster_index_unique(person, "pk_person") is True
+
+
+def test_render_reconciliation_summary_treats_renamed_only_as_matched():
+    from omop_alchemy.maintenance.cli_schema_reconcile import ReconciliationIssue, SchemaReconciliationReport, TableReconciliationResult
+    from omop_alchemy.maintenance.ui import render_reconciliation_summary
+
+    report = SchemaReconciliationReport(
+        backend="sqlite",
+        table_results=(
+            TableReconciliationResult(
+                table_name="person",
+                category=TableCategory.CLINICAL,
+                status="matched",
+                issue_count=1,
+                detail="1 difference(s) detected.",
+            ),
+        ),
+        issues=(
+            ReconciliationIssue(
+                table_name="person",
+                category=TableCategory.CLINICAL,
+                component="index",
+                object_name=PERSON_GENDER_INDEX,
+                status="renamed",
+                expected=PERSON_GENDER_INDEX,
+                actual="idx_gender",
+                detail="Index is present under a different name.",
+            ),
+        ),
+    )
+
+    text = _render_to_text(render_reconciliation_summary(report))
+    assert "matches ORM metadata" in text
+    assert "drift detected" not in text.lower()
+    assert "Renamed indexes" in text

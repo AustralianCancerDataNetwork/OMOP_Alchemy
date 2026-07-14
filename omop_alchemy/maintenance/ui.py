@@ -346,9 +346,13 @@ def render_reconciliation_issues(issues: Iterable[ReconciliationIssue]) -> Rende
 
 
 def render_reconciliation_summary(report: SchemaReconciliationReport) -> Panel:
+    from .cli_schema_reconcile import is_blocking_issue
+
     matched = sum(result.status == "matched" for result in report.table_results)
     drifted = sum(result.status == "drifted" for result in report.table_results)
     missing = sum(result.status == "missing" for result in report.table_results)
+    blocking_issues = [issue for issue in report.issues if is_blocking_issue(issue)]
+    informational_issue_count = len(report.issues) - len(blocking_issues)
 
     grid = Table.grid(padding=(0, 2))
     grid.add_column(style="bold cyan")
@@ -361,15 +365,17 @@ def render_reconciliation_summary(report: SchemaReconciliationReport) -> Panel:
         grid.add_row("Drifted", str(drifted))
     if missing:
         grid.add_row("Missing", str(missing))
-    grid.add_row("Issues", str(len(report.issues)))
+    grid.add_row("Issues", str(len(blocking_issues)))
+    if informational_issue_count:
+        grid.add_row("Renamed indexes", str(informational_issue_count))
     grid.add_row(
         "Summary",
-        "Schema drift detected." if report.issues else "Database schema matches ORM metadata for the selected scope.",
+        "Schema drift detected." if blocking_issues else "Database schema matches ORM metadata for the selected scope.",
     )
     return Panel.fit(
         grid,
         title="[bold]Summary[/bold]",
-        border_style="yellow" if report.issues else "green",
+        border_style="yellow" if blocking_issues else "green",
     )
 
 

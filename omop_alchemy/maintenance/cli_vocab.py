@@ -32,7 +32,7 @@ from omop_alchemy.cdm.model.vocabulary import (
     Vocabulary,
 )
 
-from ._cli_utils import ReservedSchema, ensure_schema, omop_command
+from ._cli_utils import ReservedSchema, ensure_schema, omop_command, reject_reserved_schema
 from .cli_foreign_keys import manage_foreign_key_triggers
 from .cli_indexes import manage_indexes
 from .cli_tables import reset_model_sequences
@@ -315,11 +315,7 @@ def load_vocab_source(
             + ", ".join(sorted(missing))
         )
 
-    if db_schema == ReservedSchema.STAGING:
-        raise ValueError(
-            f"db_schema cannot be {ReservedSchema.STAGING.value!r}: that name is reserved "
-            "for the orm-loader staging schema."
-        )
+    reject_reserved_schema(db_schema)
 
     if not dry_run:
         ensure_schema(engine, db_schema)

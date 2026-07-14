@@ -14,6 +14,31 @@ from .tables import (
     select_maintenance_tables,
 )
 
+NON_BLOCKING_STATUSES = frozenset({"renamed"})
+"""ReconciliationIssue.status values that describe an intentionally supported
+state (e.g. an index present under a foreign name) rather than actual schema
+drift. Every consumer that decides "is there a problem here" from a
+collection of issues -- not just reconcile_schema()'s own per-table status --
+must exclude these, or a database with only benign renamed-index equivalences
+reports contradictory results (e.g. every table shown as matched, but a
+drift-detected summary panel or doctor warning anyway)."""
+
+
+def is_blocking_issue(issue: ReconciliationIssue) -> bool:
+    """Whether a reconciliation issue represents actual drift requiring attention.
+
+    Parameters
+    ----------
+    issue : ReconciliationIssue
+        A single reconciliation issue.
+
+    Returns
+    -------
+    bool
+        False for issues with a status in NON_BLOCKING_STATUSES, True otherwise.
+    """
+    return issue.status not in NON_BLOCKING_STATUSES
+
 
 @dataclass(frozen=True)
 class ReconciliationIssue:
@@ -385,28 +410,59 @@ def reconcile_schema(
                     db_schema,
                 )
                 if expected_cluster != actual_cluster:
-                    table_issues.append(
-                        ReconciliationIssue(
-                            table_name=maintenance_table.table_name,
-                            category=maintenance_table.category,
-                            component="cluster",
-                            object_name=maintenance_table.table_name,
-                            status=(
-                                "missing"
-                                if expected_cluster and not actual_cluster
-                                else "unexpected"
-                                if actual_cluster and not expected_cluster
-                                else "mismatch"
-                            ),
-                            expected=expected_cluster,
-                            actual=actual_cluster,
-                            detail="Table clustering differs from ORM metadata.",
+                    # The table may be physically clustered on a foreign-named
+                    # equivalent of the ORM's cluster index. That's the
+                    # same "renamed" state as an index found under a different
+                    # name, so check column/uniqueness equivalence
+                    # before falling back to missing/unexpected/mismatch.
+                    renamed_cluster = False
+                    if expected_cluster in expected_idxs and actual_cluster in actual_idxs:
+                        expected_cluster_index = expected_idxs[expected_cluster]
+                        actual_cluster_index = actual_idxs[actual_cluster]
+                        expected_cluster_columns = tuple(
+                            column.name for column in expected_cluster_index.columns
                         )
-                    )
+                        actual_cluster_columns = tuple(
+                            c for c in (actual_cluster_index.get("column_names") or []) if c is not None
+                        )
+                        renamed_cluster = (
+                            expected_cluster_columns == actual_cluster_columns
+                            and bool(expected_cluster_index.unique) == bool(actual_cluster_index.get("unique"))
+                        )
+                    if renamed_cluster:
+                        table_issues.append(
+                            ReconciliationIssue(
+                                table_name=maintenance_table.table_name,
+                                category=maintenance_table.category,
+                                component="cluster",
+                                object_name=maintenance_table.table_name,
+                                status="renamed",
+                                expected=expected_cluster,
+                                actual=actual_cluster,
+                                detail="Table is clustered on a differently-named equivalent index.",
+                            )
+                        )
+                    else:
+                        table_issues.append(
+                            ReconciliationIssue(
+                                table_name=maintenance_table.table_name,
+                                category=maintenance_table.category,
+                                component="cluster",
+                                object_name=maintenance_table.table_name,
+                                status=(
+                                    "missing"
+                                    if expected_cluster and not actual_cluster
+                                    else "unexpected"
+                                    if actual_cluster and not expected_cluster
+                                    else "mismatch"
+                                ),
+                                expected=expected_cluster,
+                                actual=actual_cluster,
+                                detail="Table clustering differs from ORM metadata.",
+                            )
+                        )
 
-            # A "renamed" index is an intentionally supported state, not
-            # drift. It's listed for visibility but doesn't flip the table's status.
-            blocking_issues = [issue for issue in table_issues if issue.status != "renamed"]
+            blocking_issues = [issue for issue in table_issues if is_blocking_issue(issue)]
             table_status = "matched" if not blocking_issues else "drifted"
             table_results.append(
                 TableReconciliationResult(
