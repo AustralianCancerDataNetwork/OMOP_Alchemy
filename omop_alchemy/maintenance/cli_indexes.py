@@ -8,7 +8,7 @@ from typing import Any, Mapping, Sequence
 from enum import StrEnum
 
 import sqlalchemy as sa
-from sqlalchemy.exc import DBAPIError
+from sqlalchemy.exc import DBAPIError, IntegrityError
 import typer
 
 from omop_alchemy.cdm.base.indexing import OMOP_CLUSTER_INDEX_INFO_KEY
@@ -189,6 +189,7 @@ def _describe_shape_conflict(reflected: Mapping[str, Any]) -> str:
 # ── Foreign index capture/restore bookkeeping ───────────────────────────────────
 
 _DROPPED_INDEXES_TABLE_NAME = "dropped_indexes"
+_DROPPED_INDEXES_UNIQUE_CONSTRAINT_NAME = "uq_dropped_indexes_table_columns"
 
 
 def _schema_key(db_schema: str | None) -> str:
@@ -270,7 +271,7 @@ def _dropped_indexes_table(bookkeeping_schema: str | None) -> sa.Table:
         sa.Column("captured_at", sa.DateTime, server_default=sa.func.now(), nullable=False),
         sa.UniqueConstraint(
             "table_name", "db_schema", "column_names_json", "is_unique",
-            name="uq_dropped_indexes_table_columns",
+            name=_DROPPED_INDEXES_UNIQUE_CONSTRAINT_NAME,
         ),
         schema=bookkeeping_schema,
     )
@@ -338,9 +339,13 @@ def _record_captured_index(
                 "is_unique": unique,
             },
         )
-    except DBAPIError as exc:
+    except IntegrityError as exc:
         savepoint.rollback()
-        if "unique" not in str(exc.orig).lower():
+        message = str(exc.orig).lower()
+        # Constraint naming differs between backends
+        # We are preventing to swallow other unique constraint violations
+        # by checking for a specific one
+        if _DROPPED_INDEXES_UNIQUE_CONSTRAINT_NAME not in message and _DROPPED_INDEXES_TABLE_NAME not in message:
             raise
         return False
     else:
