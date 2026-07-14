@@ -407,22 +407,19 @@ def reconcile_schema(
                     # The table may be physically clustered on a foreign-named
                     # equivalent of the ORM's cluster index. That's the
                     # same "renamed" state as an index found under a different
-                    # name, so check column/uniqueness equivalence
-                    # before falling back to missing/unexpected/mismatch.
+                    # name, so reuse the same equivalence check (including its
+                    # plain-index safety filtering) before falling back to
+                    # missing/unexpected/mismatch.
                     renamed_cluster = False
-                    if expected_cluster in expected_idxs and actual_cluster in actual_idxs:
+                    if expected_cluster in expected_idxs and actual_cluster is not None:
                         expected_cluster_index = expected_idxs[expected_cluster]
-                        actual_cluster_index = actual_idxs[actual_cluster]
                         expected_cluster_columns = tuple(
                             column.name for column in expected_cluster_index.columns
                         )
-                        actual_cluster_columns = tuple(
-                            c for c in (actual_cluster_index.get("column_names") or []) if c is not None
+                        equivalent_cluster_name = _find_equivalent_index(
+                            actual_index_list, expected_cluster_columns, bool(expected_cluster_index.unique)
                         )
-                        renamed_cluster = (
-                            expected_cluster_columns == actual_cluster_columns
-                            and bool(expected_cluster_index.unique) == bool(actual_cluster_index.get("unique"))
-                        )
+                        renamed_cluster = equivalent_cluster_name == actual_cluster
                     if renamed_cluster:
                         table_issues.append(
                             ReconciliationIssue(
