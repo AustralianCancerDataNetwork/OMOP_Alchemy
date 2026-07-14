@@ -14,7 +14,7 @@ import sqlalchemy.event as sae
 from sqlalchemy.exc import OperationalError
 import typer
 from sqlalchemy.pool import NullPool
-from orm_loader.backends import STAGING_SCHEMA, resolve_backend
+from orm_loader.backends import resolve_backend
 from orm_loader.tables.typing import CSVTableProtocol
 from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn, TextColumn, TimeElapsedColumn
 
@@ -32,7 +32,7 @@ from omop_alchemy.cdm.model.vocabulary import (
     Vocabulary,
 )
 
-from ._cli_utils import ensure_schema, omop_command
+from ._cli_utils import ReservedSchema, ensure_schema, omop_command
 from .cli_foreign_keys import manage_foreign_key_triggers
 from .cli_indexes import manage_indexes
 from .cli_tables import reset_model_sequences
@@ -40,6 +40,7 @@ from .tables import TableCategory, schema_adjusted_metadata, select_maintenance_
 from .ui import (
     console,
     render_error,
+    render_vocab_index_warnings,
     render_vocab_load_results,
     render_vocab_load_summary,
 )
@@ -73,6 +74,7 @@ class VocabularyLoadReport:
     created_table_count: int
     sequence_reset_count: int
     results: tuple[VocabularyLoadResult, ...]
+    index_warnings: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -313,15 +315,15 @@ def load_vocab_source(
             + ", ".join(sorted(missing))
         )
 
-    if db_schema == STAGING_SCHEMA:
+    if db_schema == ReservedSchema.STAGING:
         raise ValueError(
-            f"db_schema cannot be {STAGING_SCHEMA!r}: that name is reserved "
+            f"db_schema cannot be {ReservedSchema.STAGING.value!r}: that name is reserved "
             "for the orm-loader staging schema."
         )
 
     if not dry_run:
         ensure_schema(engine, db_schema)
-        ensure_schema(engine, STAGING_SCHEMA)
+        ensure_schema(engine, ReservedSchema.STAGING)
 
     # NullPool: each session/connection is opened fresh and closed immediately after
     # use. No stale pooled connections survive between tables, which prevents
@@ -352,6 +354,7 @@ def load_vocab_source(
     sequence_reset_count = 0
     rows_cumulative = 0
     table_index = 0
+    index_warnings: tuple[str, ...] = ()
 
     _emit(progress_callback, f"Preparing Athena vocabulary load for {table_count} CSV file(s)", 0.0, table_count=table_count)
 
@@ -370,13 +373,25 @@ def load_vocab_source(
             dry_run=False,
         )
         _emit(progress_callback, "Dropping indexes for bulk load...", 0.0, table_count=table_count)
-        manage_indexes(
+        disable_results = manage_indexes(
             engine,
             enable=False,
             vocabulary_included=True,
             db_schema=db_schema,
             dry_run=False,
         )
+        index_warnings = tuple(
+            f"{result.table_name}.{result.index_name}: {result.detail}"
+            for result in disable_results
+            if result.status == "warning"
+        )
+        if index_warnings:
+            _emit(
+                progress_callback,
+                f"{len(index_warnings)} index(es) could not be optimized for bulk load (left in place)",
+                0.0,
+                table_count=table_count,
+            )
 
     if not dry_run:
         with load_engine.connect() as pre_conn:
@@ -529,6 +544,7 @@ def load_vocab_source(
         created_table_count=created_table_count,
         sequence_reset_count=sequence_reset_count,
         results=tuple(results),
+        index_warnings=index_warnings,
     )
 
 
@@ -651,3 +667,6 @@ def load_vocab_source_command(
 
     console.print(render_vocab_load_results(report.results))
     console.print(render_vocab_load_summary(report, dry_run=dry_run))
+    index_warnings_panel = render_vocab_index_warnings(report)
+    if index_warnings_panel is not None:
+        console.print(index_warnings_panel)

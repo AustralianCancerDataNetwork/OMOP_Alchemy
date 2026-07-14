@@ -8,7 +8,7 @@ import sqlalchemy as sa
 from sqlalchemy.engine.interfaces import ReflectedForeignKeyConstraint, ReflectedIndex
 
 from ..backends import backend_supports, resolve_backend
-from .cli_indexes import _cluster_target_name
+from .cli_indexes import _cluster_target_name, _find_equivalent_index
 from .tables import (
     TableCategory,
     select_maintenance_tables,
@@ -291,21 +291,45 @@ def reconcile_schema(
 
             expected_idxs = _expected_indexes(expected_table)
             actual_idxs = _actual_indexes(inspector, maintenance_table.table_name, db_schema)
+            actual_index_list = list(actual_idxs.values())
+            renamed_actual_names: set[str] = set()
 
             for index_name, index in expected_idxs.items():
                 if index_name not in actual_idxs:
-                    table_issues.append(
-                        ReconciliationIssue(
-                            table_name=maintenance_table.table_name,
-                            category=maintenance_table.category,
-                            component="index",
-                            object_name=index_name,
-                            status="missing",
-                            expected=", ".join(column.name for column in index.columns),
-                            actual=None,
-                            detail="Index is defined in ORM metadata but missing from the database.",
-                        )
+                    expected_columns_for_index = tuple(column.name for column in index.columns)
+                    equivalent_name = _find_equivalent_index(
+                        actual_index_list, expected_columns_for_index, bool(index.unique)
                     )
+                    if equivalent_name is not None:
+                        renamed_actual_names.add(equivalent_name)
+                        table_issues.append(
+                            ReconciliationIssue(
+                                table_name=maintenance_table.table_name,
+                                category=maintenance_table.category,
+                                component="index",
+                                object_name=index_name,
+                                status="renamed",
+                                expected=index_name,
+                                actual=equivalent_name,
+                                detail=(
+                                    f"Index is present under a different name ('{equivalent_name}') "
+                                    f"than ORM metadata expects ('{index_name}')."
+                                ),
+                            )
+                        )
+                    else:
+                        table_issues.append(
+                            ReconciliationIssue(
+                                table_name=maintenance_table.table_name,
+                                category=maintenance_table.category,
+                                component="index",
+                                object_name=index_name,
+                                status="missing",
+                                expected=", ".join(column.name for column in index.columns),
+                                actual=None,
+                                detail="Index is defined in ORM metadata but missing from the database.",
+                            )
+                        )
                     continue
 
                 actual_index = actual_idxs[index_name]
@@ -339,7 +363,7 @@ def reconcile_schema(
                     )
 
             for index_name, index in actual_idxs.items():
-                if index_name not in expected_idxs:
+                if index_name not in expected_idxs and index_name not in renamed_actual_names:
                     table_issues.append(
                         ReconciliationIssue(
                             table_name=maintenance_table.table_name,
@@ -380,7 +404,10 @@ def reconcile_schema(
                         )
                     )
 
-            table_status = "matched" if not table_issues else "drifted"
+            # A "renamed" index is an intentionally supported state, not
+            # drift. It's listed for visibility but doesn't flip the table's status.
+            blocking_issues = [issue for issue in table_issues if issue.status != "renamed"]
+            table_status = "matched" if not blocking_issues else "drifted"
             table_results.append(
                 TableReconciliationResult(
                     table_name=maintenance_table.table_name,

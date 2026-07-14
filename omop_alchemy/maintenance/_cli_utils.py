@@ -5,10 +5,12 @@ from __future__ import annotations
 import functools
 import inspect
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import Any, Callable, TypeVar
 
 import sqlalchemy as sa
 import typer
+from orm_loader.backends import STAGING_SCHEMA
 from sqlalchemy.exc import SQLAlchemyError
 
 from .tables import TableScope
@@ -17,6 +19,23 @@ from ..backends import BackendNotSupportedError, resolve_backend
 
 
 _F = TypeVar("_F", bound=Callable[..., Any])
+
+
+class ReservedSchema(StrEnum):
+    """Schema names reserved for OMOP_Alchemy/orm-loader internal bookkeeping.
+    A user-configured ``db_schema`` may never collide with one of these. 
+    """
+
+    STAGING = STAGING_SCHEMA
+    MAINTENANCE = "omop_alchemy_maintenance"
+
+
+def reject_reserved_schema(db_schema: str | None) -> None:
+    """Raise if db_schema collides with a schema name reserved for internal bookkeeping."""
+    if db_schema in set(ReservedSchema):
+        raise RuntimeError(
+            f"db_schema cannot be {db_schema!r}: reserved for OMOP_Alchemy/orm-loader internal use."
+        )
 
 
 @dataclass(frozen=True)
@@ -59,6 +78,7 @@ def omop_command(
                     engine_url=engine.url.render_as_string(hide_password=True),
                     athena_source=pkg_config.athena_source_path,
                 )
+                reject_reserved_schema(conn.db_schema)
                 console.print(
                     render_command_header(
                         command_name=command_name,

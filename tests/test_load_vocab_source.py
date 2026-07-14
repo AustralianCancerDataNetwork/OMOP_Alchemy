@@ -7,6 +7,7 @@ from sqlalchemy.orm import sessionmaker
 from typer.testing import CliRunner
 
 from omop_alchemy.maintenance.cli import app
+from omop_alchemy.maintenance.cli_indexes import IndexManagementResult
 from omop_alchemy.maintenance.cli_vocab import (
     OPTIONAL_VOCAB_MODELS,
     REQUIRED_VOCAB_MODELS,
@@ -14,6 +15,7 @@ from omop_alchemy.maintenance.cli_vocab import (
     _load_vocab_model_csv,
     load_vocab_source,
 )
+from omop_alchemy.maintenance.tables import TableCategory
 from omop_alchemy.cdm.model.vocabulary import Drug_Strength
 from omop_alchemy.config import OmopAlchemyConfig
 
@@ -625,3 +627,134 @@ def test_load_vocab_source_tables_missing_csv_raises_runtime_error(tmp_path):
 
     with pytest.raises(RuntimeError, match="concept"):
         load_vocab_source(engine, source_path=source_path, tables=["concept"])
+
+
+def test_load_vocab_source_bulk_mode_surfaces_index_warnings(monkeypatch, tmp_path):
+    """A foreign index that manage_indexes(enable=False) leaves in place (status=warning)
+    during the bulk-mode disable step must be surfaced on the returned report, not
+    silently discarded -- this is the only call site that inspects those results."""
+    engine = sa.create_engine(f"sqlite:///{tmp_path / 'load_vocab_source_bulk.db'}", future=True)
+    source_path = _build_required_athena_source(tmp_path)
+
+    # Force the bulk-mode gate (which requires a PostgreSQL engine) without needing
+    # a real Postgres instance -- everything downstream that's PostgreSQL-specific
+    # is mocked out below.
+    monkeypatch.setattr(engine.dialect, "name", "postgresql")
+
+    monkeypatch.setattr(
+        "omop_alchemy.maintenance.cli_vocab._load_vocab_model_csv",
+        lambda session, *, model, csv_path, merge_strategy, quote_mode="auto",
+        chunksize=None, index_strategy="auto", merge_batch_size=1_000_000: 1,
+    )
+    # ensure_schema() resolves a backend from engine.dialect.name too, and would
+    # otherwise try to run real PostgreSQL "CREATE SCHEMA" DDL against this SQLite
+    # connection now that the dialect name is faked above.
+    monkeypatch.setattr(
+        "omop_alchemy.maintenance.cli_vocab.ensure_schema",
+        lambda engine, schema: None,
+    )
+    monkeypatch.setattr(
+        "omop_alchemy.maintenance.cli_vocab.manage_foreign_key_triggers",
+        lambda engine, **kwargs: [],
+    )
+    monkeypatch.setattr(
+        "omop_alchemy.maintenance.cli_vocab.reset_model_sequences",
+        lambda engine, **kwargs: [],
+    )
+
+    disable_calls: list[bool] = []
+
+    def fake_manage_indexes(engine, *, enable, **kwargs):
+        disable_calls.append(enable)
+        if not enable:
+            return [
+                IndexManagementResult(
+                    operation="index",
+                    table_name="concept",
+                    category=TableCategory.VOCABULARY,
+                    index_name="idx_concept_partial",
+                    column_names=("domain_id",),
+                    unique=False,
+                    clustered=False,
+                    enable=False,
+                    status="warning",
+                    detail="foreign index 'idx_concept_partial' has a partial WHERE predicate; left in place",
+                )
+            ]
+        # The re-enable call must not contribute to index_warnings.
+        return [
+            IndexManagementResult(
+                operation="index",
+                table_name="concept",
+                category=TableCategory.VOCABULARY,
+                index_name="ix_concept_domain_id",
+                column_names=("domain_id",),
+                unique=False,
+                clustered=False,
+                enable=True,
+                status="applied",
+                detail="metadata-defined index created",
+            )
+        ]
+
+    monkeypatch.setattr(
+        "omop_alchemy.maintenance.cli_vocab.manage_indexes",
+        fake_manage_indexes,
+    )
+
+    report = load_vocab_source(engine, source_path=source_path, bulk_mode=True)
+
+    assert disable_calls == [False, True]
+    assert report.index_warnings == (
+        "concept.idx_concept_partial: foreign index 'idx_concept_partial' "
+        "has a partial WHERE predicate; left in place",
+    )
+
+
+def test_render_vocab_index_warnings_none_when_no_warnings():
+    from omop_alchemy.maintenance.cli_vocab import VocabularyLoadReport
+    from omop_alchemy.maintenance.ui import render_vocab_index_warnings
+
+    report = VocabularyLoadReport(
+        source_path="/tmp/source",
+        backend="sqlite",
+        db_schema=None,
+        merge_strategy="replace",
+        created_table_count=0,
+        sequence_reset_count=0,
+        results=(),
+    )
+    assert render_vocab_index_warnings(report) is None
+
+
+def test_render_vocab_index_warnings_lists_messages_when_present():
+    import io
+
+    from rich.console import Console
+
+    from omop_alchemy.maintenance.cli_vocab import VocabularyLoadReport
+    from omop_alchemy.maintenance.ui import render_vocab_index_warnings, render_vocab_load_summary
+
+    report = VocabularyLoadReport(
+        source_path="/tmp/source",
+        backend="postgresql",
+        db_schema=None,
+        merge_strategy="replace",
+        created_table_count=0,
+        sequence_reset_count=0,
+        results=(),
+        index_warnings=("concept.idx_concept_partial: has a partial WHERE predicate; left in place",),
+    )
+
+    panel = render_vocab_index_warnings(report)
+    assert panel is not None
+    buffer = io.StringIO()
+    Console(file=buffer, width=200).print(panel)
+    text = buffer.getvalue()
+    assert "idx_concept_partial" in text
+
+    summary_buffer = io.StringIO()
+    Console(file=summary_buffer, width=200).print(render_vocab_load_summary(report, dry_run=False))
+    summary_text = summary_buffer.getvalue()
+    assert "Index warnings" in summary_text
+    assert "1" in summary_text

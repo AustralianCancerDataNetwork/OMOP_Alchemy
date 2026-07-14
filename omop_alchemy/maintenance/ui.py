@@ -46,13 +46,16 @@ console = Console()
 STATUS_STYLES = {
     "applied": "green",
     "blocked": "red",
+    "captured": "green",
     "drifted": "yellow",
     "limited": "yellow",
     "matched": "green",
     "missing": "red",
     "planned": "cyan",
     "ready": "green",
+    "renamed": "cyan",
     "reset": "green",
+    "restored": "green",
     "created": "green",
     "loaded": "green",
     "warning": "yellow",
@@ -612,6 +615,8 @@ def render_vocab_load_summary(report: VocabularyLoadReport, *, dry_run: bool) ->
         grid.add_row("Reset sequences", str(report.sequence_reset_count))
     if skipped_count:
         grid.add_row("Skipped", str(skipped_count))
+    if report.index_warnings:
+        grid.add_row("Index warnings", str(len(report.index_warnings)))
     grid.add_row(
         "Summary",
         (
@@ -620,10 +625,25 @@ def render_vocab_load_summary(report: VocabularyLoadReport, *, dry_run: bool) ->
             else "Athena vocabulary source loaded into ORM-managed vocabulary tables."
         ),
     )
+    border_style = "yellow" if report.index_warnings else ("cyan" if dry_run else "green")
     return Panel.fit(
         grid,
         title="[bold]Summary[/bold]",
-        border_style="cyan" if dry_run else "green",
+        border_style=border_style,
+    )
+
+
+def render_vocab_index_warnings(report: VocabularyLoadReport) -> Panel | None:
+    """Panel listing indexes that could not be optimized for bulk load (left in
+    place rather than dropped, since they couldn't be safely restored afterward).
+    Returns None when there's nothing to show."""
+    if not report.index_warnings:
+        return None
+    body = "\n".join(f"- {message}" for message in report.index_warnings)
+    return Panel.fit(
+        body,
+        title="[bold yellow]Index Warnings[/bold yellow]",
+        border_style="yellow",
     )
 
 
@@ -876,6 +896,7 @@ def render_index_results(results: Iterable[IndexManagementResult]) -> Renderable
     table.add_column("Index")
     table.add_column("Category")
     table.add_column("Columns")
+    table.add_column("Detail")
     for result in items:
         style = STATUS_STYLES.get(result.status, "white")
         table.add_row(
@@ -886,6 +907,7 @@ def render_index_results(results: Iterable[IndexManagementResult]) -> Renderable
             result.index_name,
             _category_label(result.category),
             ", ".join(result.column_names),
+            result.detail,
         )
     return table
 
@@ -911,13 +933,17 @@ def render_index_summary(results: Iterable[IndexManagementResult], *, dry_run: b
     skipped = sum(item.status == "skipped" for item in items)
     if skipped:
         grid.add_row("Skipped", str(skipped))
+    warnings = sum(item.status == "warning" for item in items)
+    if warnings:
+        grid.add_row("Warnings", str(warnings))
     grid.add_row("Tables", str(len({item.table_name for item in items})))
     action = ("enable" if items[0].enable else "disable") if items else "manage"
     grid.add_row(
         "Summary",
         f"{'Planned' if dry_run else 'Applied'} {action} on {len(items)} metadata operation(s).",
     )
-    return Panel.fit(grid, title="[bold]Summary[/bold]", border_style="green" if not dry_run else "cyan")
+    border_style = "yellow" if warnings else ("green" if not dry_run else "cyan")
+    return Panel.fit(grid, title="[bold]Summary[/bold]", border_style=border_style)
 
 
 def render_fulltext_results(results: Iterable[FullTextResult]) -> RenderableType:
