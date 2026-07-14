@@ -348,6 +348,63 @@ def _record_captured_index(
         return True
 
 
+def _peek_captured_index(
+    connection: sa.Connection,
+    backend: Backend,
+    *,
+    table_name: str,
+    db_schema: str | None,
+    column_names: tuple[str, ...],
+    unique: bool,
+) -> tuple[str | None, sa.Table | None, sa.Row | None]:
+    """Look up a pending capture's original index name without restoring or deleting it.
+
+    Read-only counterpart to _restore_captured_index, used to preview what a
+    live run would do (a restore, or a capture-conflict) without mutating the
+    bookkeeping table.
+
+    Parameters
+    ----------
+    connection : sqlalchemy.Connection
+        Open connection the lookup is performed on.
+    backend : Backend
+        The resolved database backend.
+    table_name : str
+        Name of the table the index belongs to.
+    db_schema : str or None
+        Schema the target table lives in.
+    column_names : tuple[str, ...]
+        Column names the captured index covers, in order.
+    unique : bool
+        Uniqueness flag of the captured index.
+
+    Returns
+    -------
+    restored_index_name: str or None
+        The captured index's original physical name, or None if nothing is
+        captured for this table/schema/column-set/uniqueness.
+    bookkeeping_table: sqlalchemy.Table or None
+        The bookkeeping table definition, for use in a later restore or delete.
+        None if the bookkeeping table doesn't exist yet
+    """
+    bookkeeping_schema = get_bookkeeping_schema(backend)
+    inspector = sa.inspect(connection)
+    if not inspector.has_table(_DROPPED_INDEXES_TABLE_NAME, schema=bookkeeping_schema):
+        return None, None, None
+
+    bookkeeping_table = _dropped_indexes_table(bookkeeping_schema)
+    column_names_json = json.dumps(list(column_names))
+    row = connection.execute(
+        sa.select(bookkeeping_table.c.index_name).where(
+            bookkeeping_table.c.table_name == table_name,
+            bookkeeping_table.c.db_schema == _schema_key(db_schema),
+            bookkeeping_table.c.column_names_json == column_names_json,
+            bookkeeping_table.c.is_unique == unique,
+        )
+    ).one_or_none()
+    return str(row.index_name) if row is not None else None, bookkeeping_table, row
+
+
 def _restore_captured_index(
     connection: sa.Connection,
     backend: Backend,
@@ -393,25 +450,17 @@ def _restore_captured_index(
     treated as a no-op restore (the bookkeeping row is still cleared, since the
     index is confirmed to exist either way).
     """
-    bookkeeping_schema = get_bookkeeping_schema(backend)
-    inspector = sa.inspect(connection)
-    if not inspector.has_table(_DROPPED_INDEXES_TABLE_NAME, schema=bookkeeping_schema):
+    restored_index_name, bookkeeping_table, row =_peek_captured_index(
+        connection=connection,
+        backend=backend,
+        table_name=table_name,
+        db_schema=db_schema,
+        column_names=column_names,
+        unique=unique,
+    )
+    if restored_index_name is None or bookkeeping_table is None or row is None:
         return None
-
-    bookkeeping_table = _dropped_indexes_table(bookkeeping_schema)
-    column_names_json = json.dumps(list(column_names))
-    row = connection.execute(
-        sa.select(bookkeeping_table.c.id, bookkeeping_table.c.index_name).where(
-            bookkeeping_table.c.table_name == table_name,
-            bookkeeping_table.c.db_schema == _schema_key(db_schema),
-            bookkeeping_table.c.column_names_json == column_names_json,
-            bookkeeping_table.c.is_unique == unique,
-        )
-    ).one_or_none()
-    if row is None:
-        return None
-
-    restored_index_name = str(row.index_name)
+    
     # A lightweight, untyped Table (no autoload_with reflection) is sufficient:
     # CREATE INDEX DDL only needs column names, not real types, PKs, FKs, or
     # constraints -- reflecting the whole table would cost several extra
@@ -731,24 +780,38 @@ def manage_indexes(
                                     savepoint.commit()
                                     created_any = True
             else:
-                # Preview from the live-index snapshot already read above. Never touches
-                # the bookkeeping table (capture/restore are not previewed), so a dry run
-                # never creates the bookkeeping schema/table.
-                if not enable:
-                    if not exists:
-                        equivalent_name = _find_equivalent_index(existing_indexes, column_names, unique)
-                        if equivalent_name is not None:
-                            outcome = _IndexOutcome(kind=_IndexOutcomeKind.CAPTURED, name=equivalent_name)
-                        else:
-                            conflict = _find_shape_conflict(existing_indexes, column_names, unique)
-                            if conflict is not None:
-                                outcome = _IndexOutcome(kind=_IndexOutcomeKind.SHAPE_CONFLICT, conflict=conflict)
+                with engine.connect() as connection:
+                    if not enable:
+                        if not exists:
+                            equivalent_name = _find_equivalent_index(existing_indexes, column_names, unique)
+                            if equivalent_name is not None:
+                                pending_capture = _peek_captured_index(
+                                    connection, backend,
+                                    table_name=table.table_name, db_schema=db_schema,
+                                    column_names=column_names, unique=unique,
+                                )
+                                if pending_capture is not None:
+                                    outcome = _IndexOutcome(kind=_IndexOutcomeKind.CAPTURE_CONFLICT, name=equivalent_name)
+                                else:
+                                    outcome = _IndexOutcome(kind=_IndexOutcomeKind.CAPTURED, name=equivalent_name)
                             else:
-                                outcome = _IndexOutcome(kind=_IndexOutcomeKind.ALREADY_ABSENT)
-                else:
-                    equivalent_name = _find_equivalent_index(existing_indexes, column_names, unique)
-                    if equivalent_name is not None:
-                        outcome = _IndexOutcome(kind=_IndexOutcomeKind.SKIP_EQUIVALENT, name=equivalent_name)
+                                conflict = _find_shape_conflict(existing_indexes, column_names, unique)
+                                if conflict is not None:
+                                    outcome = _IndexOutcome(kind=_IndexOutcomeKind.SHAPE_CONFLICT, conflict=conflict)
+                                else:
+                                    outcome = _IndexOutcome(kind=_IndexOutcomeKind.ALREADY_ABSENT)
+                    else:
+                        captured_name, *_ = _peek_captured_index(
+                            connection, backend,
+                            table_name=table.table_name, db_schema=db_schema,
+                            column_names=column_names, unique=unique,
+                        )
+                        if captured_name is not None:
+                            outcome = _IndexOutcome(kind=_IndexOutcomeKind.RESTORED, name=captured_name)
+                        else:
+                            equivalent_name = _find_equivalent_index(existing_indexes, column_names, unique)
+                            if equivalent_name is not None:
+                                outcome = _IndexOutcome(kind=_IndexOutcomeKind.SKIP_EQUIVALENT, name=equivalent_name)
 
             physical_name = index_name
             if outcome.kind == _IndexOutcomeKind.ALREADY_PRESENT:
@@ -769,8 +832,12 @@ def manage_indexes(
             elif outcome.kind == _IndexOutcomeKind.RESTORED:
                 assert outcome.name is not None
                 physical_name = outcome.name
-                status = Status.RESTORED
-                detail = f"foreign index '{outcome.name}' restored from bulk-load capture"
+                status = dry_status(dry_run, Status.RESTORED)
+                detail = dry_label(
+                    dry_run,
+                    planned=f"foreign index '{outcome.name}' would be restored from bulk-load capture",
+                    applied=f"foreign index '{outcome.name}' restored from bulk-load capture",
+                )
             elif outcome.kind == _IndexOutcomeKind.SKIP_EQUIVALENT:
                 assert outcome.name is not None
                 physical_name = outcome.name
@@ -794,10 +861,18 @@ def manage_indexes(
                 assert outcome.name is not None
                 physical_name = outcome.name
                 status = Status.WARNING
-                detail = (
-                    f"foreign index '{outcome.name}' left in place: a different "
-                    "foreign index for this table/column-set is already captured and "
-                    "awaiting restore"
+                detail = dry_label(
+                    dry_run,
+                    planned=(
+                        f"foreign index '{outcome.name}' would be left in place: a different "
+                        "foreign index for this table/column-set is already captured and "
+                        "awaiting restore"
+                    ),
+                    applied=(
+                        f"foreign index '{outcome.name}' left in place: a different "
+                        "foreign index for this table/column-set is already captured and "
+                        "awaiting restore"
+                    ),
                 )
             else:
                 status = dry_status(dry_run)
