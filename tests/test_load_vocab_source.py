@@ -7,6 +7,7 @@ from sqlalchemy.orm import sessionmaker
 from typer.testing import CliRunner
 
 from omop_alchemy.maintenance.cli import app
+from omop_alchemy.maintenance._cli_utils import Status
 from omop_alchemy.maintenance.cli_indexes import IndexManagementResult
 from omop_alchemy.maintenance.cli_vocab import (
     OPTIONAL_VOCAB_MODELS,
@@ -197,7 +198,7 @@ def test_load_vocab_source_cli_uses_configured_athena_source(monkeypatch, tmp_pa
             results=(
                 VocabularyLoadResult(
                     table_name="concept",
-                    status="planned",
+                    status=Status.PLANNED,
                     row_count=None,
                     csv_path=str(Path(source_path) / "CONCEPT.csv"),
                     required=True,
@@ -677,7 +678,7 @@ def test_load_vocab_source_bulk_mode_surfaces_index_warnings(monkeypatch, tmp_pa
                     unique=False,
                     clustered=False,
                     enable=False,
-                    status="warning",
+                    status=Status.WARNING,
                     detail="foreign index 'idx_concept_partial' has a partial WHERE predicate; left in place",
                 )
             ]
@@ -692,7 +693,7 @@ def test_load_vocab_source_bulk_mode_surfaces_index_warnings(monkeypatch, tmp_pa
                 unique=False,
                 clustered=False,
                 enable=True,
-                status="applied",
+                status=Status.APPLIED,
                 detail="metadata-defined index created",
             )
         ]

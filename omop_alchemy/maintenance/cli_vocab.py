@@ -32,7 +32,7 @@ from omop_alchemy.cdm.model.vocabulary import (
     Vocabulary,
 )
 
-from ._cli_utils import ReservedSchema, ensure_schema, omop_command, reject_reserved_schema
+from ._cli_utils import ReservedSchema, Status, ensure_schema, omop_command, reject_reserved_schema
 from .cli_foreign_keys import manage_foreign_key_triggers
 from .cli_indexes import manage_indexes
 from .cli_tables import reset_model_sequences
@@ -56,7 +56,7 @@ class VocabularyLoadResult:
     """Outcome of loading one Athena vocabulary CSV file via the staged ORM CSV loader."""
 
     table_name: str
-    status: str
+    status: Status
     row_count: int | None
     csv_path: str | None
     required: bool
@@ -379,7 +379,7 @@ def load_vocab_source(
         index_warnings = tuple(
             f"{result.table_name}.{result.index_name}: {result.detail}"
             for result in disable_results
-            if result.status == "warning"
+            if result.status == Status.WARNING
         )
         if index_warnings:
             _emit(
@@ -402,7 +402,7 @@ def load_vocab_source(
             if csv_path is None:
                 results.append(VocabularyLoadResult(
                     table_name=model.__tablename__,
-                    status="skipped",
+                    status=Status.SKIPPED,
                     row_count=None,
                     csv_path=None,
                     required=required,
@@ -423,7 +423,7 @@ def load_vocab_source(
             if dry_run:
                 results.append(VocabularyLoadResult(
                     table_name=model.__tablename__,
-                    status="planned",
+                    status=Status.PLANNED,
                     row_count=None,
                     csv_path=str(csv_path),
                     required=required,
@@ -482,7 +482,7 @@ def load_vocab_source(
             rows_cumulative += row_count
             results.append(VocabularyLoadResult(
                 table_name=model.__tablename__,
-                status="loaded",
+                status=Status.LOADED,
                 row_count=row_count,
                 csv_path=str(csv_path),
                 required=required,
@@ -528,7 +528,7 @@ def load_vocab_source(
             dry_run=False,
         )
         sequence_reset_count = sum(
-            result.status == "reset"
+            result.status == Status.RESET
             for result in sequence_results
         )
 

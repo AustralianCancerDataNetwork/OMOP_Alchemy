@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 import sqlalchemy as sa
 
-from ._cli_utils import dry_label, dry_status, ensure_schema
+from ._cli_utils import Status, dry_label, dry_status, ensure_schema
 from .tables import (
     MaintenanceTable,
     TableCategory,
@@ -23,7 +23,7 @@ class TableCreationResult:
     table_name: str
     category: TableCategory
     model_name: str
-    status: str
+    status: Status
     detail: str
 
 
@@ -111,9 +111,9 @@ def create_missing_tables(
                     category=maintenance_table.category,
                     model_name=maintenance_table.model_name,
                     status=(
-                        "blocked"
+                        Status.BLOCKED
                         if blocked is not None
-                        else dry_status(dry_run, applied="created")
+                        else dry_status(dry_run, applied=Status.CREATED)
                     ),
                     detail=(
                         "table blocked by unresolved dependencies: " + ", ".join(blocked)

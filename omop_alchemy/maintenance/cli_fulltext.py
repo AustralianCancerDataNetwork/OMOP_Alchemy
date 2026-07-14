@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+from enum import StrEnum
+
 import typer
 from sqlalchemy.engine import Engine
 
 from ..backends import backend_support_note as _backend_support_note
 from ..backends import resolve_backend, require_backend_support
-from ..backends.base import FullTextAction, FullTextError, FullTextResult
-from ._cli_utils import dry_label, dry_status, omop_command
+from ..backends.base import FullTextError
+from ._cli_utils import Status, dry_label, dry_status, omop_command
 from .ui import (
     console,
     render_fulltext_results,
@@ -19,6 +22,28 @@ app = typer.Typer(
     help=f"Manage full-text search for OMOP vocabulary tables. {_backend_support_note('install_fulltext_on_table')}",
     rich_markup_mode="rich",
 )
+
+
+class FullTextAction(StrEnum):
+    """Which full-text sidecar-column operation a FullTextResult reports on."""
+
+    INSTALL = "install"
+    POPULATE = "populate"
+    DROP = "drop"
+
+
+@dataclass(frozen=True)
+class FullTextResult:
+    """Outcome of a full-text sidecar-column operation for one vocabulary table."""
+    target_name: str
+    table_name: str
+    source_column_name: str
+    vector_column_name: str
+    index_name: str
+    action: FullTextAction
+    status: Status
+    detail: str
+    row_count: int | None = None
 
 
 # ── Orchestrators ─────────────────────────────────────────────────────────────

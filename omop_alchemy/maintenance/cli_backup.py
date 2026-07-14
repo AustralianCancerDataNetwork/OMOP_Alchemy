@@ -12,7 +12,7 @@ import sqlalchemy as sa
 import typer
 
 from ..backends import resolve_backend, require_backend_support, backend_support_note
-from ._cli_utils import dry_label, dry_status, omop_command
+from ._cli_utils import Status, dry_label, dry_status, omop_command
 from .ui import (
     console,
     render_backup_result,
@@ -41,7 +41,7 @@ class BackupResult:
 
     file_path: str
     backup_format: BackupFormat
-    status: str
+    status: Status
     detail: str
     database_name: str
     backend: str
@@ -92,7 +92,7 @@ def create_database_backup(
     return BackupResult(
         file_path=str(resolved_output_path),
         backup_format=backup_format,
-        status=dry_status(dry_run, applied="created"),
+        status=dry_status(dry_run, applied=Status.CREATED),
         detail=dry_label(dry_run, "Database backup would be created with pg_dump.", "Database backup created with pg_dump."),
         database_name=database_name,
         backend=engine.dialect.name,

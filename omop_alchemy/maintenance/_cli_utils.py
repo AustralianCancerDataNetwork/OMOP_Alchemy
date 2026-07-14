@@ -38,6 +38,88 @@ def reject_reserved_schema(db_schema: str | None) -> None:
         )
 
 
+class Severity(StrEnum):
+    """Coarse-grained outcome classification shared by every maintenance
+    command's status vocabulary.
+
+    Parameters
+    ----------
+    code : str
+        The severity's string value.
+    style : str
+        Rich color/style name used to render any Status with this severity.
+    """
+
+    def __new__(cls, code: str, style: str):
+        obj = str.__new__(cls, code)
+        obj._value_ = code
+        return obj
+
+    def __init__(self, code: str, style: str):
+        self.style = style
+
+    OK = ("ok", "green")
+    INFO = ("info", "cyan")
+    WARNING = ("warning", "yellow")
+    ERROR = ("error", "red")
+
+
+class Status(StrEnum):
+    """A maintenance command result status, carrying its Severity (and, via
+    Severity.style, its render color).
+
+    Parameters
+    ----------
+    code : str
+        The status's string value (unchanged from the plain strings used
+        before this type existed, so existing string comparisons/dict
+        lookups by value keep working).
+    severity : Severity
+        How severe this status is, and (via severity.style) how it renders.
+    """
+
+    def __new__(cls, code: str, severity: Severity):
+        obj = str.__new__(cls, code)
+        obj._value_ = code
+        return obj
+
+    def __init__(self, code: str, severity: Severity):
+        self.severity = severity
+
+    # -- shared across every dry-run/apply-style domain --
+    PLANNED = ("planned", Severity.INFO)
+    APPLIED = ("applied", Severity.OK)
+    SKIPPED = ("skipped", Severity.WARNING)
+
+    # -- domain-specific "applied" words (backup, index restore/capture,
+    #    sequence reset, vocab load) -- same OK severity as APPLIED, kept as
+    #    distinct words since the specific outcome is worth seeing at a glance --
+    CREATED = ("created", Severity.OK)
+    LOADED = ("loaded", Severity.OK)
+    RESET = ("reset", Severity.OK)
+    RESTORED = ("restored", Severity.OK)
+    CAPTURED = ("captured", Severity.OK)
+    READY = ("ready", Severity.OK)
+    PASSED = ("passed", Severity.OK)
+    MATCHED = ("matched", Severity.OK)
+
+    # -- warnings: something worth a look, but not blocking --
+    WARNING = ("warning", Severity.WARNING)
+    LIMITED = ("limited", Severity.WARNING)
+    DRIFTED = ("drifted", Severity.WARNING)
+
+    # -- informational: an intentionally supported state --
+    RENAMED = ("renamed", Severity.INFO)
+
+    # -- errors/failures --
+    MISSING = ("missing", Severity.ERROR)
+    UNEXPECTED = ("unexpected", Severity.ERROR)
+    MISMATCH = ("mismatch", Severity.ERROR)
+    BLOCKED = ("blocked", Severity.ERROR)
+    UNSUPPORTED = ("unsupported", Severity.ERROR)
+    FAILED = ("failed", Severity.ERROR)
+
+
 @dataclass(frozen=True)
 class _ConnContext:
     """Connection context derived from the oa_configurator resolved resource."""
@@ -159,9 +241,9 @@ def handle_error(exc: Exception) -> None:
     raise exc
 
 
-def dry_status(dry_run: bool, applied: str = "applied") -> str:
-    """Return 'planned' when dry_run is True, otherwise the applied label."""
-    return "planned" if dry_run else applied
+def dry_status(dry_run: bool, applied: Status = Status.APPLIED) -> Status:
+    """Return Status.PLANNED when dry_run is True, otherwise the applied status."""
+    return Status.PLANNED if dry_run else applied
 
 
 def dry_label(dry_run: bool, planned: str, applied: str) -> str:

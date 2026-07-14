@@ -7,7 +7,7 @@ from omop_alchemy.backends.sqlite import SQLiteBackend
 from omop_alchemy.cdm.base.indexing import OMOP_CLUSTER_INDEX_INFO_KEY, omop_index_name
 from omop_alchemy.maintenance.cli import app
 from omop_alchemy.maintenance.cli_schema import create_missing_tables
-from omop_alchemy.maintenance._cli_utils import ReservedSchema, reject_reserved_schema
+from omop_alchemy.maintenance._cli_utils import ReservedSchema, Status, reject_reserved_schema
 from omop_alchemy.maintenance.ui import render_index_summary
 from omop_alchemy.maintenance.cli_indexes import (
     IndexManagementResult,
@@ -369,7 +369,7 @@ def test_disable_indexes_cli_invokes_management(monkeypatch):
                 unique=False,
                 clustered=False,
                 enable=enable,
-                status="planned",
+                status=Status.PLANNED,
                 detail="metadata-defined index would be dropped",
             )
         ]
@@ -433,7 +433,7 @@ def test_enable_indexes_cli_no_cluster_flag_passes_through(monkeypatch):
                 unique=False,
                 clustered=False,
                 enable=enable,
-                status="planned",
+                status=Status.PLANNED,
                 detail="metadata-defined index would be created",
             )
         ]
@@ -786,7 +786,7 @@ def _warning_result() -> IndexManagementResult:
         unique=False,
         clustered=False,
         enable=False,
-        status="warning",
+        status=Status.WARNING,
         detail="foreign index 'idx_gender_partial' has a partial WHERE predicate; left in place",
     )
 
@@ -807,7 +807,7 @@ def test_render_index_summary_omits_warnings_row_when_none():
         unique=False,
         clustered=False,
         enable=True,
-        status="applied",
+        status=Status.APPLIED,
         detail="metadata-defined index created",
     )
     text = _render_to_text(render_index_summary([ok_result], dry_run=False))
@@ -929,6 +929,7 @@ def test_cluster_index_unique_defaults_true_for_primary_key_target():
 
 def test_render_reconciliation_summary_treats_renamed_only_as_matched():
     from omop_alchemy.maintenance.cli_schema_reconcile import ReconciliationIssue, SchemaReconciliationReport, TableReconciliationResult
+    from omop_alchemy.maintenance._cli_utils import Status
     from omop_alchemy.maintenance.ui import render_reconciliation_summary
 
     report = SchemaReconciliationReport(
@@ -937,7 +938,7 @@ def test_render_reconciliation_summary_treats_renamed_only_as_matched():
             TableReconciliationResult(
                 table_name="person",
                 category=TableCategory.CLINICAL,
-                status="matched",
+                status=Status.MATCHED,
                 issue_count=1,
                 detail="1 difference(s) detected.",
             ),
@@ -948,7 +949,7 @@ def test_render_reconciliation_summary_treats_renamed_only_as_matched():
                 category=TableCategory.CLINICAL,
                 component="index",
                 object_name=PERSON_GENDER_INDEX,
-                status="renamed",
+                status=Status.RENAMED,
                 expected=PERSON_GENDER_INDEX,
                 actual="idx_gender",
                 detail="Index is present under a different name.",

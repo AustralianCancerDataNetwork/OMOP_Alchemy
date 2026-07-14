@@ -1,7 +1,6 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 import sqlalchemy as sa
 
@@ -22,25 +21,6 @@ class FullTextTargetConfig:
     source_column_name: str
     vector_column_name: str
     index_name: str
-
-
-class FullTextAction(StrEnum):
-    INSTALL = "install"
-    POPULATE = "populate"
-    DROP = "drop"
-
-
-@dataclass(frozen=True)
-class FullTextResult:
-    target_name: str
-    table_name: str
-    source_column_name: str
-    vector_column_name: str
-    index_name: str
-    action: FullTextAction
-    status: str
-    detail: str
-    row_count: int | None = None
 
 
 class FullTextError(RuntimeError):

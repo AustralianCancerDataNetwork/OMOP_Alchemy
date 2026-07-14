@@ -9,14 +9,13 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
-from omop_alchemy.backends.base import FullTextResult
-
 from ..backends.resolve import _DIALECT_TO_BACKEND_MAP, SupportedDialect as _SupportedDialect
 
 from .ascii import render_banner
 from .tables import TableCategory
 
 if TYPE_CHECKING:
+    from ._cli_utils import Status
     from .cli_backup import BackupResult
     from .cli_foreign_keys import (
         ForeignKeyConstraintViolation,
@@ -25,6 +24,7 @@ if TYPE_CHECKING:
         ForeignKeyValidationReport,
         ForeignKeyValidationResult,
     )
+    from .cli_fulltext import FullTextResult
     from .cli_indexes import IndexManagementResult
     from .cli_schema import (
         CommandSupport,
@@ -43,28 +43,17 @@ if TYPE_CHECKING:
 
 console = Console()
 
-STATUS_STYLES = {
-    "applied": "green",
-    "blocked": "red",
-    "captured": "green",
-    "drifted": "yellow",
-    "limited": "yellow",
-    "matched": "green",
-    "missing": "red",
-    "planned": "cyan",
-    "ready": "green",
-    "renamed": "cyan",
-    "reset": "green",
-    "restored": "green",
-    "created": "green",
-    "loaded": "green",
-    "warning": "yellow",
-    "info": "cyan",
-    "skipped": "yellow",
-    "unsupported": "red",
-    "failed": "red",
-    "passed": "green",
-}
+def _status_style(status: Status) -> str:
+    """Resolve the render color for a status via its severity.
+
+    Every `status: str` field across omop_alchemy/maintenance/cli_*.py is
+    typed as `Status` (from `_cli_utils.py`), which carries its render color
+    directly (`status.severity.style`) -- there is no longer a
+    separately-maintained color dict for this to drift out of sync with, the
+    way the old STATUS_STYLES dict did (twice: it was missing
+    "mismatch"/"unexpected" until that was caught by hand).
+    """
+    return status.severity.style
 
 CATEGORY_STYLES = {
     TableCategory.CLINICAL: "bright_blue",
@@ -143,8 +132,8 @@ def render_error(message: str, *, title: str = "Error") -> Panel:
 
 
 
-def _status_text(status: str) -> Text:
-    return Text(status.upper(), style=STATUS_STYLES.get(status, "white"))
+def _status_text(status: Status) -> Text:
+    return Text(status.upper(), style=_status_style(status))
 
 
 def _optional_bool_label(value: bool | None) -> Text:
@@ -507,7 +496,7 @@ def render_sequence_reset_results(results: Iterable[SequenceResetResult]) -> Ren
     table.add_column("Detail")
 
     for result in items:
-        style = STATUS_STYLES.get(result.status, "white")
+        style = _status_style(result.status)
         table.add_row(
             Text(result.status.upper(), style=style),
             f"{result.table_name}.{result.pk_column_name}",
@@ -667,7 +656,7 @@ def render_foreign_key_results(results: Iterable[ForeignKeyManagementResult]) ->
     table.add_column("Incoming", justify="right")
 
     for result in items:
-        style = STATUS_STYLES.get(result.status, "white")
+        style = _status_style(result.status)
         table.add_row(
             Text(result.status.upper(), style=style),
             "Enable" if result.enable else "Disable",
@@ -868,7 +857,7 @@ def render_table_creation_results(results: Iterable[TableCreationResult]) -> Ren
     table.add_column("Model")
     table.add_column("Detail")
     for result in items:
-        style = STATUS_STYLES.get(result.status, "white")
+        style = _status_style(result.status)
         table.add_row(
             Text(result.status.upper(), style=style),
             result.table_name,
@@ -904,7 +893,7 @@ def render_index_results(results: Iterable[IndexManagementResult]) -> Renderable
     table.add_column("Columns")
     table.add_column("Detail")
     for result in items:
-        style = STATUS_STYLES.get(result.status, "white")
+        style = _status_style(result.status)
         table.add_row(
             Text(result.status.upper(), style=style),
             result.operation,

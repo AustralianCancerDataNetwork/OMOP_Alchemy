@@ -5,6 +5,7 @@ from typer.testing import CliRunner
 from oa_configurator import StackConfig, DatabaseConfig
 
 from omop_alchemy.maintenance.cli import app
+from omop_alchemy.maintenance._cli_utils import Status
 from omop_alchemy.maintenance.cli_schema import create_missing_tables
 from omop_alchemy.maintenance.tables import TableCategory, TableScope
 from omop_alchemy.maintenance.cli_tables import TruncateTableResult, truncate_tables
@@ -92,7 +93,7 @@ def test_truncate_tables_cli_invokes_management(monkeypatch):
                 table_name="person",
                 category=TableCategory.CLINICAL,
                 row_count=10,
-                status="planned",
+                status=Status.PLANNED,
                 detail="table would be truncated",
             )
         ]

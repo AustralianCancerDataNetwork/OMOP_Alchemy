@@ -15,6 +15,7 @@ from oa_configurator.loader import DEFAULT_CONFIG_PATH
 from omop_alchemy.backends.resolve import SupportedDialect
 from omop_alchemy.config import OmopAlchemyConfig
 
+from ._cli_utils import Status
 from .cli_schema_tables import collect_missing_tables
 from .tables import (
     TableCategory,
@@ -49,7 +50,7 @@ class CommandSupport:
 
     command_name: str
     requirement: str
-    status: str
+    status: Status
     detail: str
 
 
@@ -108,7 +109,7 @@ def _external_dependency_status(name: str, executable_name: str) -> DependencySt
 
 def _command_support_for_unavailable_engine(detail: str) -> tuple[CommandSupport, ...]:
     """Return a full CommandSupport tuple with every command marked blocked, used when the engine cannot be created."""
-    blocked = "blocked"
+    blocked = Status.BLOCKED
     return (
         CommandSupport("doctor", "Any SQLAlchemy backend", blocked, detail),
         CommandSupport("data-summary", "Any SQLAlchemy backend", blocked, detail),
@@ -158,7 +159,7 @@ def _command_support_for_backend(
             if connection_error
             else f"Backend resolved to {current_backend}, but the connection test failed."
         )
-    portable_status = "ready" if connection_ready else "blocked"
+    portable_status = Status.READY if connection_ready else Status.BLOCKED
     portable_detail = (
         f"Ready on {current_backend}." if connection_ready else blocked_detail
     )
@@ -185,19 +186,19 @@ def _command_support_for_backend(
             else blocked_detail
         )
     elif backend == "sqlite":
-        analyze_status = "limited" if connection_ready else "blocked"
+        analyze_status = Status.LIMITED if connection_ready else Status.BLOCKED
         analyze_detail = (
             "Ready on SQLite; ANALYZE is supported, but `--vacuum` is unavailable."
             if connection_ready
             else blocked_detail
         )
-        enable_indexes_status = "limited" if connection_ready else "blocked"
+        enable_indexes_status = Status.LIMITED if connection_ready else Status.BLOCKED
         enable_indexes_detail = (
             "Ready on SQLite; index DDL is supported, but clustering metadata will be skipped."
             if connection_ready
             else blocked_detail
         )
-        postgresql_status = "unsupported" if connection_ready else "blocked"
+        postgresql_status = Status.UNSUPPORTED if connection_ready else Status.BLOCKED
         postgresql_detail = (
             f"Requires PostgreSQL. Current backend: {current_backend}."
             if connection_ready
@@ -210,25 +211,25 @@ def _command_support_for_backend(
             else blocked_detail
         )
     else:
-        analyze_status = "unsupported" if connection_ready else "blocked"
+        analyze_status = Status.UNSUPPORTED if connection_ready else Status.BLOCKED
         analyze_detail = (
             f"Requires PostgreSQL or SQLite. Current backend: {current_backend}."
             if connection_ready
             else blocked_detail
         )
-        enable_indexes_status = "limited" if connection_ready else "blocked"
+        enable_indexes_status = Status.LIMITED if connection_ready else Status.BLOCKED
         enable_indexes_detail = (
             f"Ready on {current_backend}; index DDL is supported, but clustering metadata will be skipped."
             if connection_ready
             else blocked_detail
         )
-        postgresql_status = "unsupported" if connection_ready else "blocked"
+        postgresql_status = Status.UNSUPPORTED if connection_ready else Status.BLOCKED
         postgresql_detail = (
             f"Requires PostgreSQL. Current backend: {current_backend}."
             if connection_ready
             else blocked_detail
         )
-        vocab_load_status = "unsupported" if connection_ready else "blocked"
+        vocab_load_status = Status.UNSUPPORTED if connection_ready else Status.BLOCKED
         vocab_load_detail = (
             f"Requires SQLite or PostgreSQL plus a configured Athena source path. Current backend: {current_backend}."
             if connection_ready
@@ -248,13 +249,13 @@ def _command_support_for_backend(
             "backup-database",
             "PostgreSQL + pg_dump",
             (
-                "ready"
+                Status.READY
                 if connection_ready and backend == SupportedDialect.POSTGRESQL and pg_dump_path is not None
-                else "blocked"
+                else Status.BLOCKED
                 if backend == SupportedDialect.POSTGRESQL
-                else "unsupported"
+                else Status.UNSUPPORTED
                 if connection_ready
-                else "blocked"
+                else Status.BLOCKED
             ),
             (
                 "Ready on PostgreSQL; `pg_dump` is available."
@@ -270,13 +271,13 @@ def _command_support_for_backend(
             "restore-database",
             "PostgreSQL + pg_restore/psql",
             (
-                "ready"
+                Status.READY
                 if connection_ready and backend == SupportedDialect.POSTGRESQL and (pg_restore_path is not None or psql_path is not None)
-                else "blocked"
+                else Status.BLOCKED
                 if backend == SupportedDialect.POSTGRESQL
-                else "unsupported"
+                else Status.UNSUPPORTED
                 if connection_ready
-                else "blocked"
+                else Status.BLOCKED
             ),
             (
                 "Ready on PostgreSQL; restore client tooling is available."

@@ -9,6 +9,7 @@ import sqlalchemy as sa
 
 from omop_alchemy.backends.resolve import SupportedDialect
 
+from ._cli_utils import Status
 from .cli_foreign_keys import (
     ForeignKeyStatusResult,
     ForeignKeyValidationReport,
@@ -35,7 +36,7 @@ class DoctorCheck:
     """Result of a single named maintenance health check (e.g. 'managed tables', 'schema drift')."""
 
     name: str
-    status: str
+    status: Status
     detail: str
 
 
@@ -43,7 +44,7 @@ class DoctorCheck:
 class DoctorRecommendation:
     """Actionable recommendation derived from health check results, with an optional CLI command hint."""
 
-    status: str
+    status: Status
     summary: str
     action: str | None
 
@@ -73,7 +74,7 @@ def _build_recommendations(
     if not info.connection_ready:
         recommendations.append(
             DoctorRecommendation(
-                status="failed",
+                status=Status.FAILED,
                 summary="Database connection is not ready for maintenance operations.",
                 action="Check the engine configuration, backend driver, and target database reachability.",
             )
@@ -83,7 +84,7 @@ def _build_recommendations(
     if info.missing_table_count:
         recommendations.append(
             DoctorRecommendation(
-                status="warning",
+                status=Status.WARNING,
                 summary=f"{info.missing_table_count} ORM-managed table(s) are missing from the target database.",
                 action="Run `omop-alchemy create-missing-tables` before attempting bulk operations.",
             )
@@ -94,7 +95,7 @@ def _build_recommendations(
         if blocking_issue_count:
             recommendations.append(
                 DoctorRecommendation(
-                    status="warning",
+                    status=Status.WARNING,
                     summary=f"Schema reconciliation found {blocking_issue_count} difference(s) against ORM metadata.",
                     action="Review `omop-alchemy reconcile-schema` output before continuing with ETL or maintenance work.",
                 )
@@ -105,7 +106,7 @@ def _build_recommendations(
     ):
         recommendations.append(
             DoctorRecommendation(
-                status="warning",
+                status=Status.WARNING,
                 summary="Some PostgreSQL RI triggers are currently disabled.",
                 action="If loading is complete, run `omop-alchemy foreign-keys validate` and then `omop-alchemy foreign-keys enable --strict`.",
             )
@@ -113,11 +114,11 @@ def _build_recommendations(
 
     if (
         foreign_key_validation is not None
-        and any(result.status == "failed" for result in foreign_key_validation.results)
+        and any(result.status == Status.FAILED for result in foreign_key_validation.results)
     ):
         recommendations.append(
             DoctorRecommendation(
-                status="failed",
+                status=Status.FAILED,
                 summary="Foreign key validation found violating rows.",
                 action="Fix the reported rows, then rerun `omop-alchemy foreign-keys enable --strict`.",
             )
@@ -126,7 +127,7 @@ def _build_recommendations(
     if info.backend == SupportedDialect.POSTGRESQL and info.pg_dump_path is None:
         recommendations.append(
             DoctorRecommendation(
-                status="warning",
+                status=Status.WARNING,
                 summary="`pg_dump` is not on PATH, so backup-database is unavailable from this machine.",
                 action="Install PostgreSQL client tools on the machine running `omop-alchemy`.",
             )
@@ -139,7 +140,7 @@ def _build_recommendations(
     ):
         recommendations.append(
             DoctorRecommendation(
-                status="warning",
+                status=Status.WARNING,
                 summary="Neither `pg_restore` nor `psql` is on PATH, so restore-database is unavailable from this machine.",
                 action="Install PostgreSQL client tools on the machine running `omop-alchemy`.",
             )
@@ -148,7 +149,7 @@ def _build_recommendations(
     if not recommendations:
         recommendations.append(
             DoctorRecommendation(
-                status="passed",
+                status=Status.PASSED,
                 summary="No obvious maintenance blockers were detected.",
                 action=None,
             )
@@ -193,17 +194,17 @@ def collect_doctor_report(
     try:
         info = collect_maintenance_info(vocabulary_included=vocabulary_included)
 
-        checks = [
-            DoctorCheck(
-                name="connection",
-                status="passed" if info.connection_ready else "failed",
-                detail=(
-                    "Target database connection succeeded."
-                    if info.connection_ready
-                    else info.connection_error or info.engine_error or "Connection could not be established."
-                ),
-            )
-        ]
+    checks = [
+        DoctorCheck(
+            name="connection",
+            status=Status.PASSED if info.connection_ready else Status.FAILED,
+            detail=(
+                "Target database connection succeeded."
+                if info.connection_ready
+                else info.connection_error or info.engine_error or "Connection could not be established."
+            ),
+        )
+    ]
 
         reconciliation: SchemaReconciliationReport | None = None
         foreign_key_status: tuple[ForeignKeyStatusResult, ...] | None = None
@@ -215,7 +216,7 @@ def collect_doctor_report(
             checks.append(
                 DoctorCheck(
                     name="managed tables",
-                    status="passed" if missing_table_count == 0 else "warning",
+                    status=Status.PASSED if missing_table_count == 0 else Status.WARNING,
                     detail=(
                         "All selected ORM-managed tables exist."
                         if missing_table_count == 0
@@ -236,7 +237,7 @@ def collect_doctor_report(
                 checks.append(
                     DoctorCheck(
                         name="schema drift",
-                        status="passed" if not blocking_issue_count else "warning",
+                        status=Status.PASSED if not blocking_issue_count else Status.WARNING,
                         detail=(
                             "ORM metadata matches the target database."
                             if not blocking_issue_count
@@ -248,7 +249,7 @@ def collect_doctor_report(
                 checks.append(
                     DoctorCheck(
                         name="schema drift",
-                        status="skipped",
+                        status=Status.SKIPPED,
                         detail="Run `omop-alchemy doctor --deep` to reconcile ORM metadata against the target database.",
                     )
                 )
@@ -267,7 +268,7 @@ def collect_doctor_report(
                 checks.append(
                     DoctorCheck(
                         name="foreign keys",
-                        status="passed" if disabled_tables == 0 else "warning",
+                        status=Status.PASSED if disabled_tables == 0 else Status.WARNING,
                         detail=(
                             "All inspected RI triggers are enabled."
                             if disabled_tables == 0
@@ -283,12 +284,12 @@ def collect_doctor_report(
                         vocabulary_included=vocabulary_included,
                     )
                     violating_tables = sum(
-                        result.status == "failed" for result in foreign_key_validation.results
+                        result.status == Status.FAILED for result in foreign_key_validation.results
                     )
                     checks.append(
                         DoctorCheck(
                             name="foreign key validation",
-                            status="passed" if violating_tables == 0 else "failed",
+                            status=Status.PASSED if violating_tables == 0 else Status.FAILED,
                             detail=(
                                 "All selected foreign key relationships passed validation."
                                 if violating_tables == 0
@@ -300,7 +301,7 @@ def collect_doctor_report(
                     checks.append(
                         DoctorCheck(
                             name="foreign key validation",
-                            status="skipped",
+                            status=Status.SKIPPED,
                             detail="Run `omop-alchemy doctor --deep` to validate selected foreign key relationships.",
                         )
                     )
@@ -308,66 +309,68 @@ def collect_doctor_report(
                 checks.append(
                     DoctorCheck(
                         name="foreign keys",
-                        status="skipped",
+                        status=Status.SKIPPED,
                         detail="Foreign key trigger inspection is only available on PostgreSQL.",
                     )
                 )
                 checks.append(
                     DoctorCheck(
                         name="foreign key validation",
-                        status="skipped",
+                        status=Status.SKIPPED,
                         detail="Foreign key validation is only available on PostgreSQL.",
                     )
                 )
-        else:
-            checks.extend(
-                (
-                    DoctorCheck(
-                        name="managed tables",
-                        status="skipped",
-                        detail="Skipped because the database connection is not ready.",
-                    ),
-                    DoctorCheck(
-                        name="foreign keys",
-                        status="skipped",
-                        detail="Skipped because the database connection is not ready.",
-                    ),
-                    DoctorCheck(
-                        name="schema drift",
-                        status="skipped",
-                        detail="Skipped because the database connection is not ready.",
-                    ),
-                    DoctorCheck(
-                        name="foreign key validation",
-                        status="skipped",
-                        detail="Skipped because the database connection is not ready.",
-                    ),
-                )
+        finally:
+            engine.dispose()
+    else:
+        checks.extend(
+            (
+                DoctorCheck(
+                    name="managed tables",
+                    status=Status.SKIPPED,
+                    detail="Skipped because the database connection is not ready.",
+                ),
+                DoctorCheck(
+                    name="foreign keys",
+                    status=Status.SKIPPED,
+                    detail="Skipped because the database connection is not ready.",
+                ),
+                DoctorCheck(
+                    name="schema drift",
+                    status=Status.SKIPPED,
+                    detail="Skipped because the database connection is not ready.",
+                ),
+                DoctorCheck(
+                    name="foreign key validation",
+                    status=Status.SKIPPED,
+                    detail="Skipped because the database connection is not ready.",
+                ),
             )
+        )
 
-        if info.backend == SupportedDialect.POSTGRESQL:
-            backup_tools_ready = info.pg_dump_path is not None and (
-                info.pg_restore_path is not None or info.psql_path is not None
+    if info.backend == SupportedDialect.POSTGRESQL:
+        backup_tools_ready = info.pg_dump_path is not None and (
+            info.pg_restore_path is not None or info.psql_path is not None
+        )
+        checks.append(
+            DoctorCheck(
+                name="backup tooling",
+                status=Status.PASSED if backup_tools_ready else Status.WARNING,
+                detail=(
+                    "PostgreSQL backup and restore client tools are available."
+                    if backup_tools_ready
+                    else "PostgreSQL client tools are incomplete on this machine."
+                ),
             )
-            checks.append(
-                DoctorCheck(
-                    name="backup tooling",
-                    status="passed" if backup_tools_ready else "warning",
-                    detail=(
-                        "PostgreSQL backup and restore client tools are available."
-                        if backup_tools_ready
-                        else "PostgreSQL client tools are incomplete on this machine."
-                    ),
-                )
+        )
+    else:
+        checks.append(
+            DoctorCheck(
+                name="backup tooling",
+                status=Status.SKIPPED,
+                detail="Backup and restore tooling checks are only relevant for PostgreSQL targets.",
             )
-        else:
-            checks.append(
-                DoctorCheck(
-                    name="backup tooling",
-                    status="skipped",
-                    detail="Backup and restore tooling checks are only relevant for PostgreSQL targets.",
-                )
-            )
+        )
 
         return DoctorReport(
             info=info,

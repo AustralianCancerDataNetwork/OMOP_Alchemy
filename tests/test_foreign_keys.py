@@ -3,6 +3,7 @@ import pytest
 from typer.testing import CliRunner
 
 from omop_alchemy.maintenance.cli import app
+from omop_alchemy.maintenance._cli_utils import Status
 from omop_alchemy.maintenance.cli_schema import create_missing_tables
 from omop_alchemy.maintenance.cli_foreign_keys import (
     ForeignKeyConstraintViolation,
@@ -398,7 +399,7 @@ def test_foreign_keys_validate_cli_invokes_validation(monkeypatch):
                     incoming_constraint_count=0,
                     violating_constraint_count=1,
                     violating_row_count=3,
-                    status="failed",
+                    status=Status.FAILED,
                     detail="3 violating row(s) across 1 constraint(s): fk_visit_occurrence_person_id_person (3)",
                 ),
             ),

@@ -8,7 +8,7 @@ import sqlalchemy as sa
 import typer
 
 from ..backends import resolve_backend, require_backend_support, backend_support_note
-from ._cli_utils import dry_label, dry_status, omop_command, resolve_selection
+from ._cli_utils import Status, dry_label, dry_status, omop_command, resolve_selection
 from .tables import (
     TableCategory,
     TableScope,
@@ -41,7 +41,7 @@ class AnalyzeTableResult:
     table_name: str
     category: TableCategory
     operation: str
-    status: str
+    status: Status
     detail: str
 
 
@@ -78,7 +78,7 @@ def analyze_tables(
                         table_name=maintenance_table.table_name,
                         category=maintenance_table.category,
                         operation=operation,
-                        status="skipped",
+                        status=Status.SKIPPED,
                         detail="table not present in target database",
                     )
                 )
@@ -111,7 +111,7 @@ class TruncateTableResult:
     table_name: str
     category: TableCategory
     row_count: int | None
-    status: str
+    status: Status
     detail: str
 
 
@@ -185,7 +185,7 @@ def truncate_tables(
                         table_name=maintenance_table.table_name,
                         category=maintenance_table.category,
                         row_count=None,
-                        status="skipped",
+                        status=Status.SKIPPED,
                         detail="table not present in target database",
                     )
                 )
@@ -250,7 +250,7 @@ class SequenceResetResult:
     pk_column_name: str
     sequence_name: str | None
     next_value: int | None
-    status: str
+    status: Status
     detail: str
 
 
@@ -308,7 +308,7 @@ def reset_model_sequences(
                         pk_column_name=target.pk_column_name,
                         sequence_name=None,
                         next_value=None,
-                        status="skipped",
+                        status=Status.SKIPPED,
                         detail="no owned PostgreSQL sequence found",
                     )
                 )
@@ -333,7 +333,7 @@ def reset_model_sequences(
                     pk_column_name=target.pk_column_name,
                     sequence_name=sequence_name,
                     next_value=next_value,
-                    status=dry_status(dry_run, applied="reset"),
+                    status=dry_status(dry_run, applied=Status.RESET),
                     detail=dry_label(dry_run, "sequence would be reset from table max + 1", "sequence reset from table max + 1"),
                 )
             )

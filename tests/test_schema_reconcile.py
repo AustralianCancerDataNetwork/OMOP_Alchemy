@@ -66,16 +66,17 @@ def test_reconcile_schema_renamed_index_does_not_flip_table_to_drifted(tmp_path)
 
 def test_is_blocking_issue_excludes_renamed_only():
     from omop_alchemy.maintenance.cli_schema_reconcile import ReconciliationIssue
+    from omop_alchemy.maintenance._cli_utils import Status
     from omop_alchemy.maintenance.tables import TableCategory
 
     renamed = ReconciliationIssue(
         table_name="person", category=TableCategory.CLINICAL, component="index",
-        object_name=PERSON_GENDER_INDEX, status="renamed",
+        object_name=PERSON_GENDER_INDEX, status=Status.RENAMED,
         expected=PERSON_GENDER_INDEX, actual="idx_gender", detail="...",
     )
     missing = ReconciliationIssue(
         table_name="person", category=TableCategory.CLINICAL, component="index",
-        object_name=PERSON_GENDER_INDEX, status="missing",
+        object_name=PERSON_GENDER_INDEX, status=Status.MISSING,
         expected=PERSON_GENDER_INDEX, actual=None, detail="...",
     )
     assert is_blocking_issue(renamed) is False
