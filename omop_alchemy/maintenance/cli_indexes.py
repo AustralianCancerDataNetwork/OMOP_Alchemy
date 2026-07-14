@@ -14,7 +14,7 @@ import typer
 from omop_alchemy.cdm.base.indexing import OMOP_CLUSTER_INDEX_INFO_KEY
 
 from ..backends import Backend, resolve_backend, backend_supports
-from ._cli_utils import ReservedSchema, Status, dry_label, dry_status, omop_command
+from ._cli_utils import ReservedSchema, Status, dry_label, dry_status, omop_command, reject_reserved_schema
 from .tables import (
     MaintenanceTable,
     TableCategory,
@@ -684,6 +684,7 @@ def manage_indexes(
     cluster: bool = True,
 ) -> list[IndexManagementResult]:
     """Create or drop all ORM-defined indexes. CLUSTERs tables when enabling and cluster=True."""
+    reject_reserved_schema(db_schema)
     backend = resolve_backend(engine)
     inspector = sa.inspect(engine)
     selected_tables = select_omop_tables(vocabulary_included=vocabulary_included)
