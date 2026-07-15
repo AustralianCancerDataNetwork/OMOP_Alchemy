@@ -3,12 +3,10 @@ on:
   pull_request:
     types: [closed]
     branches: [main]
+permissions:
+  contents: write
 jobs:
-  sync-description:
-    if: github.event.pull_request.merged == true
-    uses: AustralianCancerDataNetwork/cava-devops/.github/workflows/sync-pr-description.yml@main
   draft:
-    needs: [sync-description]
-    if: needs.sync-description.result == 'success'
+    if: github.event.pull_request.merged == true
     uses: AustralianCancerDataNetwork/cava-devops/.github/workflows/release-drafter.yml@main
     secrets: inherit

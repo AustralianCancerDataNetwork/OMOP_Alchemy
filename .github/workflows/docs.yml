@@ -1,28 +1,10 @@
 name: Deploy Docs
-
 on:
   push:
     tags: ['v*']
   workflow_dispatch:
-
 permissions:
   contents: write
-
 jobs:
   deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - name: Install MkDocs
-        run: |
-            pip install mkdocs mkdocs-material mkdocstrings-python mkdocs-mermaid2-plugin
-            pip install -e .
-
-      - name: Deploy to GitHub Pages
-        run: |
-          mkdocs gh-deploy --force
+    uses: AustralianCancerDataNetwork/cava-devops/.github/workflows/deploy-docs.yml@main

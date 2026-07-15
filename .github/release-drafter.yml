@@ -15,9 +15,7 @@ categories:
 template: |
   $CHANGES
 
-change-template: |
-  - **$TITLE** (#$NUMBER) by @$AUTHOR
-  $BODY
+change-template: '- **$TITLE** (#$NUMBER) @$AUTHOR'
 
 version-resolver:
   major:

@@ -57,10 +57,6 @@ dev = [
   "mkdocs-mermaid2-plugin"
 ]
 
-docs = [
-  "sphinx",
-  "myst-parser",
-]
 
 [project.urls]
 Homepage = "https://australiancancerdatanetwork.github.io/OMOP_Alchemy/"

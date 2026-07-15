@@ -6,6 +6,8 @@ jobs:
   build:
     uses: AustralianCancerDataNetwork/cava-devops/.github/workflows/publish.yml@main
   publish:
+    # Inline: PyPI OIDC checks job_workflow_ref, which must point to this file.
+    # Moving pypa/gh-action-pypi-publish into cava-devops would break the trusted publisher.
     needs: build
     runs-on: ubuntu-latest
     permissions:
