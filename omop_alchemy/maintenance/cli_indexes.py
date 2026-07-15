@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from typing import Any, Mapping, Sequence
-from enum import StrEnum
 
 import sqlalchemy as sa
 from sqlalchemy.exc import DBAPIError, IntegrityError
@@ -237,15 +236,15 @@ def get_bookkeeping_schema(backend: Backend) -> str | None:
 def _dropped_indexes_table(bookkeeping_schema: str | None) -> sa.Table:
     """Build the dropped-index bookkeeping table definition.
 
-    `disable` drops indexes to speed up bulk loads. If the only index covering
+    disable drops indexes to speed up bulk loads. If the only index covering
     an ORM-defined column set is a foreign (non-OMOP_Alchemy) index, e.g. one
     created by the official OHDSI CDM DDL script, dropping it still gives the
     bulk-load speed benefit, but its definition must be captured somewhere that
-    survives across separate CLI invocations, since `disable` and `enable` are
+    survives across separate CLI invocations, since disable and enable are
     documented as usable as two separate commands, not just paired within a
     single process. This table records that definition in a reserved schema
-    before the foreign index is dropped, so a later `enable` call can recreate
-    it under its original name. `db_schema` is part of the row identity so two
+    before the foreign index is dropped, so a later enable call can recreate
+    it under its original name. db_schema is part of the row identity so two
     same-named tables in different schemas of one database never collide.
 
     Parameters
@@ -290,8 +289,8 @@ def _record_captured_index(
     """Capture a foreign index's definition into the bookkeeping table before dropping it.
 
     Returns False, recording nothing, if this table/schema/column-set already
-    has a pending capture awaiting restore, e.g. a second `disable` run,
-    without an intervening `enable`, that finds a different foreign index than
+    has a pending capture awaiting restore, e.g. a second disable run,
+    without an intervening enable, that finds a different foreign index than
     the one already captured. The bookkeeping table's unique constraint only
     allows one pending capture per table/schema/column-set/uniqueness, since
     only one original name could ever be restored to that slot; the caller
@@ -385,12 +384,15 @@ def _peek_captured_index(
 
     Returns
     -------
-    restored_index_name: str or None
+    restored_index_name : str or None
         The captured index's original physical name, or None if nothing is
         captured for this table/schema/column-set/uniqueness.
-    bookkeeping_table: sqlalchemy.Table or None
-        The bookkeeping table definition, for use in a later restore or delete.
-        None if the bookkeeping table doesn't exist yet
+    bookkeeping_table : sqlalchemy.Table or None
+        The bookkeeping table definition, for use in a later restore or
+        delete. None if the bookkeeping table doesn't exist yet.
+    row : sqlalchemy.Row or None
+        The matched bookkeeping row, for use in a later delete by id. None if
+        nothing is captured for this table/schema/column-set/uniqueness.
     """
     bookkeeping_schema = get_bookkeeping_schema(backend)
     inspector = sa.inspect(connection)
@@ -400,7 +402,7 @@ def _peek_captured_index(
     bookkeeping_table = _dropped_indexes_table(bookkeeping_schema)
     column_names_json = json.dumps(list(column_names))
     row = connection.execute(
-        sa.select(bookkeeping_table.c.index_name).where(
+        sa.select(bookkeeping_table.c.id, bookkeeping_table.c.index_name).where(
             bookkeeping_table.c.table_name == table_name,
             bookkeeping_table.c.db_schema == _schema_key(db_schema),
             bookkeeping_table.c.column_names_json == column_names_json,
@@ -448,14 +450,14 @@ def _restore_captured_index(
     Notes
     -----
     If the captured index was already recreated out-of-band (e.g. a concurrent
-    `enable` invocation, or a manually restored backup), `create(checkfirst=True)`
+    enable invocation, or a manually restored backup), create(checkfirst=True)
     can still race with the physical CREATE INDEX statement and raise a
     "relation already exists" DBAPIError; this is caught the same way the
     equivalent race is handled for newly-created ORM-defined indexes, and
     treated as a no-op restore (the bookkeeping row is still cleared, since the
     index is confirmed to exist either way).
     """
-    restored_index_name, bookkeeping_table, row =_peek_captured_index(
+    restored_index_name, bookkeeping_table, row = _peek_captured_index(
         connection=connection,
         backend=backend,
         table_name=table_name,
@@ -574,8 +576,8 @@ def _resolve_physical_cluster_name(
     The ORM-designated cluster index may not physically exist under its own
     name if the database was pre-indexed by an external script (e.g. the
     OHDSI CDM DDL script), so this falls back to whichever plain index
-    actually covers the same columns. Shared by the standalone `indexes
-    cluster` command and manage_indexes()'s cluster step (for the
+    actually covers the same columns. Shared by the standalone indexes
+    cluster command and manage_indexes()'s cluster step (for the
     primary-key-based cluster target case, which manage_indexes() otherwise
     resolves more precisely via its own per-run physical_index_names tracking
     -- see the comment at its call site).
@@ -647,36 +649,29 @@ def collect_index_targets(
 
     return targets
 
-class _IndexOutcomeKind(StrEnum):
-    """Discriminated outcome of processing one ORM-defined index in manage_indexes()."""
-
-    ALREADY_PRESENT = "already_present"
-    ALREADY_ABSENT = "already_absent"
-    CAPTURED = "captured"
-    RESTORED = "restored"
-    SKIP_EQUIVALENT = "skip_equivalent"
-    SHAPE_CONFLICT = "shape_conflict"
-    CAPTURE_CONFLICT = "capture_conflict"
-    DEFAULT = "default"
-
 @dataclass(frozen=True)
 class _IndexOutcome:
-    """Discriminated outcome of processing one ORM-defined index in manage_indexes().
+    """Resolved outcome of processing one ORM-defined index in manage_indexes().
+
+    Built directly at the point each outcome is determined, in the live-run
+    or dry-run branch -- there is exactly one place that decides status,
+    detail, and physical_name for a given case, not a separate translation
+    step that could fall out of sync with the branch that determined it.
 
     Parameters
     ----------
-    kind : _IndexOutcomeKind
-        Which outcome occurred.
-    name : str or None
-        The relevant physical index name, for kinds that have one ("captured",
-        "restored", "skip_equivalent", "capture_conflict").
-    conflict : Mapping[str, Any] or None
-        The conflicting reflected index, for kind="shape_conflict".
+    status : Status
+        The status to report for this index.
+    detail : str
+        Human-readable detail text to report for this index.
+    physical_name : str
+        The physical index name to report. The ORM's own index_name unless a
+        foreign name was captured, restored, or found equivalent.
     """
 
-    kind: _IndexOutcomeKind
-    name: str | None = None
-    conflict: Mapping[str, Any] | None = None
+    status: Status
+    detail: str
+    physical_name: str
 
 
 def manage_indexes(
@@ -725,169 +720,162 @@ def manage_indexes(
                 continue
 
             schema_index = metadata_indexes[(table.table_name, index_name)]
-            outcome = _IndexOutcome(kind=_IndexOutcomeKind.DEFAULT)
+            # Plain create/drop succeeding is the common case for both live and
+            # dry runs, so it's the default outcome; every branch below only
+            # overrides it for a foreign-index or already-in-place case.
+            outcome = _IndexOutcome(
+                status=dry_status(dry_run),
+                detail=dry_label(
+                    dry_run,
+                    planned="metadata-defined index would be dropped" if not enable else "metadata-defined index would be created",
+                    applied="metadata-defined index dropped" if not enable else "metadata-defined index created",
+                ),
+                physical_name=index_name,
+            )
 
-            if not dry_run:
-                # Each index gets its own transaction so WAL is committed and
-                # checkpointable before the next index build begins.
-                with engine.begin() as connection:
-                    if not enable:
+            # Each index gets its own connection: a transaction when actually
+            # mutating (not dry_run, so WAL is committed and checkpointable
+            # before the next index build begins), a plain read-only
+            # connection when only previewing.
+            connection_factory = engine.begin if not dry_run else engine.connect
+            with connection_factory() as connection:
+                if not enable:
+                    if not dry_run:
                         existed_before_drop = backend.index_exists(connection, index_name, db_schema)
-                        if existed_before_drop:
-                            backend.drop_index_if_exists(connection, index_name, db_schema)
-                        else:
-                            # Index under a different naming scheme than ours
-                            equivalent_name = _find_equivalent_index(existing_indexes, column_names, unique)
-                            if equivalent_name is not None:
+                    else:
+                        existed_before_drop = exists
+                    if not existed_before_drop:
+                        # Index under a different naming scheme than ours
+                        equivalent_name = _find_equivalent_index(existing_indexes, column_names, unique)
+                        if equivalent_name is not None:
+                            if not dry_run:
                                 captured = _record_captured_index(
                                     connection, backend,
                                     table_name=table.table_name, db_schema=db_schema,
                                     index_name=equivalent_name,
                                     column_names=column_names, unique=unique,
                                 )
-                                if captured:
-                                    backend.drop_index_if_exists(connection, equivalent_name, db_schema)
-                                    outcome = _IndexOutcome(kind=_IndexOutcomeKind.CAPTURED, name=equivalent_name)
-                                else:
-                                    # A different foreign index for this table/column-set is
-                                    # already captured and awaiting restore. Leave this one
-                                    # in place rather than dropping something we can no
-                                    # longer track.
-                                    outcome = _IndexOutcome(kind=_IndexOutcomeKind.CAPTURE_CONFLICT, name=equivalent_name)
                             else:
-                                conflict = _find_shape_conflict(existing_indexes, column_names, unique)
-                                if conflict is not None:
-                                    outcome = _IndexOutcome(kind=_IndexOutcomeKind.SHAPE_CONFLICT, conflict=conflict)
-                                else:
-                                    outcome = _IndexOutcome(kind=_IndexOutcomeKind.ALREADY_ABSENT)
-                    else:
+                                pending_capture, _, _ = _peek_captured_index(
+                                    connection, backend,
+                                    table_name=table.table_name, db_schema=db_schema,
+                                    column_names=column_names, unique=unique,
+                                )
+                                captured = pending_capture is None
+                            if captured:
+                                if not dry_run:
+                                    backend.drop_index_if_exists(connection, equivalent_name, db_schema)
+                                outcome = _IndexOutcome(
+                                    status=dry_status(dry_run, Status.CAPTURED),
+                                    detail=dry_label(
+                                        dry_run,
+                                        planned=f"foreign index '{equivalent_name}' would be captured and dropped for bulk load",
+                                        applied=f"foreign index '{equivalent_name}' captured and dropped for bulk load",
+                                    ),
+                                    physical_name=equivalent_name,
+                                )
+                            else:
+                                # A different foreign index for this table/column-set is
+                                # already captured and awaiting restore. Leave this one
+                                # in place rather than dropping something we can no
+                                # longer track.
+                                outcome = _IndexOutcome(
+                                    status=Status.WARNING,
+                                    detail=dry_label(
+                                        dry_run,
+                                        planned=(
+                                            f"foreign index '{equivalent_name}' would be left in place: a different "
+                                            "foreign index for this table/column-set is already captured and "
+                                            "awaiting restore"
+                                        ),
+                                        applied=(
+                                            f"foreign index '{equivalent_name}' left in place: a different "
+                                            "foreign index for this table/column-set is already captured and "
+                                            "awaiting restore"
+                                        ),
+                                    ),
+                                    physical_name=equivalent_name,
+                                )
+                        else:
+                            conflict = _find_shape_conflict(existing_indexes, column_names, unique)
+                            if conflict is not None:
+                                conflict_name = str(conflict["name"])
+                                outcome = _IndexOutcome(
+                                    status=Status.WARNING,
+                                    detail=dry_label(
+                                        dry_run,
+                                        planned=f"foreign index '{conflict_name}' {_describe_shape_conflict(conflict)}; would be left in place",
+                                        applied=f"foreign index '{conflict_name}' {_describe_shape_conflict(conflict)}; left in place",
+                                    ),
+                                    physical_name=conflict_name,
+                                )
+                            else:
+                                outcome = _IndexOutcome(
+                                    status=Status.SKIPPED,
+                                    detail="metadata-defined index already absent (skipped)",
+                                    physical_name=index_name,
+                                )
+                    elif not dry_run:
+                        backend.drop_index_if_exists(connection, index_name, db_schema)
+                        # outcome stays default: applied / "metadata-defined index dropped"
+                    # dry-run, existed_before_drop True: outcome stays default ("would be dropped")
+                else:
+                    if not dry_run:
                         restored_name = _restore_captured_index(
                             connection, backend,
                             table_name=table.table_name, db_schema=db_schema,
                             column_names=column_names, unique=unique,
                         )
-                        if restored_name is not None:
-                            created_any = True
-                            outcome = _IndexOutcome(kind=_IndexOutcomeKind.RESTORED, name=restored_name)
-                        else:
-                            equivalent_name = _find_equivalent_index(existing_indexes, column_names, unique)
-                            if equivalent_name is not None:
-                                outcome = _IndexOutcome(kind=_IndexOutcomeKind.SKIP_EQUIVALENT, name=equivalent_name)
-                            else:
-                                savepoint = connection.begin_nested()
-                                try:
-                                    schema_index.create(bind=connection, checkfirst=True)
-                                except DBAPIError as exc:
-                                    savepoint.rollback()
-                                    if "already exists" not in str(exc.orig).lower():
-                                        raise
-                                    outcome = _IndexOutcome(kind=_IndexOutcomeKind.ALREADY_PRESENT)
-                                else:
-                                    savepoint.commit()
-                                    created_any = True
-            else:
-                with engine.connect() as connection:
-                    if not enable:
-                        if not exists:
-                            equivalent_name = _find_equivalent_index(existing_indexes, column_names, unique)
-                            if equivalent_name is not None:
-                                pending_capture = _peek_captured_index(
-                                    connection, backend,
-                                    table_name=table.table_name, db_schema=db_schema,
-                                    column_names=column_names, unique=unique,
-                                )
-                                if pending_capture is not None:
-                                    outcome = _IndexOutcome(kind=_IndexOutcomeKind.CAPTURE_CONFLICT, name=equivalent_name)
-                                else:
-                                    outcome = _IndexOutcome(kind=_IndexOutcomeKind.CAPTURED, name=equivalent_name)
-                            else:
-                                conflict = _find_shape_conflict(existing_indexes, column_names, unique)
-                                if conflict is not None:
-                                    outcome = _IndexOutcome(kind=_IndexOutcomeKind.SHAPE_CONFLICT, conflict=conflict)
-                                else:
-                                    outcome = _IndexOutcome(kind=_IndexOutcomeKind.ALREADY_ABSENT)
                     else:
-                        captured_name, *_ = _peek_captured_index(
+                        restored_name, _, _ = _peek_captured_index(
                             connection, backend,
                             table_name=table.table_name, db_schema=db_schema,
                             column_names=column_names, unique=unique,
                         )
-                        if captured_name is not None:
-                            outcome = _IndexOutcome(kind=_IndexOutcomeKind.RESTORED, name=captured_name)
-                        else:
-                            equivalent_name = _find_equivalent_index(existing_indexes, column_names, unique)
-                            if equivalent_name is not None:
-                                outcome = _IndexOutcome(kind=_IndexOutcomeKind.SKIP_EQUIVALENT, name=equivalent_name)
+                    if restored_name is not None:
+                        if not dry_run:
+                            created_any = True
+                        outcome = _IndexOutcome(
+                            status=dry_status(dry_run, Status.RESTORED),
+                            detail=dry_label(
+                                dry_run,
+                                planned=f"foreign index '{restored_name}' would be restored from bulk-load capture",
+                                applied=f"foreign index '{restored_name}' restored from bulk-load capture",
+                            ),
+                            physical_name=restored_name,
+                        )
+                    else:
+                        equivalent_name = _find_equivalent_index(existing_indexes, column_names, unique)
+                        if equivalent_name is not None:
+                            outcome = _IndexOutcome(
+                                status=Status.SKIPPED,
+                                detail=dry_label(
+                                    dry_run,
+                                    planned=f"equivalent foreign index '{equivalent_name}' already provides this coverage (would skip creation)",
+                                    applied=f"equivalent foreign index '{equivalent_name}' already provides this coverage (skipped)",
+                                ),
+                                physical_name=equivalent_name,
+                            )
+                        elif not dry_run:
+                            savepoint = connection.begin_nested()
+                            try:
+                                schema_index.create(bind=connection, checkfirst=True)
+                            except DBAPIError as exc:
+                                savepoint.rollback()
+                                if "already exists" not in str(exc.orig).lower():
+                                    raise
+                                outcome = _IndexOutcome(
+                                    status=Status.SKIPPED,
+                                    detail="metadata-defined index already exists (skipped)",
+                                    physical_name=index_name,
+                                )
+                            else:
+                                savepoint.commit()
+                                created_any = True
+                                # outcome stays default: applied / "metadata-defined index created"
+                        # dry-run, no restore, no equivalent: outcome stays default ("would be created")
 
-            physical_name = index_name
-            if outcome.kind == _IndexOutcomeKind.ALREADY_PRESENT:
-                status = Status.SKIPPED
-                detail = "metadata-defined index already exists (skipped)"
-            elif outcome.kind == _IndexOutcomeKind.ALREADY_ABSENT:
-                status = Status.SKIPPED
-                detail = "metadata-defined index already absent (skipped)"
-            elif outcome.kind == _IndexOutcomeKind.CAPTURED:
-                assert outcome.name is not None
-                physical_name = outcome.name
-                status = dry_status(dry_run, Status.CAPTURED)
-                detail = dry_label(
-                    dry_run,
-                    planned=f"foreign index '{outcome.name}' would be captured and dropped for bulk load",
-                    applied=f"foreign index '{outcome.name}' captured and dropped for bulk load",
-                )
-            elif outcome.kind == _IndexOutcomeKind.RESTORED:
-                assert outcome.name is not None
-                physical_name = outcome.name
-                status = dry_status(dry_run, Status.RESTORED)
-                detail = dry_label(
-                    dry_run,
-                    planned=f"foreign index '{outcome.name}' would be restored from bulk-load capture",
-                    applied=f"foreign index '{outcome.name}' restored from bulk-load capture",
-                )
-            elif outcome.kind == _IndexOutcomeKind.SKIP_EQUIVALENT:
-                assert outcome.name is not None
-                physical_name = outcome.name
-                status = Status.SKIPPED
-                detail = dry_label(
-                    dry_run,
-                    planned=f"equivalent foreign index '{outcome.name}' already provides this coverage (would skip creation)",
-                    applied=f"equivalent foreign index '{outcome.name}' already provides this coverage (skipped)",
-                )
-            elif outcome.kind == _IndexOutcomeKind.SHAPE_CONFLICT:
-                assert outcome.conflict is not None
-                conflict_name = str(outcome.conflict["name"])
-                physical_name = conflict_name
-                status = Status.WARNING
-                detail = dry_label(
-                    dry_run,
-                    planned=f"foreign index '{conflict_name}' {_describe_shape_conflict(outcome.conflict)}; would be left in place",
-                    applied=f"foreign index '{conflict_name}' {_describe_shape_conflict(outcome.conflict)}; left in place",
-                )
-            elif outcome.kind == _IndexOutcomeKind.CAPTURE_CONFLICT:
-                assert outcome.name is not None
-                physical_name = outcome.name
-                status = Status.WARNING
-                detail = dry_label(
-                    dry_run,
-                    planned=(
-                        f"foreign index '{outcome.name}' would be left in place: a different "
-                        "foreign index for this table/column-set is already captured and "
-                        "awaiting restore"
-                    ),
-                    applied=(
-                        f"foreign index '{outcome.name}' left in place: a different "
-                        "foreign index for this table/column-set is already captured and "
-                        "awaiting restore"
-                    ),
-                )
-            else:
-                status = dry_status(dry_run)
-                detail = dry_label(
-                    dry_run,
-                    planned="metadata-defined index would be dropped" if not enable else "metadata-defined index would be created",
-                    applied="metadata-defined index dropped" if not enable else "metadata-defined index created",
-                )
-
+            physical_name = outcome.physical_name
             physical_index_names[index_name] = physical_name
             results.append(
                 IndexManagementResult(
@@ -899,8 +887,8 @@ def manage_indexes(
                     unique=unique,
                     clustered=metadata_index.info.get(OMOP_CLUSTER_INDEX_INFO_KEY) is True,
                     enable=enable,
-                    status=status,
-                    detail=detail,
+                    status=outcome.status,
+                    detail=outcome.detail,
                 )
             )
 

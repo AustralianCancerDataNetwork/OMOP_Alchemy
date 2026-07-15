@@ -46,13 +46,18 @@ console = Console()
 def _status_style(status: Status) -> str:
     """Resolve the render color for a status via its severity.
 
-    Every `status: str` field across omop_alchemy/maintenance/cli_*.py is
-    typed as `Status` (from `_cli_utils.py`), which carries its render color
-    directly (`status.severity.style`) -- there is no longer a
-    separately-maintained color dict for this to drift out of sync with, the
-    way the old STATUS_STYLES dict did (twice: it was missing
-    "mismatch"/"unexpected" until that was caught by hand).
+    Raises
+    ------
+    TypeError
+        If the status is not a Status member (e.g., a plain string).
     """
+    # Local import to prevent circular import
+    from ._cli_utils import Status as _Status
+
+    if not isinstance(status, _Status):
+        raise TypeError(
+            f"_status_style() expected a Status member, got {status!r} ({type(status).__name__})"
+        )
     return status.severity.style
 
 CATEGORY_STYLES = {

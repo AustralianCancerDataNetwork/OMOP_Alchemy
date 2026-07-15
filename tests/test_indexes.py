@@ -834,8 +834,8 @@ def test_is_plain_index_false_for_constraint_backed_index():
 
 
 def test_manage_indexes_disable_second_run_without_enable_degrades_to_warning(tmp_path):
-    """A second `disable` run, without an intervening `enable`, that finds a
-    *different* foreign index than the one already captured must not crash. 
+    """A second disable run, without an intervening enable, that finds a
+    different foreign index than the one already captured must not crash.
     It must leave the second index in place and report a warning, since the
     bookkeeping table can only track one pending capture per table/column-set."""
     engine = _fresh_engine(tmp_path)

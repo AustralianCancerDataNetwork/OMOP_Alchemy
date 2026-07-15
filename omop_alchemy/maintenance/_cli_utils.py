@@ -23,7 +23,7 @@ _F = TypeVar("_F", bound=Callable[..., Any])
 
 class ReservedSchema(StrEnum):
     """Schema names reserved for OMOP_Alchemy/orm-loader internal bookkeeping.
-    A user-configured ``db_schema`` may never collide with one of these. 
+    A user-configured db_schema may never collide with one of these.
     """
 
     STAGING = STAGING_SCHEMA
