@@ -269,5 +269,5 @@ class Person_Timeline(Person):
             key=lambda e: e.event_time.start,
         )
     
-    def to_json(self) -> list[str]:  # type: ignore[override]
-        return [e.to_json() for e in self.timeline]  # type: ignore[return-value]
+    def to_json(self) -> list[str]:  # ty: ignore[invalid-method-override]
+        return [e.to_json() for e in self.timeline]  # ty: ignore[invalid-argument-type]

@@ -8,9 +8,12 @@ jobs:
     uses: AustralianCancerDataNetwork/cava-devops/.github/workflows/label-gate.yml@main
   build-test-sqlite:
     uses: AustralianCancerDataNetwork/cava-devops/.github/workflows/build-test.yml@main
+    with:
+      ty-src: omop_alchemy
   build-test-postgres:
     uses: AustralianCancerDataNetwork/cava-devops/.github/workflows/build-test-postgres.yml@main
     with:
+      ty-src: omop_alchemy
       postgres-db: test_db
       setup-commands: |
         uv run omop-config configure omop_alchemy \

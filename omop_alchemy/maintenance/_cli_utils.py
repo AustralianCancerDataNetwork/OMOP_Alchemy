@@ -70,8 +70,8 @@ def omop_command(
                 )
                 try:
                     if dry_run:
-                        return func(conn, engine, dry_run=_dry_run, **kwargs)  # type: ignore[arg-type]
-                    return func(conn, engine, **kwargs)  # type: ignore[arg-type]
+                        return func(conn, engine, dry_run=_dry_run, **kwargs)
+                    return func(conn, engine, **kwargs)
                 finally:
                     engine.dispose()
             except Exception as exc:
@@ -99,10 +99,10 @@ def omop_command(
                     annotation=bool,
                 )
             )
-        wrapper.__signature__ = inspect.signature(func).replace(parameters=new_params)  # type: ignore[attr-defined]
+        wrapper.__signature__ = inspect.signature(func).replace(parameters=new_params)  # ty: ignore[unresolved-attribute]
 
-        return wrapper  # type: ignore[return-value]
-    return decorator  # type: ignore[return-value]
+        return wrapper  # ty: ignore[invalid-return-type]
+    return decorator
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

@@ -173,14 +173,14 @@ def _load_vocab_model_csv(
         load_kwargs["chunksize"] = chunksize
 
     try:
-        return int(model.load_csv(session, csv_path, **load_kwargs))  # type: ignore[arg-type]
+        return int(model.load_csv(session, csv_path, **load_kwargs))  # ty: ignore[invalid-argument-type]
     except Exception as exc:
         if not _is_missing_staging_table_error(exc, model=model):
             raise
 
         session.rollback()
         model.create_staging_table(session)
-        return int(model.load_csv(session, csv_path, **load_kwargs))  # type: ignore[arg-type]
+        return int(model.load_csv(session, csv_path, **load_kwargs))  # ty: ignore[invalid-argument-type]
 
 
 def _find_vocab_csv_path(source_path: Path, table_name: str) -> Path | None:

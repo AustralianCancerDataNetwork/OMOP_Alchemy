@@ -105,7 +105,7 @@ def collect_maintenance_tables() -> list[MaintenanceTable]:
         _mapped_cdm_table_classes(),
         key=lambda cls: cls.__table__.name,
     ):
-        table = mapped_class.__table__
+        table = mapped_class.__table__  # ty: ignore[unresolved-attribute]
         tables.append(
             MaintenanceTable(
                 table_name=table.name,
@@ -270,7 +270,7 @@ def schema_adjusted_metadata(
     for maintenance_table in tables:
         adjusted_tables[maintenance_table.table_name] = maintenance_table.table.to_metadata(
             metadata,
-            schema=db_schema,  # type: ignore[arg-type]
+            schema=db_schema,  # ty: ignore[invalid-argument-type]
             referred_schema_fn=(
                 lambda _table, to_schema, _constraint, _referred_schema: to_schema
             ),
