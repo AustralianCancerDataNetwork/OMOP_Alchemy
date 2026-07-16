@@ -6,7 +6,7 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Literal, Optional, TypeAlias, cast
+from typing import Literal, TypeAlias, cast
 
 import sqlalchemy as sa
 import sqlalchemy.orm as so
@@ -285,7 +285,7 @@ def load_vocab_source(
     if tables is not None:
         unknown = sorted(set(tables) - _ALL_VOCAB_TABLE_NAMES)
         if unknown:
-            raise ValueError(
+            raise RuntimeError(
                 f"Unknown vocabulary table(s): {unknown}. "
                 f"Valid names: {sorted(_ALL_VOCAB_TABLE_NAMES)}"
             )
@@ -534,7 +534,7 @@ def load_vocab_source_command(
         None,
         help="Path to the unzipped Athena vocabulary CSV directory. Falls back to the saved athena-source default.",
     ),
-    tables: Optional[List[str]] = typer.Option(
+    tables: list[str] | None = typer.Option(
         None,
         "--table",
         help=(

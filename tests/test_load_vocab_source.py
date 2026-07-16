@@ -515,12 +515,12 @@ def test_load_vocab_source_uses_auto_not_literal_quote_mode(monkeypatch, tmp_pat
     assert "literal" not in received_quote_modes
 
 
-def test_load_vocab_source_tables_unknown_name_raises_value_error(tmp_path):
+def test_load_vocab_source_tables_unknown_name_raises_runtime_error(tmp_path):
     """Unknown table name in tables= is rejected before any DB connection."""
     engine = sa.create_engine(f"sqlite:///{tmp_path / 'tables_unknown.db'}", future=True)
     source_path = _build_required_athena_source(tmp_path)
 
-    with pytest.raises(ValueError, match="Unknown vocabulary table"):
+    with pytest.raises(RuntimeError, match="Unknown vocabulary table"):
         load_vocab_source(engine, source_path=source_path, tables=["not_a_table"])
 
 
