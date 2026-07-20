@@ -142,7 +142,7 @@ class ClinicalEvent:
         return {}
     
 
-    def __repr__(self: ClinicalEventProtocol) -> str:
+    def __repr__(self: ClinicalEventProtocol) -> str:  # ty: ignore[invalid-method-override]
         et = self.event_time
         ev = self.event_value()
 

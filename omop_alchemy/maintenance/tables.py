@@ -103,7 +103,7 @@ def collect_maintenance_tables() -> list[MaintenanceTable]:
 
     for mapped_class in sorted(
         _mapped_cdm_table_classes(),
-        key=lambda cls: cls.__table__.name,
+        key=lambda cls: cls.__table__.name,  # ty: ignore[unresolved-attribute]
     ):
         table = mapped_class.__table__  # ty: ignore[unresolved-attribute]
         tables.append(
