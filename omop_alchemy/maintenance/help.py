@@ -164,4 +164,4 @@ def _print_commands_panel_with_backend_grouping(
 
 
 def install_help_customizations() -> None:
-    typer_rich_utils._print_commands_panel = _print_commands_panel_with_backend_grouping
+    typer_rich_utils._print_commands_panel = _print_commands_panel_with_backend_grouping  # ty: ignore[invalid-assignment]

@@ -1,0 +1,21 @@
+name: Publish
+on:
+  push:
+    tags: ['v*']
+jobs:
+  build:
+    uses: AustralianCancerDataNetwork/cava-devops/.github/workflows/publish.yml@main
+  publish:
+    # Inline: PyPI OIDC checks job_workflow_ref, which must point to this file.
+    # Moving pypa/gh-action-pypi-publish into cava-devops would break the trusted publisher.
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    environment:
+      name: pypi
+      url: https://pypi.org/p/omop-alchemy
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { name: dist, path: dist/ }
+      - uses: pypa/gh-action-pypi-publish@release/v1

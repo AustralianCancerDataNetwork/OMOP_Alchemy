@@ -2,7 +2,7 @@ import sqlalchemy as sa
 import sqlalchemy.orm as so
 from typing import TYPE_CHECKING, Any, Type, cast
 from functools import cached_property
-from orm_loader.helpers import Base, get_model_by_tablename # type: ignore
+from orm_loader.helpers import Base, get_model_by_tablename
 from omop_alchemy.cdm.base import (
     cdm_table,
     CDMTableBase, 
@@ -71,7 +71,7 @@ class Episode_EventView(Episode_Event, Episode_EventContext, DomainValidationMix
 
         cls = cast(Type[Any] | None, get_model_by_tablename(table_name))
         if cls is not None:
-            return session.get(cls, self.event_id) # type: ignore
+            return session.get(cls, self.event_id)
         return None
 
     def __repr__(self):

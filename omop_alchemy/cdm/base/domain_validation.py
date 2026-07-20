@@ -121,7 +121,7 @@ class DomainValidationMixin:
         for field, spec in cls.__expected_domains__.items():
             rules.append(
                 DomainRule(
-                    table=cls.__tablename__, # type: ignore[attr-defined]
+                    table=cls.__tablename__, # ty: ignore[invalid-argument-type]
                     field=field,
                     allowed_domains=spec.domains,
                 )
@@ -153,7 +153,7 @@ class DomainValidationMixin:
         ConceptCls = get_model_by_tablename("Concept")
         if ConceptCls is None:
             return False
-        concept = session.get(ConceptCls, concept_id) # type: ignore
+        concept = session.get(ConceptCls, concept_id)
         return concept.domain_id in expected.domains if concept else False  # type: ignore[union-attr]
 
 
