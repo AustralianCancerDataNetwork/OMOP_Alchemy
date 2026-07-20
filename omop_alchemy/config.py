@@ -86,8 +86,19 @@ def get_cdm_context() -> tuple[OmopAlchemyConfig, ResolvedResource]:
 
     The resource is taken from tools.omop_alchemy.default_resource when set;
     otherwise falls back to the canonical CDM_DB resource name.
+
+    Raises
+    ------
+    RuntimeError
+        If no oa-configurator stack config file exists yet.
     """
-    stack = load_stack_config()
+    try:
+        stack = load_stack_config()
+    except FileNotFoundError as exc:
+        raise RuntimeError(
+            "No omop-alchemy configuration found. "
+            "Run `omop-config configure omop_alchemy` to set it up."
+        ) from exc
     pkg_config = OmopAlchemyConfig.from_stack(stack)
     tool = stack.tools.get(OmopAlchemyConfig.tool_name)
     resource_name = (tool.default_resource if tool else None) or OmopAlchemyConfig.CDM_DB.semantic_name

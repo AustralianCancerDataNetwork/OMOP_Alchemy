@@ -83,6 +83,11 @@ def create_database_backup(
             raise RuntimeError(
                 "Database backup failed via `pg_dump`." + (f" {stderr}" if stderr else "")
             ) from exc
+        except FileNotFoundError as exc:
+            raise RuntimeError(
+                f"`pg_dump` executable not found at {tool_path!r}. "
+                "It may have been removed from PATH after being resolved."
+            ) from exc
 
     return BackupResult(
         file_path=str(resolved_output_path),
@@ -122,6 +127,11 @@ def restore_database_backup(
             stderr = (exc.stderr or "").strip()
             raise RuntimeError(
                 "Database restore failed." + (f" {stderr}" if stderr else "")
+            ) from exc
+        except FileNotFoundError as exc:
+            raise RuntimeError(
+                f"Restore executable not found at {tool_path!r}. "
+                "It may have been removed from PATH after being resolved."
             ) from exc
 
     return BackupResult(
