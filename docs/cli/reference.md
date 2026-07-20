@@ -63,14 +63,18 @@ Summarise ORM-managed OMOP tables present in the target database.
 
 ### `load-vocab-source`
 
-Load all Athena vocabulary CSVs from the configured source path, optionally toggling indexes and FK triggers for speed.
+Load Athena vocabulary CSVs from the configured source path into the target database. By default all vocabulary tables are loaded; use `--table` to restrict the load to one or more specific tables.
 
 !!! warning "Clustering"
     `--bulk-mode` (default) drops all secondary indexes before loading and recreates them afterward. Physical table clustering is **not** run as part of the load. Use [`indexes cluster`](#indexes-cluster) as a separate step once the load completes and you have confirmed sufficient free disk space.
 
+!!! tip "Single-table loads"
+    When targeting a specific table with `--table`, consider passing `--no-bulk-mode` to avoid dropping and rebuilding indexes across all vocabulary tables for a single-file update.
+
 | Flag | Type / Choices | Default | Description |
 |---|---|---|---|
 | `--athena-source` | str (optional) | (saved default) | Path to the unzipped Athena vocabulary CSV directory. Falls back to the saved athena-source default. |
+| `--table` | str (repeatable, optional) | (none — all tables) | Restrict the load to one or more vocabulary tables by name (e.g. `--table concept --table vocabulary`). Skips the all-required-files preflight; errors if the named CSV is absent from the source directory. |
 | `--merge-strategy` | `replace` / `upsert` / `insert_if_empty` | `replace` | CSV merge strategy. `replace` keeps the DB in sync with the source. `upsert` is incremental and non-destructive. `insert_if_empty` is the fast path for a fresh empty target. |
 | `--staging-chunk-size` | int (optional) | `100000` | [Phase 1] Rows per ORM transaction when loading CSV → staging table. Ignored when the PostgreSQL COPY fast-path is active. Pass `0` to disable chunking. |
 | `--bulk-mode` / `--no-bulk-mode` | bool | `True` | Disable FK triggers and drop indexes globally before loading, then rebuild after. Much faster for a full vocabulary reload. Ignored on backends that do not support it. |

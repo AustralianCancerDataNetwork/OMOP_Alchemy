@@ -118,6 +118,10 @@ OPTIONAL_VOCAB_MODELS: tuple[VocabularyModel, ...] = cast(
     ),
 )
 
+_ALL_VOCAB_TABLE_NAMES: frozenset[str] = frozenset(
+    m.__tablename__ for m in REQUIRED_VOCAB_MODELS + OPTIONAL_VOCAB_MODELS
+)
+
 
 class VocabularyLoadError(RuntimeError):
     """Raised when a single Athena vocabulary table load fails."""
@@ -201,13 +205,16 @@ def _find_vocab_csv_path(source_path: Path, table_name: str) -> Path | None:
     return None
 
 
-def _missing_required_files(source_path: Path) -> list[str]:
-    """Return the table names of required vocabulary CSVs that cannot be found under source_path."""
-    missing: list[str] = []
-    for model in REQUIRED_VOCAB_MODELS:
-        if _find_vocab_csv_path(source_path, model.__tablename__) is None:
-            missing.append(model.__tablename__)
-    return missing
+def _missing_required_files(
+    source_path: Path,
+    required_models: tuple[VocabularyModel, ...] = REQUIRED_VOCAB_MODELS,
+) -> list[str]:
+    """Return the table names of vocabulary CSVs in required_models that cannot be found under source_path."""
+    return [
+        model.__tablename__
+        for model in required_models
+        if _find_vocab_csv_path(source_path, model.__tablename__) is None
+    ]
 
 
 def _create_missing_vocabulary_tables(
@@ -247,6 +254,7 @@ def load_vocab_source(
     engine: sa.Engine,
     *,
     source_path: str | Path,
+    tables: list[str] | None = None,
     db_schema: str | None = None,
     dry_run: bool = False,
     merge_strategy: MergeStrategy = "replace",
@@ -255,18 +263,50 @@ def load_vocab_source(
     merge_batch_size: int | None = None,
     progress_callback: VocabularyLoadProgressCallback | None = None,
 ) -> VocabularyLoadReport:
-    """Load all Athena vocabulary CSVs from source_path. With bulk_mode, indexes and FK triggers are toggled around the load."""
+    """
+    Load Athena vocabulary CSVs from source_path into the target database.
+
+    When tables is None (default), all vocabulary tables are loaded and the
+    full set of required CSVs is validated before any DB work begins. When
+    tables is provided, only those tables are loaded and the preflight check
+    is scoped to the requested tables only; an absent CSV for any named table
+    raises RuntimeError before touching the database.
+
+    With bulk_mode (default on PostgreSQL), secondary indexes and FK triggers
+    are toggled globally around the load for speed. Pass --no-bulk-mode when
+    loading a single table to avoid the index drop/rebuild overhead.
+    """
     resolved_source_path = Path(source_path).expanduser().resolve()
     if not resolved_source_path.exists() or not resolved_source_path.is_dir():
         raise RuntimeError(
             f"Athena source directory not found: {resolved_source_path}"
         )
 
-    missing_required = _missing_required_files(resolved_source_path)
-    if missing_required:
+    if tables is not None:
+        unknown = sorted(set(tables) - _ALL_VOCAB_TABLE_NAMES)
+        if unknown:
+            raise RuntimeError(
+                f"Unknown vocabulary table(s): {unknown}. "
+                f"Valid names: {sorted(_ALL_VOCAB_TABLE_NAMES)}"
+            )
+
+    all_models = REQUIRED_VOCAB_MODELS + OPTIONAL_VOCAB_MODELS
+    if tables is not None:
+        all_models = tuple(m for m in all_models if m.__tablename__ in tables)
+
+    # When a specific table selection is given, check exactly those CSVs are present.
+    # Otherwise check only the required tables, missing optional CSVs are allowed.
+    models_to_preflight = all_models if tables is not None else REQUIRED_VOCAB_MODELS
+    missing = _missing_required_files(resolved_source_path, required_models=models_to_preflight)
+    if missing:
+        if tables is not None:
+            raise RuntimeError(
+                "Requested vocabulary CSV file(s) not found in source directory: "
+                + ", ".join(sorted(missing))
+            )
         raise RuntimeError(
             "Missing required Athena vocabulary CSV files: "
-            + ", ".join(sorted(missing_required))
+            + ", ".join(sorted(missing))
         )
 
     if not dry_run:
@@ -290,7 +330,6 @@ def load_vocab_source(
             cur.execute(f"SET search_path TO staging, {_quoted_schema}")
             cur.close()
 
-    all_models = REQUIRED_VOCAB_MODELS + OPTIONAL_VOCAB_MODELS
     table_count = sum(
         1 for m in all_models
         if _find_vocab_csv_path(resolved_source_path, m.__tablename__) is not None
@@ -495,6 +534,17 @@ def load_vocab_source_command(
         None,
         help="Path to the unzipped Athena vocabulary CSV directory. Falls back to the saved athena-source default.",
     ),
+    tables: list[str] | None = typer.Option(
+        None,
+        "--table",
+        help=(
+            "Restrict the load to one or more vocabulary tables by name "
+            "(e.g. --table concept --table vocabulary). "
+            "When omitted, all vocabulary tables are loaded. "
+            "Skips the all-required-files preflight check; "
+            "errors if the named CSV is absent from the source directory."
+        ),
+    ),
     merge_strategy: MergeStrategy = typer.Option(
         "replace",
         help=(
@@ -575,6 +625,7 @@ def load_vocab_source_command(
         report = load_vocab_source(
             engine,
             source_path=effective_athena_source,
+            tables=tables or None,
             db_schema=conn.db_schema,
             dry_run=dry_run,
             merge_strategy=merge_strategy,
