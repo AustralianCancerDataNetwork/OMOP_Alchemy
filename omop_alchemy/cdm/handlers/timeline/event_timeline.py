@@ -5,6 +5,7 @@ from sqlalchemy import select
 from datetime import datetime, time, date
 from typing import Optional, Mapping, Any,  List
 import json
+import hashlib
 from dataclasses import dataclass
 from typing import Protocol, Union, Literal
 
@@ -189,6 +190,12 @@ class ClinicalEvent:
     def to_json(self: ClinicalEventProtocol) -> str:
         return json.dumps(self.to_dict(), ensure_ascii=False)
 
+    def fingerprint(self: ClinicalEventProtocol) -> str:
+        # Override SerialisableTableInterface.fingerprint(). 
+        # to_json() does not have "include_nulls" due to different behaviour
+        # (its dict is a curated timeline projection, not a raw column dump).
+        return hashlib.sha256(self.to_json().encode("utf-8")).hexdigest()
+
 
 
 class Condition_Event(Condition_Occurrence, ClinicalEvent):
@@ -201,7 +208,7 @@ class Condition_Event(Condition_Occurrence, ClinicalEvent):
     )
 
 
-class Measurement_Event(ClinicalEvent, Measurement):  # type: ignore[misc]
+class Measurement_Event(ClinicalEvent, Measurement):  # ty: ignore[invalid-method-override]
 
     _mapping = EventMapping(
         concept_field="measurement_concept_id",
