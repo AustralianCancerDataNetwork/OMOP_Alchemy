@@ -1,6 +1,7 @@
 import sqlalchemy as sa
 import sqlalchemy.orm as so
 from sqlalchemy.ext.declarative import declared_attr
+from sqlalchemy.ext.hybrid import hybrid_property
 from enum import StrEnum
 from typing import Optional, TYPE_CHECKING, List
 from datetime import date
@@ -88,6 +89,28 @@ class Concept(
     valid_end_date: so.Mapped[date] = so.mapped_column(sa.Date(), nullable=False)
     invalid_reason: so.Mapped[Optional[str]] = so.mapped_column(sa.String(1), nullable=True)
 
+    @hybrid_property
+    def is_standard(self) -> bool:
+        value = self.standard_concept.strip() if self.standard_concept is not None else ""
+        return bool(value) and value in tuple(StandardConceptFlag)
+
+    @is_standard.inplace.expression
+    @classmethod
+    def _is_standard_expression(cls) -> sa.SQLColumnExpression[bool]:
+        return normalised_flag_expr(cls.standard_concept).in_(
+            [flag.value for flag in StandardConceptFlag]
+        )
+
+    @hybrid_property
+    def is_valid(self) -> bool:
+        value = self.invalid_reason.strip() if self.invalid_reason is not None else ""
+        return not value
+
+    @is_valid.inplace.expression
+    @classmethod
+    def _is_valid_expression(cls) -> sa.SQLColumnExpression[bool]:
+        return normalised_flag_expr(cls.invalid_reason).is_(None)
+
 class ConceptContext(ReferenceContext):
     """
     Navigational relationships for Concept.
@@ -153,12 +176,3 @@ class ConceptView(Concept, ConceptContext):
     """
     __tablename__ = "concept"
     __mapper_args__ = {"concrete": False}
-
-
-    @property
-    def is_standard(self) -> bool:
-        return self.standard_concept in tuple(StandardConceptFlag)
-
-    @property
-    def is_valid(self) -> bool:
-        return self.invalid_reason is None

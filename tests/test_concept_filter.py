@@ -140,8 +140,10 @@ class TestConceptViewFlags:
         [
             (StandardConceptFlag.STANDARD, True),
             (StandardConceptFlag.CLASSIFICATION, True),
+            (f" {StandardConceptFlag.STANDARD} ", True),
             (None, False),
             ("", False),
+            ("   ", False),
         ],
     )
     def test_is_standard(self, standard_concept, expected):
@@ -152,6 +154,8 @@ class TestConceptViewFlags:
         "invalid_reason, expected",
         [
             (None, True),
+            ("", True),
+            ("   ", True),
             (InvalidReasonFlag.DELETED, False),
             (InvalidReasonFlag.UPDATED, False),
         ],
@@ -159,3 +163,36 @@ class TestConceptViewFlags:
     def test_is_valid(self, invalid_reason, expected):
         cv = ConceptView(invalid_reason=invalid_reason)
         assert cv.is_valid is expected
+
+    @pytest.mark.parametrize(
+        "invalid_reason", [None, "", "   ", "D", "U", "X", " X "]
+    )
+    def test_is_valid_agrees_with_require_active_filter(self, session, invalid_reason):
+        """PR feedback regression test: a 'dirty' row must not be judged
+        active by ConceptFilter(require_active=True) but invalid by
+        ConceptView.is_valid, or vice versa."""
+        included_by_filter = session.scalar(
+            sa.select(normalised_flag_expr(sa.literal(invalid_reason, type_=sa.String)).is_(None))
+        )
+        cv = ConceptView(invalid_reason=invalid_reason)
+        assert cv.is_valid == included_by_filter
+
+    @pytest.mark.parametrize(
+        "standard_concept", [None, "", "   ", "S", " S ", "C", " C ", "X", " X "]
+    )
+    def test_is_standard_agrees_with_require_standard_filter(self, session, standard_concept):
+        """Same consistency check as above, for is_standard/require_standard."""
+        # bool(...): a bare SELECT surfaces SQL's three-valued IN() as NULL
+        # rather than False, but a WHERE clause treats NULL the same as
+        # False (row excluded) - so this coercion mirrors WHERE semantics.
+        included_by_filter = bool(
+            session.scalar(
+                sa.select(
+                    normalised_flag_expr(sa.literal(standard_concept, type_=sa.String)).in_(
+                        [flag.value for flag in StandardConceptFlag]
+                    )
+                )
+            )
+        )
+        cv = ConceptView(standard_concept=standard_concept)
+        assert cv.is_standard == included_by_filter
