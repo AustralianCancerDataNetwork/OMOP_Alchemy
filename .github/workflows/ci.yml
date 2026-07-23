@@ -25,3 +25,24 @@ jobs:
           --test-user test \
           --test-password test \
           --test-database-name test_db
+  build-test-sqlite-lowest-direct:
+    uses: AustralianCancerDataNetwork/cava-devops/.github/workflows/build-test.yml@main
+    with:
+      ty-src: omop_alchemy
+      resolution: lowest-direct
+  build-test-postgres-lowest-direct:
+    uses: AustralianCancerDataNetwork/cava-devops/.github/workflows/build-test-postgres.yml@main
+    with:
+      ty-src: omop_alchemy
+      postgres-db: test_db
+      resolution: lowest-direct
+      setup-commands: |
+        uv run omop-config configure omop_alchemy \
+          --test-dialect postgresql+psycopg \
+          --test-database pg_test \
+          --test-host localhost \
+          --test-port 5432 \
+          --test-cdm-schema public \
+          --test-user test \
+          --test-password test \
+          --test-database-name test_db
