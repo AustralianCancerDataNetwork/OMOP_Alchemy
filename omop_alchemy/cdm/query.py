@@ -75,7 +75,9 @@ class ConceptFilter:
 
         if self.require_standard:
             query = query.where(
-                normalised_flag_expr(Concept.standard_concept).in_(list(StandardConceptFlag))
+                normalised_flag_expr(Concept.standard_concept).in_(
+                    [flag.value for flag in StandardConceptFlag]
+                )
             )
 
         if self.require_active:

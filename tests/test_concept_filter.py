@@ -69,6 +69,28 @@ class TestConceptFilterApply:
         assert returned_ids == all_ids
         assert returned_ids  # sanity: fixtures aren't empty
 
+    def test_require_standard_executes_and_matches_fixtures(self, session):
+        """Regression test: prove require_standard actually executes and
+        matches real 'S' rows, not just that the compiled clause looks right."""
+        query = sa.select(Concept.concept_id)
+        result = ConceptFilter(require_standard=True).apply(query)
+
+        returned_ids = set(session.scalars(result).all())
+        all_ids = set(session.scalars(sa.select(Concept.concept_id)).all())
+        assert returned_ids == all_ids
+        assert returned_ids  # sanity: fixtures aren't empty
+
+    def test_require_standard_compiles_with_literal_binds(self):
+        """Regression test: StrEnum members passed to .in_() must render as
+        plain string literals, not enum reprs, so query.compile(literal_binds=
+        True) (used for debug logging) doesn't raise a CompileError."""
+        query = sa.select(Concept.concept_id)
+        result = ConceptFilter(require_standard=True).apply(query)
+
+        compiled = str(result.compile(compile_kwargs={"literal_binds": True}))
+        assert "'S'" in compiled
+        assert "'C'" in compiled
+
     def test_limit_is_applied(self):
         query = sa.select(Concept.concept_id)
         result = ConceptFilter(limit=5).apply(query)
