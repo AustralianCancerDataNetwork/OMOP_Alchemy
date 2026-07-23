@@ -50,7 +50,7 @@ dev = [
   "requests>=2.33.0",
   "pytest>=9.0.3",
   "pytest-cov>=4.0",
-  "ty>=0.0.59",
+  "ty==0.0.61",
   "ruff>=0.4",
   "mkdocs-material>=9.7.1",
   "mkdocstrings-python>=2.0.1",
