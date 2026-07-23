@@ -1,6 +1,7 @@
 import sqlalchemy as sa
 import sqlalchemy.orm as so
 from sqlalchemy.ext.declarative import declared_attr
+from enum import StrEnum
 from typing import Optional, TYPE_CHECKING, List
 from datetime import date
 if TYPE_CHECKING:
@@ -21,6 +22,39 @@ from omop_alchemy.cdm.base import (
     omop_primary_key_index_name,
     omop_table_options,
 )
+
+
+class StandardConceptFlag(StrEnum):
+    """Allowed non-null values of ``concept.standard_concept`` (OMOP CDM v5.4)."""
+
+    STANDARD = "S"
+    CLASSIFICATION = "C"
+
+
+class InvalidReasonFlag(StrEnum):
+    """Allowed non-null values of ``concept.invalid_reason`` (OMOP CDM v5.4)."""
+
+    DELETED = "D"
+    UPDATED = "U"
+
+
+def normalised_flag_expr(
+    column: sa.SQLColumnExpression[Optional[str]],
+) -> sa.SQLColumnExpression[Optional[str]]:
+    """Return a canonical OMOP flag expression.
+
+    OMOP CDM v5.4 allows only ``NULL``/``'S'``/``'C'`` for ``standard_concept``
+    and ``NULL``/``'D'``/``'U'`` for ``invalid_reason``. Some real-world loads
+    contain blank or whitespace-only strings instead of ``NULL``; those are
+    normalised here defensively so callers do not need to reimplement the same
+    tolerance logic.
+
+    Non-empty non-canonical values are left unchanged so downstream validation
+    can still detect them as bad data rather than silently treating them as a
+    valid state.
+    """
+    return sa.func.nullif(sa.func.trim(column), "")
+
 
 @cdm_table
 class Concept(
@@ -123,7 +157,7 @@ class ConceptView(Concept, ConceptContext):
 
     @property
     def is_standard(self) -> bool:
-        return self.standard_concept == "S"
+        return self.standard_concept in tuple(StandardConceptFlag)
 
     @property
     def is_valid(self) -> bool:

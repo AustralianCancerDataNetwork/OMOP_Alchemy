@@ -10,7 +10,11 @@ from typing import Optional
 
 import sqlalchemy as sa
 
-from omop_alchemy.cdm.model.vocabulary import Concept
+from omop_alchemy.cdm.model.vocabulary import (
+    Concept,
+    StandardConceptFlag,
+    normalised_flag_expr,
+)
 
 
 @dataclass(frozen=True)
@@ -29,10 +33,17 @@ class ConceptFilter:
         Restrict results to concepts from these vocabularies.
     require_standard : bool
         When ``True``, only standard concepts (``standard_concept`` in
-        ``('S', 'C')``) are returned. Default ``False``.
+        ``('S', 'C')``) are returned. Default ``False``. Blank or
+        whitespace-only ``standard_concept`` values are treated as unset (not
+        standard). Any other non-canonical value (e.g. corrupt data) is also
+        treated as not matching, since it is neither ``'S'`` nor ``'C'``.
     require_active : bool
-        When ``True``, only active concepts (``invalid_reason`` not in
-        ``('D', 'U')``) are returned. Default ``False``.
+        When ``True``, only active concepts (``invalid_reason`` is ``NULL``,
+        i.e. not ``'D'`` or ``'U'``) are returned. Default ``False``. Blank or
+        whitespace-only ``invalid_reason`` values are treated as unset (i.e.
+        active). Any other non-canonical value (e.g. corrupt data) is treated
+        as not matching (i.e. not active), since only a ``NULL``/blank value
+        is recognised as active.
     limit : int, optional
         Maximum number of rows to return. If not set, all matching rows are
         returned.
@@ -63,10 +74,12 @@ class ConceptFilter:
             query = query.where(Concept.vocabulary_id.in_(self.vocabularies))
 
         if self.require_standard:
-            query = query.where(Concept.standard_concept.in_(["S", "C"]))
+            query = query.where(
+                normalised_flag_expr(Concept.standard_concept).in_(list(StandardConceptFlag))
+            )
 
         if self.require_active:
-            query = query.where(Concept.invalid_reason.not_in(["D", "U"]))
+            query = query.where(normalised_flag_expr(Concept.invalid_reason).is_(None))
 
         if self.limit is not None:
             query = query.limit(self.limit)
