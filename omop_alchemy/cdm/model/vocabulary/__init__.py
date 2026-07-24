@@ -1,6 +1,13 @@
 from .concept_ancestor import Concept_Ancestor
 from .concept_class import Concept_Class
-from .concept import Concept, ConceptContext, ConceptView
+from .concept import (
+    Concept,
+    ConceptContext,
+    ConceptView,
+    InvalidReasonFlag,
+    StandardConceptFlag,
+    normalised_flag_expr,
+)
 from .concept_relationship import Concept_Relationship
 from .domain import Domain
 from .relationship import Relationship
@@ -15,6 +22,9 @@ __all__ = [
     "Concept",
     "ConceptContext",
     "ConceptView",
+    "InvalidReasonFlag",
+    "StandardConceptFlag",
+    "normalised_flag_expr",
     "Concept_Relationship",
     "Domain",
     "Relationship",

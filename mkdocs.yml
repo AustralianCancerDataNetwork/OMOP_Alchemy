@@ -81,6 +81,7 @@ nav:
       - CDM Base: api/base.md
       - Columns: api/columns.md
       - Relationships: api/relationships.md
+      - Query Filtering: api/query.md
       - Typing: api/typing.md
 
   - Object-Relational Mappings:
