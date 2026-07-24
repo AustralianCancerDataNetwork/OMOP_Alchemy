@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass
 
 import sqlalchemy as sa
@@ -155,7 +156,7 @@ def _build_recommendations(
 
 def collect_doctor_report(
     *,
-    engine: sa.engine.Engine,
+    engine: sa.engine.Engine | None = None,
     vocabulary_included: bool = True,
     deep: bool = False,
 ) -> DoctorReport:
@@ -163,195 +164,218 @@ def collect_doctor_report(
 
     Parameters
     ----------
-    engine : sa.engine.Engine
-        Already-resolved CDM engine (from the ``@omop_command`` decorator),
+    engine : sa.engine.Engine, optional
+        Already-resolved CDM engine (e.g. from the ``@omop_command`` decorator),
         reused for the deep checks below instead of re-resolving config.
+
+        .. deprecated::
+            Omitting this and letting the function resolve its own engine is
+            deprecated and will be required in 2.0. Pass the already-resolved
+            engine instead.
     """
-    info = collect_maintenance_info(vocabulary_included=vocabulary_included)
-
-    checks = [
-        DoctorCheck(
-            name="connection",
-            status="passed" if info.connection_ready else "failed",
-            detail=(
-                "Target database connection succeeded."
-                if info.connection_ready
-                else info.connection_error or info.engine_error or "Connection could not be established."
-            ),
+    owns_engine = engine is None
+    if owns_engine:
+        warnings.warn(
+            "collect_doctor_report() without an explicit engine= is deprecated "
+            "and will be required in 2.0. Pass the already-resolved engine "
+            "(e.g. from @omop_command) instead of letting this function "
+            "re-resolve config a second time.",
+            DeprecationWarning,
+            stacklevel=2,
         )
-    ]
+        from omop_alchemy.config import create_cdm_engine, get_cdm_context
+        _, resolved = get_cdm_context()
+        engine = create_cdm_engine(resolved)
 
-    reconciliation: SchemaReconciliationReport | None = None
-    foreign_key_status: tuple[ForeignKeyStatusResult, ...] | None = None
-    foreign_key_validation: ForeignKeyValidationReport | None = None
+    try:
+        info = collect_maintenance_info(vocabulary_included=vocabulary_included)
 
-    if info.connection_ready:
-        db_schema = info.db_schema
-        missing_table_count = info.missing_table_count or 0
-        checks.append(
+        checks = [
             DoctorCheck(
-                name="managed tables",
-                status="passed" if missing_table_count == 0 else "warning",
+                name="connection",
+                status="passed" if info.connection_ready else "failed",
                 detail=(
-                    "All selected ORM-managed tables exist."
-                    if missing_table_count == 0
-                    else f"{missing_table_count} selected table(s) are missing."
+                    "Target database connection succeeded."
+                    if info.connection_ready
+                    else info.connection_error or info.engine_error or "Connection could not be established."
                 ),
             )
-        )
+        ]
 
-        if deep:
-            reconciliation = reconcile_schema(
-                engine,
-                db_schema=db_schema,
-                vocabulary_included=vocabulary_included,
-            )
-            checks.append(
-                DoctorCheck(
-                    name="schema drift",
-                    status="passed" if not reconciliation.issues else "warning",
-                    detail=(
-                        "ORM metadata matches the target database."
-                        if not reconciliation.issues
-                        else f"{len(reconciliation.issues)} difference(s) detected."
-                    ),
-                )
-            )
-        else:
-            checks.append(
-                DoctorCheck(
-                    name="schema drift",
-                    status="skipped",
-                    detail="Run `omop-alchemy doctor --deep` to reconcile ORM metadata against the target database.",
-                )
-            )
+        reconciliation: SchemaReconciliationReport | None = None
+        foreign_key_status: tuple[ForeignKeyStatusResult, ...] | None = None
+        foreign_key_validation: ForeignKeyValidationReport | None = None
 
-        if info.backend == SupportedDialect.POSTGRESQL:
-            foreign_key_status = tuple(
-                collect_foreign_key_trigger_status(
-                    engine,
-                    db_schema=db_schema,
-                    vocabulary_included=vocabulary_included,
-                )
-            )
-            disabled_tables = sum(
-                item.disabled_trigger_count > 0 for item in foreign_key_status
-            )
+        if info.connection_ready:
+            db_schema = info.db_schema
+            missing_table_count = info.missing_table_count or 0
             checks.append(
                 DoctorCheck(
-                    name="foreign keys",
-                    status="passed" if disabled_tables == 0 else "warning",
+                    name="managed tables",
+                    status="passed" if missing_table_count == 0 else "warning",
                     detail=(
-                        "All inspected RI triggers are enabled."
-                        if disabled_tables == 0
-                        else f"{disabled_tables} table(s) still have disabled RI triggers."
+                        "All selected ORM-managed tables exist."
+                        if missing_table_count == 0
+                        else f"{missing_table_count} selected table(s) are missing."
                     ),
                 )
             )
 
             if deep:
-                foreign_key_validation = validate_foreign_key_constraints(
+                reconciliation = reconcile_schema(
                     engine,
                     db_schema=db_schema,
                     vocabulary_included=vocabulary_included,
                 )
-                violating_tables = sum(
-                    result.status == "failed" for result in foreign_key_validation.results
-                )
                 checks.append(
                     DoctorCheck(
-                        name="foreign key validation",
-                        status="passed" if violating_tables == 0 else "failed",
+                        name="schema drift",
+                        status="passed" if not reconciliation.issues else "warning",
                         detail=(
-                            "All selected foreign key relationships passed validation."
-                            if violating_tables == 0
-                            else f"{violating_tables} table(s) have violating foreign key rows."
+                            "ORM metadata matches the target database."
+                            if not reconciliation.issues
+                            else f"{len(reconciliation.issues)} difference(s) detected."
                         ),
                     )
                 )
             else:
                 checks.append(
                     DoctorCheck(
+                        name="schema drift",
+                        status="skipped",
+                        detail="Run `omop-alchemy doctor --deep` to reconcile ORM metadata against the target database.",
+                    )
+                )
+
+            if info.backend == SupportedDialect.POSTGRESQL:
+                foreign_key_status = tuple(
+                    collect_foreign_key_trigger_status(
+                        engine,
+                        db_schema=db_schema,
+                        vocabulary_included=vocabulary_included,
+                    )
+                )
+                disabled_tables = sum(
+                    item.disabled_trigger_count > 0 for item in foreign_key_status
+                )
+                checks.append(
+                    DoctorCheck(
+                        name="foreign keys",
+                        status="passed" if disabled_tables == 0 else "warning",
+                        detail=(
+                            "All inspected RI triggers are enabled."
+                            if disabled_tables == 0
+                            else f"{disabled_tables} table(s) still have disabled RI triggers."
+                        ),
+                    )
+                )
+
+                if deep:
+                    foreign_key_validation = validate_foreign_key_constraints(
+                        engine,
+                        db_schema=db_schema,
+                        vocabulary_included=vocabulary_included,
+                    )
+                    violating_tables = sum(
+                        result.status == "failed" for result in foreign_key_validation.results
+                    )
+                    checks.append(
+                        DoctorCheck(
+                            name="foreign key validation",
+                            status="passed" if violating_tables == 0 else "failed",
+                            detail=(
+                                "All selected foreign key relationships passed validation."
+                                if violating_tables == 0
+                                else f"{violating_tables} table(s) have violating foreign key rows."
+                            ),
+                        )
+                    )
+                else:
+                    checks.append(
+                        DoctorCheck(
+                            name="foreign key validation",
+                            status="skipped",
+                            detail="Run `omop-alchemy doctor --deep` to validate selected foreign key relationships.",
+                        )
+                    )
+            else:
+                checks.append(
+                    DoctorCheck(
+                        name="foreign keys",
+                        status="skipped",
+                        detail="Foreign key trigger inspection is only available on PostgreSQL.",
+                    )
+                )
+                checks.append(
+                    DoctorCheck(
                         name="foreign key validation",
                         status="skipped",
-                        detail="Run `omop-alchemy doctor --deep` to validate selected foreign key relationships.",
+                        detail="Foreign key validation is only available on PostgreSQL.",
                     )
                 )
         else:
-            checks.append(
-                DoctorCheck(
-                    name="foreign keys",
-                    status="skipped",
-                    detail="Foreign key trigger inspection is only available on PostgreSQL.",
+            checks.extend(
+                (
+                    DoctorCheck(
+                        name="managed tables",
+                        status="skipped",
+                        detail="Skipped because the database connection is not ready.",
+                    ),
+                    DoctorCheck(
+                        name="foreign keys",
+                        status="skipped",
+                        detail="Skipped because the database connection is not ready.",
+                    ),
+                    DoctorCheck(
+                        name="schema drift",
+                        status="skipped",
+                        detail="Skipped because the database connection is not ready.",
+                    ),
+                    DoctorCheck(
+                        name="foreign key validation",
+                        status="skipped",
+                        detail="Skipped because the database connection is not ready.",
+                    ),
                 )
             )
+
+        if info.backend == SupportedDialect.POSTGRESQL:
+            backup_tools_ready = info.pg_dump_path is not None and (
+                info.pg_restore_path is not None or info.psql_path is not None
+            )
             checks.append(
                 DoctorCheck(
-                    name="foreign key validation",
-                    status="skipped",
-                    detail="Foreign key validation is only available on PostgreSQL.",
+                    name="backup tooling",
+                    status="passed" if backup_tools_ready else "warning",
+                    detail=(
+                        "PostgreSQL backup and restore client tools are available."
+                        if backup_tools_ready
+                        else "PostgreSQL client tools are incomplete on this machine."
+                    ),
                 )
             )
-    else:
-        checks.extend(
-            (
+        else:
+            checks.append(
                 DoctorCheck(
-                    name="managed tables",
+                    name="backup tooling",
                     status="skipped",
-                    detail="Skipped because the database connection is not ready.",
-                ),
-                DoctorCheck(
-                    name="foreign keys",
-                    status="skipped",
-                    detail="Skipped because the database connection is not ready.",
-                ),
-                DoctorCheck(
-                    name="schema drift",
-                    status="skipped",
-                    detail="Skipped because the database connection is not ready.",
-                ),
-                DoctorCheck(
-                    name="foreign key validation",
-                    status="skipped",
-                    detail="Skipped because the database connection is not ready.",
-                ),
+                    detail="Backup and restore tooling checks are only relevant for PostgreSQL targets.",
+                )
             )
-        )
 
-    if info.backend == SupportedDialect.POSTGRESQL:
-        backup_tools_ready = info.pg_dump_path is not None and (
-            info.pg_restore_path is not None or info.psql_path is not None
-        )
-        checks.append(
-            DoctorCheck(
-                name="backup tooling",
-                status="passed" if backup_tools_ready else "warning",
-                detail=(
-                    "PostgreSQL backup and restore client tools are available."
-                    if backup_tools_ready
-                    else "PostgreSQL client tools are incomplete on this machine."
-                ),
-            )
-        )
-    else:
-        checks.append(
-            DoctorCheck(
-                name="backup tooling",
-                status="skipped",
-                detail="Backup and restore tooling checks are only relevant for PostgreSQL targets.",
-            )
-        )
-
-    return DoctorReport(
-        info=info,
-        checks=tuple(checks),
-        recommendations=_build_recommendations(
+        return DoctorReport(
             info=info,
+            checks=tuple(checks),
+            recommendations=_build_recommendations(
+                info=info,
+                reconciliation=reconciliation,
+                foreign_key_status=foreign_key_status,
+                foreign_key_validation=foreign_key_validation,
+            ),
             reconciliation=reconciliation,
             foreign_key_status=foreign_key_status,
             foreign_key_validation=foreign_key_validation,
-        ),
-        reconciliation=reconciliation,
-        foreign_key_status=foreign_key_status,
-        foreign_key_validation=foreign_key_validation,
-    )
+        )
+    finally:
+        if owns_engine:
+            engine.dispose()
