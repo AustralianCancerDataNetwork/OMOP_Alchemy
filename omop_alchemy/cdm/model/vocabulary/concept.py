@@ -1,8 +1,7 @@
 import sqlalchemy as sa
 import sqlalchemy.orm as so
 from sqlalchemy.ext.declarative import declared_attr
-from sqlalchemy.ext.hybrid import hybrid_property
-from enum import StrEnum
+from enum import StrEnum, nonmember
 from typing import Optional, TYPE_CHECKING, List
 from datetime import date
 if TYPE_CHECKING:
@@ -30,6 +29,10 @@ class StandardConceptFlag(StrEnum):
 
     STANDARD = "S"
     CLASSIFICATION = "C"
+
+    # Precomputed membership set for the hot Python-side check (Concept.is_standard) --
+    # re-deriving this from the enum on every call is measurably expensive (~10x).
+    values = nonmember(frozenset({STANDARD, CLASSIFICATION}))
 
 
 class InvalidReasonFlag(StrEnum):
@@ -89,26 +92,24 @@ class Concept(
     valid_end_date: so.Mapped[date] = so.mapped_column(sa.Date(), nullable=False)
     invalid_reason: so.Mapped[Optional[str]] = so.mapped_column(sa.String(1), nullable=True)
 
-    @hybrid_property
+    @property
     def is_standard(self) -> bool:
         value = self.standard_concept.strip() if self.standard_concept is not None else ""
-        return bool(value) and value in tuple(StandardConceptFlag)
+        return bool(value) and value in StandardConceptFlag.values
 
-    @is_standard.inplace.expression
     @classmethod
-    def _is_standard_expression(cls) -> sa.SQLColumnExpression[bool]:
-        return normalised_flag_expr(cls.standard_concept).in_(
-            [flag.value for flag in StandardConceptFlag]
-        )
+    def is_standard_expr(cls) -> sa.SQLColumnExpression[bool]:
+        """SQL-side counterpart to :attr:`is_standard`, for use in query filters."""
+        return normalised_flag_expr(cls.standard_concept).in_(StandardConceptFlag.values)
 
-    @hybrid_property
+    @property
     def is_valid(self) -> bool:
         value = self.invalid_reason.strip() if self.invalid_reason is not None else ""
         return not value
 
-    @is_valid.inplace.expression
     @classmethod
-    def _is_valid_expression(cls) -> sa.SQLColumnExpression[bool]:
+    def is_valid_expr(cls) -> sa.SQLColumnExpression[bool]:
+        """SQL-side counterpart to :attr:`is_valid`, for use in query filters."""
         return normalised_flag_expr(cls.invalid_reason).is_(None)
 
 class ConceptContext(ReferenceContext):

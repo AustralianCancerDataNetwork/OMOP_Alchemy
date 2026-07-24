@@ -65,10 +65,10 @@ class ConceptFilter:
             query = query.where(Concept.vocabulary_id.in_(self.vocabularies))
 
         if self.require_standard:
-            query = query.where(Concept.is_standard)
+            query = query.where(Concept.is_standard_expr())
 
         if self.require_active:
-            query = query.where(Concept.is_valid)
+            query = query.where(Concept.is_valid_expr())
 
         if self.limit is not None:
             query = query.limit(self.limit)
