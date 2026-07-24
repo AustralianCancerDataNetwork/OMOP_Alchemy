@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# Canonical CAVA pre-commit hook: keeps uv.lock in sync with pyproject.toml.
+#
+# If pyproject.toml is staged, finds the specific dependency line(s) that
+# changed (added, removed, or had their version spec edited) and refreshes
+# only those packages in uv.lock via `uv lock --upgrade-package`. Does not
+# touch any other package -- this is a targeted sync, not a blanket
+# `uv lock`, so it never pulls in an unrelated upstream release.
+set -euo pipefail
+
+if ! git diff --cached --name-only | grep -q '^pyproject\.toml$'; then
+    exit 0
+fi
+
+if ! command -v uv >/dev/null 2>&1; then
+    echo "pre-commit: uv not found on PATH, skipping uv.lock sync" >&2
+    exit 0
+fi
+
+changed_names=$(git diff --cached -- pyproject.toml \
+    | grep -E '^[+-]\s*"[A-Za-z0-9][A-Za-z0-9._-]*' \
+    | sed -E 's/^[+-]\s*"([A-Za-z0-9][A-Za-z0-9._-]*).*/\1/' \
+    | sort -u)
+
+if [ -z "$changed_names" ]; then
+    exit 0
+fi
+
+upgrade_args=()
+while IFS= read -r name; do
+    upgrade_args+=(--upgrade-package "$name")
+done <<< "$changed_names"
+
+echo "pre-commit: syncing uv.lock for changed dependencies:"
+echo "$changed_names" | sed 's/^/  - /'
+uv lock "${upgrade_args[@]}"
+git add uv.lock
