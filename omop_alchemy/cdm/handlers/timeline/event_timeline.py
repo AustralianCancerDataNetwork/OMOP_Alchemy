@@ -201,7 +201,7 @@ class Condition_Event(Condition_Occurrence, ClinicalEvent):
     )
 
 
-class Measurement_Event(ClinicalEvent, Measurement):  # type: ignore[misc]
+class Measurement_Event(ClinicalEvent, Measurement):
 
     _mapping = EventMapping(
         concept_field="measurement_concept_id",
