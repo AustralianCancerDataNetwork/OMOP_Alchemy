@@ -10,11 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://AustralianCancerDataNetwork.github.io/OMOP_Alchemy/advanced/fulltext/">
+        <link rel="canonical" href="https://AustralianCancerDataNetwork.github.io/OMOP_Alchemy/api/query/">
       
       
-        <link rel="prev" href="../timelines/">
+        <link rel="prev" href="../relationships/">
       
+      
+        <link rel="next" href="../typing/">
       
       
         
@@ -25,7 +27,7 @@
     
     
       
-        <title>PostgreSQL Full-Text Search - OMOP Alchemy</title>
+        <title>Query Filtering - OMOP Alchemy</title>
       
     
     
@@ -78,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#postgresql-full-text-search" class="md-skip">
+        <a href="#query-filtering" class="md-skip">
           Skip to content
         </a>
       
@@ -114,7 +116,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              PostgreSQL Full-Text Search
+              Query Filtering
             
           </span>
         </div>
@@ -602,8 +604,10 @@
       
   
   
+    
   
   
+  
     
     
     
@@ -614,13 +618,11 @@
       
     
     
-    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-          
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
         
           
           <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
@@ -641,7 +643,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             
@@ -659,7 +661,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/" class="md-nav__link">
+      <a href="../" class="md-nav__link">
         
   
   
@@ -687,7 +689,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/architecture/" class="md-nav__link">
+      <a href="../architecture/" class="md-nav__link">
         
   
   
@@ -715,7 +717,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/base/" class="md-nav__link">
+      <a href="../base/" class="md-nav__link">
         
   
   
@@ -743,7 +745,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/columns/" class="md-nav__link">
+      <a href="../columns/" class="md-nav__link">
         
   
   
@@ -771,7 +773,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/relationships/" class="md-nav__link">
+      <a href="../relationships/" class="md-nav__link">
         
   
   
@@ -796,10 +798,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../api/query/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Query Filtering
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -815,6 +844,59 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#omop_alchemy.cdm.query.ConceptFilter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ConceptFilter
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#omop_alchemy.cdm.query.ConceptFilter.apply" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        apply
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#omop_alchemy.cdm.query.ConceptFilter.is_empty" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        is_empty
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -827,7 +909,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/typing/" class="md-nav__link">
+      <a href="../typing/" class="md-nav__link">
         
   
   
@@ -2601,8 +2683,6 @@
       
   
   
-    
-  
   
   
     
@@ -2615,11 +2695,13 @@
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" checked>
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
         
           
           <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
@@ -2640,7 +2722,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             
@@ -2658,7 +2740,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../" class="md-nav__link">
+      <a href="../../advanced/" class="md-nav__link">
         
   
   
@@ -2686,7 +2768,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../backends/" class="md-nav__link">
+      <a href="../../advanced/backends/" class="md-nav__link">
         
   
   
@@ -2714,7 +2796,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../timelines/" class="md-nav__link">
+      <a href="../../advanced/timelines/" class="md-nav__link">
         
   
   
@@ -2739,37 +2821,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    PostgreSQL Full-Text Search
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../advanced/fulltext/" class="md-nav__link">
         
   
   
@@ -2785,192 +2840,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#what-it-covers" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        What It Covers
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="What It Covers">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#example-postgresql-documentation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Example (PostgreSQL Documentation)
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#quick-activation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Quick Activation
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#when-to-use-it" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        When To Use It
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#why-it-is-optional" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Why It Is Optional
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#two-modes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Two Modes
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Two Modes">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-inline-expression-mode" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. Inline Expression Mode
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-stored-sidecar-mode" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Stored Sidecar Mode
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#lifecycle" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Lifecycle
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#important-behavior" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Important Behavior
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#querying-pattern" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Querying Pattern
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#metadata-registration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Metadata Registration
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#postgresql-scope" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        PostgreSQL Scope
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#operational-gotchas" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Operational Gotchas
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -3010,38 +2879,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#what-it-covers" class="md-nav__link">
+  <a href="#omop_alchemy.cdm.query.ConceptFilter" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What It Covers
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="What It Covers">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#example-postgresql-documentation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Example (PostgreSQL Documentation)
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#quick-activation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Quick Activation
+        ConceptFilter
       
     </span>
   </a>
@@ -3049,10 +2890,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#when-to-use-it" class="md-nav__link">
+  <a href="#omop_alchemy.cdm.query.ConceptFilter.apply" class="md-nav__link">
     <span class="md-ellipsis">
       
-        When To Use It
+        apply
       
     </span>
   </a>
@@ -3060,115 +2901,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#why-it-is-optional" class="md-nav__link">
+  <a href="#omop_alchemy.cdm.query.ConceptFilter.is_empty" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Why It Is Optional
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#two-modes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Two Modes
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Two Modes">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-inline-expression-mode" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. Inline Expression Mode
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-stored-sidecar-mode" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Stored Sidecar Mode
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#lifecycle" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Lifecycle
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#important-behavior" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Important Behavior
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#querying-pattern" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Querying Pattern
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#metadata-registration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Metadata Registration
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#postgresql-scope" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        PostgreSQL Scope
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#operational-gotchas" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Operational Gotchas
+        is_empty
       
     </span>
   </a>
@@ -3221,7 +2957,7 @@
         <a href="../" class="md-path__link">
           
   <span class="md-ellipsis">
-    Advanced
+    API Reference
   </span>
 
         </a>
@@ -3243,220 +2979,193 @@
   
 
 
-<h1 id="postgresql-full-text-search">PostgreSQL Full-Text Search<a class="headerlink" href="#postgresql-full-text-search" title="Permanent link">&para;</a></h1>
-<p>OMOP Alchemy includes an <strong>optional</strong> PostgreSQL full-text search integration for
-selected vocabulary text fields.</p>
-<p>This feature is deliberately bolt-on:</p>
-<ul>
-<li>OMOP_Alchemy works without the full-text search feature (i.e. optional)</li>
-<li>the ORM models do not require the extra database columns</li>
-<li>the query helpers can fall back to inline <code>to_tsvector(...)</code> expressions when the sidecar columns are not installed</li>
-</ul>
-<p>This is useful when you want faster repeated text-search workloads on PostgreSQL, without forcing every environment to carry extra full-text infrastructure.</p>
-<hr />
-<h2 id="what-it-covers">What It Covers<a class="headerlink" href="#what-it-covers" title="Permanent link">&para;</a></h2>
-<p>The current full-text support targets:</p>
-<ul>
-<li><code>concept.concept_name</code></li>
-<li><code>concept_synonym.concept_synonym_name</code></li>
-</ul>
-<p>These helpers are methods on the resolved <code>Backend</code> instance:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">omop_alchemy.backends</span><span class="w"> </span><span class="kn">import</span> <span class="n">resolve_backend</span>
-
-<span class="n">backend</span> <span class="o">=</span> <span class="n">resolve_backend</span><span class="p">(</span><span class="n">engine</span><span class="p">)</span>
-<span class="n">backend</span><span class="o">.</span><span class="n">concept_name_tsvector_expression</span><span class="p">()</span>
-<span class="n">backend</span><span class="o">.</span><span class="n">concept_synonym_name_tsvector_expression</span><span class="p">()</span>
-</code></pre></div>
-<p>These helpers return the best available expression for the configured environment:</p>
-<ul>
-<li>if the optional sidecar <code>tsvector</code> columns are registered in metadata, they return the
-  stored column</li>
-<li>otherwise they fall back to an inline computed PostgreSQL expression using
-  <code>to_tsvector(...)</code></li>
-</ul>
-<h3 id="example-postgresql-documentation">Example (PostgreSQL Documentation)<a class="headerlink" href="#example-postgresql-documentation" title="Permanent link">&para;</a></h3>
-<p>A tsvector value is a sorted list of distinct lexemes, which are words that have been normalized to merge different variants of the same word. 
-Sorting and duplicate-elimination are done automatically during input</p>
-<p>A <code>tsvector</code> value is a sorted list of distinct lexemes (normalized word forms).<br />
-Sorting and duplicate elimination are applied automatically during input.</p>
-<div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="s1">&#39;a fat cat sat on a mat and ate a fat rat&#39;</span><span class="p">::</span><span class="n">tsvector</span><span class="p">;</span>
-
-<span class="c1">-- Result:</span>
-<span class="c1">-- &#39;a&#39; &#39;and&#39; &#39;ate&#39; &#39;cat&#39; &#39;fat&#39; &#39;mat&#39; &#39;on&#39; &#39;rat&#39; &#39;sat&#39;</span>
-<span class="c1">---</span>
-</code></pre></div>
-<h2 id="quick-activation">Quick Activation<a class="headerlink" href="#quick-activation" title="Permanent link">&para;</a></h2>
-<p>To enable the optional full-text sidecars in a PostgreSQL environment:</p>
-<div class="highlight"><pre><span></span><code>omop-alchemy<span class="w"> </span>fulltext<span class="w"> </span>install
-omop-alchemy<span class="w"> </span>fulltext<span class="w"> </span>populate
-</code></pre></div>
-<p>If your running Python process should use the stored sidecar columns through ORM
-metadata, register them once at startup:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">omop_alchemy.backends</span><span class="w"> </span><span class="kn">import</span> <span class="n">resolve_backend</span>
-
-<span class="n">backend</span> <span class="o">=</span> <span class="n">resolve_backend</span><span class="p">(</span><span class="n">engine</span><span class="p">)</span>
-<span class="n">backend</span><span class="o">.</span><span class="n">register_fulltext_metadata</span><span class="p">()</span>
-</code></pre></div>
-<p>That is enough to activate the feature. The rest of this page explains when to use it
-and how to operate it safely.</p>
-<h2 id="when-to-use-it">When To Use It<a class="headerlink" href="#when-to-use-it" title="Permanent link">&para;</a></h2>
-<p>Use the optional full-text feature when:</p>
-<ul>
-<li>you are on PostgreSQL</li>
-<li>you run repeated vocabulary-name or synonym-name search workloads</li>
-<li>inline <code>to_tsvector(...)</code> search is becoming a bottleneck</li>
-</ul>
-<p>Skip it when:</p>
-<ul>
-<li>you only do occasional text search</li>
-<li>you want to keep the database as close as possible to the base OMOP schema</li>
-<li>you do not want to own the refresh cycle for derived search columns</li>
-</ul>
-<hr />
-<h2 id="why-it-is-optional">Why It Is Optional<a class="headerlink" href="#why-it-is-optional" title="Permanent link">&para;</a></h2>
-<p>Full-text search is useful, but it also introduces operational tradeoffs:</p>
-<ul>
-<li>extra columns in the database</li>
-<li>optional GIN indexes</li>
-<li>explicit backfill / refresh work</li>
-<li>PostgreSQL-specific behavior</li>
-</ul>
-<p>Many users only need occasional text matching and are perfectly fine with inline search
-expressions. Others want fast repeated full-text lookups across large vocabularies and
-are happy to manage the extra schema objects.</p>
-<p>OMOP Alchemy therefore treats full-text sidecars as an <strong>optional PostgreSQL
-enhancement</strong>, not as part of the core required OMOP schema.</p>
-<hr />
-<h2 id="two-modes">Two Modes<a class="headerlink" href="#two-modes" title="Permanent link">&para;</a></h2>
-<h3 id="1-inline-expression-mode">1. Inline Expression Mode<a class="headerlink" href="#1-inline-expression-mode" title="Permanent link">&para;</a></h3>
-<p>This requires no schema changes.</p>
-<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sa</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.orm</span><span class="w"> </span><span class="kn">import</span> <span class="n">Session</span>
-
-<span class="kn">from</span><span class="w"> </span><span class="nn">omop_alchemy.backends</span><span class="w"> </span><span class="kn">import</span> <span class="n">resolve_backend</span>
+<h1 id="query-filtering">Query Filtering<a class="headerlink" href="#query-filtering" title="Permanent link">&para;</a></h1>
+<p><code>omop_alchemy.cdm.query</code> provides <code>ConceptFilter</code>, a shared, reusable way to
+filter CDM <code>concept</code>-table queries by domain, vocabulary, concept ID, and
+standard/active status, with an optional row-count limit.</p>
+<p>It exists so that packages consuming OMOP Alchemy (e.g. <code>omop-emb</code>, <code>omop-graph</code>)
+don't each need to reimplement the same filtering logic against their own copy
+of <code>Concept</code>'s column names — since this package owns the <code>Concept</code> model
+directly, the filter can reference real columns rather than duck-typing against
+an opaquely-imported table.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="kn">import</span> <span class="n">select</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">omop_alchemy.cdm.model.vocabulary</span><span class="w"> </span><span class="kn">import</span> <span class="n">Concept</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">omop_alchemy.cdm.query</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConceptFilter</span>
 
-<span class="n">backend</span> <span class="o">=</span> <span class="n">resolve_backend</span><span class="p">(</span><span class="n">engine</span><span class="p">)</span>
-<span class="n">query</span> <span class="o">=</span> <span class="n">sa</span><span class="o">.</span><span class="n">func</span><span class="o">.</span><span class="n">plainto_tsquery</span><span class="p">(</span><span class="s2">&quot;english&quot;</span><span class="p">,</span> <span class="s2">&quot;edoxaban&quot;</span><span class="p">)</span>
-
-<span class="k">with</span> <span class="n">Session</span><span class="p">(</span><span class="n">engine</span><span class="p">)</span> <span class="k">as</span> <span class="n">session</span><span class="p">:</span>
-    <span class="n">rows</span> <span class="o">=</span> <span class="p">(</span>
-        <span class="n">session</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">Concept</span><span class="p">)</span>
-        <span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">backend</span><span class="o">.</span><span class="n">concept_name_tsvector_expression</span><span class="p">()</span> <span class="o">==</span> <span class="n">query</span><span class="p">)</span>
-        <span class="o">.</span><span class="n">all</span><span class="p">()</span>
-    <span class="p">)</span>
-</code></pre></div>
-<p>In practice you will often want the PostgreSQL full-text match operator rather than
-equality:</p>
-<div class="highlight"><pre><span></span><code><span class="n">vector</span> <span class="o">=</span> <span class="n">backend</span><span class="o">.</span><span class="n">concept_name_tsvector_expression</span><span class="p">()</span>
-<span class="n">query</span> <span class="o">=</span> <span class="n">sa</span><span class="o">.</span><span class="n">func</span><span class="o">.</span><span class="n">plainto_tsquery</span><span class="p">(</span><span class="s2">&quot;english&quot;</span><span class="p">,</span> <span class="s2">&quot;edoxaban&quot;</span><span class="p">)</span>
-
-<span class="n">stmt</span> <span class="o">=</span> <span class="n">sa</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">Concept</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">vector</span><span class="o">.</span><span class="n">op</span><span class="p">(</span><span class="s2">&quot;@@&quot;</span><span class="p">)(</span><span class="n">query</span><span class="p">))</span>
-</code></pre></div>
-<p>This mode is simple and portable at the library level, but PostgreSQL must compute the
-vector expression at query time unless the planner can otherwise optimize it.</p>
-<h3 id="2-stored-sidecar-mode">2. Stored Sidecar Mode<a class="headerlink" href="#2-stored-sidecar-mode" title="Permanent link">&para;</a></h3>
-<p>This mode adds real <code>tsvector</code> columns to the database and optionally GIN indexes.</p>
-<p>Once installed and registered, the helper functions point at the stored columns instead
-of recomputing vectors inline.</p>
-<p>This is the mode you want when:</p>
-<ul>
-<li>you run frequent vocabulary search queries</li>
-<li>you care about PostgreSQL full-text query performance</li>
-<li>you are comfortable managing the sidecar lifecycle</li>
-</ul>
-<hr />
-<h2 id="lifecycle">Lifecycle<a class="headerlink" href="#lifecycle" title="Permanent link">&para;</a></h2>
-<p>The maintenance CLI manages the full-text sidecars through:</p>
-<div class="highlight"><pre><span></span><code>omop-alchemy<span class="w"> </span>fulltext<span class="w"> </span>install
-omop-alchemy<span class="w"> </span>fulltext<span class="w"> </span>populate
-omop-alchemy<span class="w"> </span>fulltext<span class="w"> </span>drop
-</code></pre></div>
-<p>Typical workflow:</p>
-<div class="highlight"><pre><span></span><code>omop-alchemy<span class="w"> </span>fulltext<span class="w"> </span>install
-omop-alchemy<span class="w"> </span>fulltext<span class="w"> </span>populate
-</code></pre></div>
-<p>If you later reload or update vocabulary data, refresh the stored vectors with:</p>
-<div class="highlight"><pre><span></span><code>omop-alchemy<span class="w"> </span>fulltext<span class="w"> </span>populate
-</code></pre></div>
-<p>If you want to remove the feature completely:</p>
-<div class="highlight"><pre><span></span><code>omop-alchemy<span class="w"> </span>fulltext<span class="w"> </span>drop
-</code></pre></div>
-<hr />
-<h2 id="important-behavior">Important Behavior<a class="headerlink" href="#important-behavior" title="Permanent link">&para;</a></h2>
-<p>The current implementation uses <strong>ordinary nullable sidecar <code>tsvector</code> columns</strong>, not
-generated columns and not trigger-managed columns.</p>
-<p>That means:</p>
-<ul>
-<li><code>install</code> creates the columns and optional GIN indexes</li>
-<li><code>populate</code> backfills or refreshes the values</li>
-<li>future data changes are <strong>not</strong> reflected automatically until you repopulate</li>
-</ul>
-<p>This is a deliberate choice because it keeps the feature explicit and easier to manage
-alongside bulk vocabulary loads.</p>
-<hr />
-<h2 id="querying-pattern">Querying Pattern<a class="headerlink" href="#querying-pattern" title="Permanent link">&para;</a></h2>
-<p>A typical PostgreSQL query looks like this:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sa</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.orm</span><span class="w"> </span><span class="kn">import</span> <span class="n">Session</span>
-
-<span class="kn">from</span><span class="w"> </span><span class="nn">omop_alchemy.backends</span><span class="w"> </span><span class="kn">import</span> <span class="n">resolve_backend</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">omop_alchemy.cdm.model.vocabulary</span><span class="w"> </span><span class="kn">import</span> <span class="n">Concept</span>
-
-<span class="n">backend</span> <span class="o">=</span> <span class="n">resolve_backend</span><span class="p">(</span><span class="n">engine</span><span class="p">)</span>
-<span class="n">vector</span> <span class="o">=</span> <span class="n">backend</span><span class="o">.</span><span class="n">concept_name_tsvector_expression</span><span class="p">()</span>
-<span class="n">query</span> <span class="o">=</span> <span class="n">sa</span><span class="o">.</span><span class="n">func</span><span class="o">.</span><span class="n">plainto_tsquery</span><span class="p">(</span><span class="s2">&quot;english&quot;</span><span class="p">,</span> <span class="s2">&quot;direct oral anticoagulant&quot;</span><span class="p">)</span>
-
-<span class="n">stmt</span> <span class="o">=</span> <span class="p">(</span>
-    <span class="n">sa</span><span class="o">.</span><span class="n">select</span><span class="p">(</span>
-        <span class="n">Concept</span><span class="o">.</span><span class="n">concept_id</span><span class="p">,</span>
-        <span class="n">Concept</span><span class="o">.</span><span class="n">concept_name</span><span class="p">,</span>
-        <span class="n">sa</span><span class="o">.</span><span class="n">func</span><span class="o">.</span><span class="n">ts_rank_cd</span><span class="p">(</span><span class="n">vector</span><span class="p">,</span> <span class="n">query</span><span class="p">)</span><span class="o">.</span><span class="n">label</span><span class="p">(</span><span class="s2">&quot;rank&quot;</span><span class="p">),</span>
-    <span class="p">)</span>
-    <span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">vector</span><span class="o">.</span><span class="n">op</span><span class="p">(</span><span class="s2">&quot;@@&quot;</span><span class="p">)(</span><span class="n">query</span><span class="p">))</span>
-    <span class="o">.</span><span class="n">order_by</span><span class="p">(</span><span class="n">sa</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="s2">&quot;rank DESC&quot;</span><span class="p">))</span>
-    <span class="o">.</span><span class="n">limit</span><span class="p">(</span><span class="mi">20</span><span class="p">)</span>
+<span class="n">concept_filter</span> <span class="o">=</span> <span class="n">ConceptFilter</span><span class="p">(</span>
+    <span class="n">domains</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;Condition&quot;</span><span class="p">,</span> <span class="s2">&quot;Drug&quot;</span><span class="p">),</span>
+    <span class="n">require_standard</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
 <span class="p">)</span>
+<span class="n">query</span> <span class="o">=</span> <span class="n">concept_filter</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">Concept</span><span class="p">))</span>
+</code></pre></div>
+<p>All fields are optional and combinable.</p>
 
-<span class="k">with</span> <span class="n">Session</span><span class="p">(</span><span class="n">engine</span><span class="p">)</span> <span class="k">as</span> <span class="n">session</span><span class="p">:</span>
-    <span class="n">rows</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">stmt</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
-</code></pre></div>
-<p>The same idea applies to <code>backend.concept_synonym_name_tsvector_expression()</code>.</p>
-<hr />
-<h2 id="metadata-registration">Metadata Registration<a class="headerlink" href="#metadata-registration" title="Permanent link">&para;</a></h2>
-<p>If your process will use the stored sidecar columns directly, register them into the ORM
-metadata:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">omop_alchemy.backends</span><span class="w"> </span><span class="kn">import</span> <span class="n">resolve_backend</span>
 
-<span class="n">backend</span> <span class="o">=</span> <span class="n">resolve_backend</span><span class="p">(</span><span class="n">engine</span><span class="p">)</span>
-<span class="n">backend</span><span class="o">.</span><span class="n">register_fulltext_metadata</span><span class="p">()</span>
+<div class="doc doc-object doc-class">
+
+
+
+<a id="omop_alchemy.cdm.query.ConceptFilter"></a>
+    <div class="doc doc-contents first">
+
+
+
+        <p>Search constraints for plain CDM <code>concept</code>-table queries.</p>
+<p>All fields are optional. Unset fields impose no constraint.</p>
+
+
+<p><span class="doc-section-title">Attributes:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code><span title="omop_alchemy.cdm.query.ConceptFilter.concept_ids">concept_ids</span></code></td>
+            <td>
+                  <code>(<span title="tuple">tuple</span>[<span title="int">int</span>, ...], <span title="optional">optional</span>)</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Restrict results to this set of concept IDs.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="omop_alchemy.cdm.query.ConceptFilter.domains">domains</span></code></td>
+            <td>
+                  <code>(<span title="tuple">tuple</span>[<span title="str">str</span>, ...], <span title="optional">optional</span>)</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Restrict results to concepts in these OMOP domains.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="omop_alchemy.cdm.query.ConceptFilter.vocabularies">vocabularies</span></code></td>
+            <td>
+                  <code>(<span title="tuple">tuple</span>[<span title="str">str</span>, ...], <span title="optional">optional</span>)</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Restrict results to concepts from these vocabularies.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="omop_alchemy.cdm.query.ConceptFilter.require_standard">require_standard</span></code></td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>When <code>True</code>, only concepts where <code>Concept.is_standard</code> is
+<code>True</code> are returned (<code>standard_concept</code> in <code>('S', 'C')</code>,
+tolerating blank/whitespace-only values as unset). Default <code>False</code>.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="omop_alchemy.cdm.query.ConceptFilter.require_active">require_active</span></code></td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>When <code>True</code>, only concepts where <code>Concept.is_valid</code> is <code>True</code>
+are returned (<code>invalid_reason</code> is <code>NULL</code>/blank/whitespace, i.e.
+not <code>'D'</code> or <code>'U'</code>). Default <code>False</code>.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="omop_alchemy.cdm.query.ConceptFilter.limit">limit</span></code></td>
+            <td>
+                  <code>(<span title="int">int</span>, <span title="optional">optional</span>)</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Maximum number of rows to return. If not set, all matching rows are
+returned.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="omop_alchemy.cdm.query.ConceptFilter.apply" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">apply</span>
+
+
+<a href="#omop_alchemy.cdm.query.ConceptFilter.apply" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">apply</span><span class="p">(</span><span class="n">query</span><span class="p">:</span> <span class="n">Select</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">sa</span><span class="o">.</span><span class="n">Select</span>
 </code></pre></div>
-<p>If you later remove the columns from the database in the same process and want query
-helpers to fall back cleanly again:</p>
-<div class="highlight"><pre><span></span><code><span class="n">backend</span><span class="o">.</span><span class="n">unregister_fulltext_metadata</span><span class="p">()</span>
+
+    <div class="doc doc-contents ">
+
+        <p>Apply filter constraints to a Select already targeting Concept.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="omop_alchemy.cdm.query.ConceptFilter.is_empty" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">is_empty</span>
+
+
+<a href="#omop_alchemy.cdm.query.ConceptFilter.is_empty" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">is_empty</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">bool</span>
 </code></pre></div>
-<p>This only affects SQLAlchemy metadata in the current Python process. It does not alter
-the database by itself.</p>
-<hr />
-<h2 id="postgresql-scope">PostgreSQL Scope<a class="headerlink" href="#postgresql-scope" title="Permanent link">&para;</a></h2>
-<p>This feature is PostgreSQL-specific in its database form because it relies on:</p>
-<ul>
-<li><code>tsvector</code></li>
-<li>PostgreSQL full-text query functions such as <code>to_tsvector</code> and <code>plainto_tsquery</code></li>
-<li>optional GIN indexes</li>
-</ul>
-<p>The helper expressions can still be imported safely, but the sidecar install / populate /
-drop lifecycle is only meaningful on PostgreSQL.</p>
-<hr />
-<h2 id="operational-gotchas">Operational Gotchas<a class="headerlink" href="#operational-gotchas" title="Permanent link">&para;</a></h2>
-<ul>
-<li>treat the sidecar columns as <strong>derived search state</strong>, not source-of-truth data</li>
-<li>if you bulk-load new vocabulary rows, rerun <code>omop-alchemy fulltext populate</code></li>
-<li>if you use <code>reconcile-schema</code>, the sidecar columns and indexes are intentional
-  database additions outside the core OMOP schema</li>
-<li>GIN indexes can be expensive to build on large vocabularies, so plan that as a real
-  maintenance operation rather than a trivial toggle</li>
-</ul>
+
+    <div class="doc doc-contents ">
+
+        <p>Return <code>True</code> if no constraints are set.</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
 
 
 
