@@ -163,6 +163,7 @@ def _load_vocab_model_csv(
     chunksize: int | None = None,
     index_strategy: str = "auto",
     merge_batch_size: int | None = None,
+    staging_schema: str | None = None,
 ) -> int:
     """Call model.load_csv. If the staging table is absent, create it and retry once."""
     load_kwargs: dict[str, object] = {
@@ -170,6 +171,7 @@ def _load_vocab_model_csv(
         "quote_mode": quote_mode,
         "index_strategy": index_strategy,
         "merge_batch_size": merge_batch_size,
+        "staging_schema": staging_schema,
     }
     if chunksize is not None:
         load_kwargs["chunksize"] = chunksize
@@ -181,7 +183,7 @@ def _load_vocab_model_csv(
             raise
 
         session.rollback()
-        model.create_staging_table(session)
+        model.create_staging_table(session, staging_schema=staging_schema)
         return int(model.load_csv(session, csv_path, **load_kwargs))  # type: ignore[arg-type]
 
 
@@ -410,6 +412,7 @@ def load_vocab_source(
                             index_strategy="keep" if _use_bulk_mode else "auto",
                             chunksize=chunksize,
                             merge_batch_size=merge_batch_size,
+                            staging_schema=STAGING_SCHEMA,
                         )
                         session.commit()
                     break
