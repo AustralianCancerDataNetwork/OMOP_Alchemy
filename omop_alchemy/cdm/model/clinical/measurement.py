@@ -18,7 +18,6 @@ from omop_alchemy.cdm.base import (
 class Measurement(Base, CDMTableBase, ValueMixin):
     __tablename__ = "measurement"
     __table_args__ = merge_table_args(
-        ValueMixin.__table_args__,
         omop_index(__tablename__, "person_id", cluster=True),
         omop_index(__tablename__, "measurement_concept_id"),
         omop_index(__tablename__, "visit_occurrence_id"),
