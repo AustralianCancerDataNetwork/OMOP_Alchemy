@@ -323,6 +323,7 @@ def test_load_vocab_source_reports_weighted_progress(monkeypatch, tmp_path):
         chunksize=None,
         index_strategy="auto",
         merge_batch_size: int = 1_000_000,
+        staging_schema=None,
     ) -> int:
         return 1
 
@@ -549,6 +550,7 @@ def test_load_vocab_source_tables_single_loads_only_that_table(monkeypatch, tmp_
         chunksize=None,
         index_strategy="auto",
         merge_batch_size: int = 1_000_000,
+        staging_schema=None,
     ) -> int:
         loaded_tables.append(model.__tablename__)
         return 1
@@ -581,6 +583,7 @@ def test_load_vocab_source_tables_multiple_loads_exactly_those(monkeypatch, tmp_
         chunksize=None,
         index_strategy="auto",
         merge_batch_size: int = 1_000_000,
+        staging_schema=None,
     ) -> int:
         loaded_tables.append(model.__tablename__)
         return 1
