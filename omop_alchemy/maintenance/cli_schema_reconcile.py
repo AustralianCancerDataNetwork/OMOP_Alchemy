@@ -9,7 +9,7 @@ from sqlalchemy.engine.interfaces import ReflectedForeignKeyConstraint, Reflecte
 
 from ..backends import backend_supports, resolve_backend
 from ._cli_utils import Severity, Status
-from .cli_indexes import _cluster_target_name, _find_equivalent_index
+from .cli_indexes import _cluster_column_names, _cluster_target_name, _find_equivalent_index
 from .tables import (
     TableCategory,
     select_maintenance_tables,
@@ -381,21 +381,6 @@ def reconcile_schema(
                         )
                     )
 
-            for index_name, index in actual_idxs.items():
-                if index_name not in expected_idxs and index_name not in renamed_actual_names:
-                    table_issues.append(
-                        ReconciliationIssue(
-                            table_name=maintenance_table.table_name,
-                            category=maintenance_table.category,
-                            component="index",
-                            object_name=index_name,
-                            status=Status.UNEXPECTED,
-                            expected=None,
-                            actual=", ".join(c for c in (index.get("column_names") or []) if c is not None),
-                            detail="Index exists in the database but is not defined in ORM metadata.",
-                        )
-                    )
-
             if backend_supports(_backend, "get_clustered_index_name"):
                 expected_cluster = _cluster_target_name(maintenance_table)
                 actual_cluster = _backend.get_clustered_index_name(
@@ -404,23 +389,25 @@ def reconcile_schema(
                     db_schema,
                 )
                 if expected_cluster != actual_cluster:
-                    # The table may be physically clustered on a foreign-named
-                    # equivalent of the ORM's cluster index. That's the
-                    # same "renamed" state as an index found under a different
-                    # name, so reuse the same equivalence check (including its
-                    # plain-index safety filtering) before falling back to
-                    # missing/unexpected/mismatch.
+                    # May be a rename, not drift, so treat like a renamed index.
+                    # Ignore uniqueness (irrelevant to CLUSTER). Runs before
+                    # the unexpected-index loop below and registers the match
+                    # in renamed_actual_names so that loop doesn't double-flag it.
                     renamed_cluster = False
-                    if expected_cluster in expected_idxs and actual_cluster is not None:
-                        expected_cluster_index = expected_idxs[expected_cluster]
-                        expected_cluster_columns = tuple(
-                            column.name for column in expected_cluster_index.columns
+                    equivalent_cluster_name: str | None = None
+                    if expected_cluster is not None and actual_cluster is not None:
+                        expected_cluster_columns = _cluster_column_names(
+                            maintenance_table, expected_cluster
                         )
                         equivalent_cluster_name = _find_equivalent_index(
-                            actual_index_list, expected_cluster_columns, bool(expected_cluster_index.unique)
+                            actual_index_list,
+                            expected_cluster_columns,
+                            None,
                         )
                         renamed_cluster = equivalent_cluster_name == actual_cluster
                     if renamed_cluster:
+                        assert equivalent_cluster_name is not None
+                        renamed_actual_names.add(equivalent_cluster_name)
                         table_issues.append(
                             ReconciliationIssue(
                                 table_name=maintenance_table.table_name,
@@ -452,6 +439,21 @@ def reconcile_schema(
                                 detail="Table clustering differs from ORM metadata.",
                             )
                         )
+
+            for index_name, index in actual_idxs.items():
+                if index_name not in expected_idxs and index_name not in renamed_actual_names:
+                    table_issues.append(
+                        ReconciliationIssue(
+                            table_name=maintenance_table.table_name,
+                            category=maintenance_table.category,
+                            component="index",
+                            object_name=index_name,
+                            status=Status.UNEXPECTED,
+                            expected=None,
+                            actual=", ".join(c for c in (index.get("column_names") or []) if c is not None),
+                            detail="Index exists in the database but is not defined in ORM metadata.",
+                        )
+                    )
 
             blocking_issues = [issue for issue in table_issues if is_blocking_issue(issue)]
             table_status = Status.MATCHED if not blocking_issues else Status.DRIFTED

@@ -13,7 +13,6 @@ from omop_alchemy.maintenance.cli_indexes import (
     IndexManagementResult,
     _DROPPED_INDEXES_TABLE_NAME,
     get_bookkeeping_schema,
-    _cluster_index_unique,
     _cluster_target_name,
     _describe_shape_conflict,
     _find_equivalent_index,
@@ -901,7 +900,7 @@ def test_record_captured_index_scopes_by_db_schema(tmp_path):
 def test_resolve_physical_cluster_name_prefers_own_name():
     existing = [{"name": "ix_person_gender_concept_id", "column_names": ["gender_concept_id"], "unique": False}]
     assert (
-        _resolve_physical_cluster_name(existing, "ix_person_gender_concept_id", ("gender_concept_id",), False)
+        _resolve_physical_cluster_name(existing, "ix_person_gender_concept_id", ("gender_concept_id",))
         == "ix_person_gender_concept_id"
     )
 
@@ -909,23 +908,24 @@ def test_resolve_physical_cluster_name_prefers_own_name():
 def test_resolve_physical_cluster_name_falls_back_to_equivalent():
     existing = [{"name": "idx_gender", "column_names": ["gender_concept_id"], "unique": False}]
     assert (
-        _resolve_physical_cluster_name(existing, "ix_person_gender_concept_id", ("gender_concept_id",), False)
+        _resolve_physical_cluster_name(existing, "ix_person_gender_concept_id", ("gender_concept_id",))
         == "idx_gender"
     )
 
 
 def test_resolve_physical_cluster_name_falls_back_to_own_name_when_nothing_matches():
-    assert _resolve_physical_cluster_name([], "ix_person_gender_concept_id", ("gender_concept_id",), False) == (
+    assert _resolve_physical_cluster_name([], "ix_person_gender_concept_id", ("gender_concept_id",)) == (
         "ix_person_gender_concept_id"
     )
 
 
-def test_cluster_index_unique_defaults_true_for_primary_key_target():
-    tables = {table.table_name: table for table in collect_maintenance_tables()}
-    person = tables["person"]
-    # "pk_person" is the primary-key-based cluster target and is never one of
-    # person's secondary indexes.
-    assert _cluster_index_unique(person, "pk_person") is True
+def test_resolve_physical_cluster_name_ignores_uniqueness_for_pk_based_target():
+    """A primary-key-based cluster target (e.g. "pk_person") is always unique,
+    but the official OHDSI CDM DDL always clusters such tables on a separate,
+    non-unique index instead (e.g. "idx_person_id"). Equivalence must not
+    require a uniqueness match, or exactly this real-world case is missed."""
+    existing = [{"name": "idx_person_id", "column_names": ["person_id"], "unique": False}]
+    assert _resolve_physical_cluster_name(existing, "pk_person", ("person_id",)) == "idx_person_id"
 
 
 def test_vocabulary_domain_concept_class_relationship_cluster_on_primary_key():
@@ -947,7 +947,6 @@ def test_vocabulary_domain_concept_class_relationship_cluster_on_primary_key():
         table = tables[table_name]
         cluster_name = _cluster_target_name(table)
         assert cluster_name == f"pk_{table_name}"
-        assert _cluster_index_unique(table, cluster_name) is True
         assert not any(
             set(index.columns.keys()) == {pk_column}
             for index in table.table.indexes

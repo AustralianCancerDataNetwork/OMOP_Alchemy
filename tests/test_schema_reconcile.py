@@ -137,3 +137,42 @@ def test_reconcile_schema_cluster_check_still_reports_real_mismatch(tmp_path, mo
     assert len(cluster_issues) == 1
     assert cluster_issues[0].status == "mismatch"
     assert episode_result.status == "drifted"
+
+
+def test_reconcile_schema_cluster_check_reports_renamed_for_pk_based_cluster_target(tmp_path, monkeypatch):
+    """person's cluster target is the primary key's own index ("pk_person"),
+    not a declared secondary index, unlike episode. The official OHDSI CDM
+    DDL always clusters such tables on a separate, non-unique index instead
+    (e.g. "idx_person_id"): this must still report 'renamed', not 'mismatch',
+    and the same physical index must not *also* be flagged as an unexpected
+    plain index -- both are the same latent bug (the cluster target's
+    equivalence check assuming the PK's own uniqueness applies to whatever
+    physically serves as the cluster index, and not being shared with the
+    general index-diffing pass)."""
+    engine = _fresh_engine(tmp_path)
+    with engine.begin() as connection:
+        connection.exec_driver_sql("CREATE INDEX idx_person_id ON person (person_id)")
+
+    monkeypatch.setattr(
+        SQLiteBackend,
+        "get_clustered_index_name",
+        lambda self, conn, table_name, db_schema: (
+            "idx_person_id" if table_name == "person" else None
+        ),
+    )
+
+    report = reconcile_schema(engine)
+    person_result = next(r for r in report.table_results if r.table_name == "person")
+    person_issues = [issue for issue in report.issues if issue.table_name == "person"]
+    cluster_issues = [issue for issue in person_issues if issue.component == "cluster"]
+    unexpected_index_issues = [
+        issue for issue in person_issues
+        if issue.component == "index" and issue.object_name == "idx_person_id"
+    ]
+
+    assert len(cluster_issues) == 1
+    assert cluster_issues[0].status == "renamed"
+    assert cluster_issues[0].expected == "pk_person"
+    assert cluster_issues[0].actual == "idx_person_id"
+    assert unexpected_index_issues == []
+    assert person_result.status == "matched"

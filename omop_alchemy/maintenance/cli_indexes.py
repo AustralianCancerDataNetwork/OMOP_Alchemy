@@ -88,7 +88,7 @@ def _is_plain_index(reflected: Mapping[str, Any]) -> bool:
 def _find_equivalent_index(
     existing_indexes: Sequence[Mapping[str, Any]],
     column_names: tuple[str, ...],
-    unique: bool,
+    unique: bool | None,
 ) -> str | None:
     """Find the physical name of a plain existing index matching a column set.
 
@@ -99,21 +99,27 @@ def _find_equivalent_index(
     column_names : tuple[str, ...]
         Column names an ORM-defined index expects, in order. Matching is
         order-sensitive since composite index column order affects usability.
-    unique : bool
-        Uniqueness flag an ORM-defined index expects.
+    unique : bool or None
+        Uniqueness flag an ORM-defined index expects. None skips the
+        uniqueness check entirely. Used when resolving a CLUSTER target,
+        where uniqueness is irrelevant to whether an index can serve as the
+        physical sort key (e.g. the official OHDSI CDM DDL always clusters
+        on a plain, non-unique index even for tables whose ORM-declared
+        cluster target is the primary key's own unique index).
 
     Returns
     -------
     str or None
         Physical name of the first plain existing index whose column_names
-        tuple and unique flag match, or None if no equivalent exists.
+        tuple (and unique flag, unless unique is None) match, or None if no
+        equivalent exists.
     """
     for reflected in existing_indexes:
         if not _is_plain_index(reflected):
             continue
         if tuple(reflected.get("column_names") or ()) != column_names:
             continue
-        if bool(reflected.get("unique")) != unique:
+        if unique is not None and bool(reflected.get("unique")) != unique:
             continue
         return str(reflected["name"])
     return None
@@ -542,34 +548,10 @@ def _cluster_column_names(
     return table.primary_key_names
 
 
-def _cluster_index_unique(table: MaintenanceTable, cluster_index_name: str) -> bool:
-    """Return whether the named cluster index is unique.
-
-    Parameters
-    ----------
-    table : MaintenanceTable
-        The table whose cluster target is being resolved.
-    cluster_index_name : str
-        Name of the ORM-designated cluster index, from _cluster_target_name().
-
-    Returns
-    -------
-    bool
-        The index's unique flag, or True if cluster_index_name isn't among the
-        table's secondary indexes -- the fallback case is a primary-key-based
-        cluster target, which is always unique.
-    """
-    for index in table.table.indexes:
-        if str(index.name) == cluster_index_name:
-            return bool(index.unique)
-    return True
-
-
 def _resolve_physical_cluster_name(
     existing_indexes: Sequence[Mapping[str, Any]],
     cluster_index_name: str,
     cluster_columns: tuple[str, ...],
-    unique: bool,
 ) -> str:
     """Resolve the physical name of a table's cluster-target index.
 
@@ -582,6 +564,16 @@ def _resolve_physical_cluster_name(
     resolves more precisely via its own per-run physical_index_names tracking
     -- see the comment at its call site).
 
+    Notes
+    -----
+    Equivalence ignores uniqueness: CLUSTER only needs an index to sort the
+    table's physical storage by, and a foreign index doesn't need to be
+    unique to serve that role. The official OHDSI CDM DDL always clusters on
+    a plain, non-unique index even for tables whose ORM-declared cluster
+    target is the primary key's own unique index (e.g. `idx_person_id`,
+    non-unique, vs. our own `pk_person`), so requiring a uniqueness match
+    here would fail to recognize exactly the databases this exists to support.
+
     Parameters
     ----------
     existing_indexes : Sequence[Mapping[str, Any]]
@@ -590,8 +582,6 @@ def _resolve_physical_cluster_name(
         The ORM's own name for the cluster-target index.
     cluster_columns : tuple[str, ...]
         Column names the cluster-target index covers, in order.
-    unique : bool
-        Uniqueness flag of the cluster-target index.
 
     Returns
     -------
@@ -603,7 +593,7 @@ def _resolve_physical_cluster_name(
     existing_names = {index["name"] for index in existing_indexes}
     if cluster_index_name in existing_names:
         return cluster_index_name
-    equivalent_name = _find_equivalent_index(existing_indexes, cluster_columns, unique)
+    equivalent_name = _find_equivalent_index(existing_indexes, cluster_columns, None)
     return equivalent_name if equivalent_name is not None else cluster_index_name
 
 
@@ -912,7 +902,6 @@ def manage_indexes(
                         existing_indexes,
                         cluster_index_name,
                         cluster_columns,
-                        _cluster_index_unique(table, cluster_index_name),
                     )
                 if not clustering_supported or not cluster:
                     results.append(
@@ -1075,7 +1064,6 @@ def cluster_tables_command(
             existing_indexes,
             cluster_index_name,
             cluster_columns,
-            _cluster_index_unique(table, cluster_index_name),
         )
 
         if not dry_run:
