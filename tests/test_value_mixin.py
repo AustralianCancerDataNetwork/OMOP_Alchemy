@@ -1,13 +1,13 @@
-"""Tests for the relaxed ValueMixin: per-model value requirements.
+"""Tests for the relaxed ValueMixin: no table mandates a populated value column.
 
-Observation requires one of value_as_number/value_as_concept_id/value_as_string.
-Measurement and Metadata require no value column to be populated at all.
+OMOP CDM v5.4 does not require a captured result value on every row for
+Observation, Measurement, or Metadata, so none of them enforce a "some value
+must be present" constraint.
 """
 
 from datetime import date
 
 import pytest
-import sqlalchemy.exc as sa_exc
 
 from omop_alchemy.cdm.model.clinical.measurement import Measurement
 from omop_alchemy.cdm.model.clinical.observation import Observation
@@ -48,7 +48,7 @@ def _make_measurement(*, measurement_id, type_concept_id, some_concept_id, **val
     )
 
 
-class TestObservationValueRequirement:
+class TestObservationNoValueRequirement:
     def test_value_as_string_alone_is_sufficient(self, session, type_concept_id, some_concept_id):
         """OMOP allows Observation's value via value_as_string alone."""
         obs = _make_observation(
@@ -85,22 +85,17 @@ class TestObservationValueRequirement:
         session.commit()
         assert obs.observation_id == 9003
 
-    def test_assigning_all_three_none_raises(self, session, type_concept_id, some_concept_id):
-        """Assignment-time validator still rejects an all-NULL value on Observation."""
+    def test_no_value_columns_set_succeeds(self, session, type_concept_id, some_concept_id):
+        """Observation has no CDM-mandated value; a bare result row is valid."""
         obs = _make_observation(
             observation_id=9004, type_concept_id=type_concept_id, some_concept_id=some_concept_id
         )
-        with pytest.raises(ValueError, match="At least one of"):
-            obs.value_as_number = None
-
-    def test_no_value_at_all_fails_at_flush(self, session, type_concept_id, some_concept_id):
-        """Never assigning any value column also fails, at DB flush time."""
-        obs = _make_observation(
-            observation_id=9005, type_concept_id=type_concept_id, some_concept_id=some_concept_id
-        )
         session.add(obs)
-        with pytest.raises(sa_exc.IntegrityError):
-            session.commit()
+        session.commit()
+        assert obs.observation_id == 9004
+        assert obs.value_as_number is None
+        assert obs.value_as_concept_id is None
+        assert obs.value_as_string is None
 
 
 class TestMeasurementNoValueRequirement:
