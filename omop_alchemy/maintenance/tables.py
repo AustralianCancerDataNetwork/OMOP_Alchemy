@@ -8,26 +8,32 @@ import sqlalchemy as sa
 
 
 class TableCategory(StrEnum):
-    CLINICAL = "clinical"
-    DERIVED = "derived"
-    HEALTH_ECONOMIC = "health_economic"
-    HEALTH_SYSTEM = "health_system"
-    METADATA = "metadata"
-    STRUCTURAL = "structural"
-    UNSTRUCTURED = "unstructured"
-    VOCABULARY = "vocabulary"
+    """An OMOP CDM table's structural category, carrying its render style.
 
+    Parameters
+    ----------
+    code : str
+        The category's string value.
+    style : str
+        Rich color/style name used to render this category.
+    """
 
-class TableScope(StrEnum):
-    ALL = "all"
-    CLINICAL = TableCategory.CLINICAL.value
-    DERIVED = TableCategory.DERIVED.value
-    HEALTH_ECONOMIC = TableCategory.HEALTH_ECONOMIC.value
-    HEALTH_SYSTEM = TableCategory.HEALTH_SYSTEM.value
-    METADATA = TableCategory.METADATA.value
-    STRUCTURAL = TableCategory.STRUCTURAL.value
-    UNSTRUCTURED = TableCategory.UNSTRUCTURED.value
-    VOCABULARY = TableCategory.VOCABULARY.value
+    def __new__(cls, code: str, style: str):
+        obj = str.__new__(cls, code)
+        obj._value_ = code
+        return obj
+
+    def __init__(self, code: str, style: str):
+        self.style = style
+
+    CLINICAL = ("clinical", "bright_blue")
+    DERIVED = ("derived", "blue")
+    HEALTH_ECONOMIC = ("health_economic", "green")
+    HEALTH_SYSTEM = ("health_system", "bright_cyan")
+    METADATA = ("metadata", "white")
+    STRUCTURAL = ("structural", "magenta")
+    UNSTRUCTURED = ("unstructured", "bright_magenta")
+    VOCABULARY = ("vocabulary", "yellow")
 
 
 @dataclass(frozen=True)
@@ -70,12 +76,6 @@ def qualified_table_name(table_name: str, db_schema: str | None) -> str:
         quoted_schema = '"' + db_schema.replace('"', '""') + '"'
         return f"{quoted_schema}.{table_name}"
     return table_name
-
-
-def categories_for_scope(scope: TableScope) -> tuple[TableCategory, ...]:
-    if scope is TableScope.ALL:
-        return tuple(TableCategory)
-    return (TableCategory(scope.value),)
 
 
 def _mapped_cdm_table_classes() -> Iterable[type]:
@@ -172,7 +172,7 @@ def select_maintenance_tables(
 def resolve_maintenance_tables(
     *,
     table_names: Iterable[str] | None = None,
-    scope: TableScope | None = None,
+    scope: TableCategory | None = None,
     require_single_integer_primary_key: bool = False,
 ) -> list[MaintenanceTable]:
     if table_names is not None:
@@ -205,7 +205,7 @@ def resolve_maintenance_tables(
 
     if scope is not None:
         return select_maintenance_tables(
-            categories=categories_for_scope(scope),
+            categories=(scope,),
             require_single_integer_primary_key=require_single_integer_primary_key,
         )
 

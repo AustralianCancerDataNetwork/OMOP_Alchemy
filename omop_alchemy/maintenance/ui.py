@@ -60,18 +60,6 @@ def _status_style(status: Status) -> str:
         )
     return status.severity.style
 
-CATEGORY_STYLES = {
-    TableCategory.CLINICAL: "bright_blue",
-    TableCategory.DERIVED: "blue",
-    TableCategory.HEALTH_ECONOMIC: "green",
-    TableCategory.HEALTH_SYSTEM: "bright_cyan",
-    TableCategory.METADATA: "white",
-    TableCategory.STRUCTURAL: "magenta",
-    TableCategory.UNSTRUCTURED: "bright_magenta",
-    TableCategory.VOCABULARY: "yellow",
-}
-
-
 def _backend_label(dialect_name: str) -> str:
     try:
         return _DIALECT_TO_BACKEND_MAP[_SupportedDialect(dialect_name)].name
@@ -86,7 +74,7 @@ def _bool_label(value: bool) -> Text:
 def _category_label(category: TableCategory) -> Text:
     return Text(
         category.value.replace("_", " "),
-        style=CATEGORY_STYLES[category],
+        style=category.style,
     )
 
 

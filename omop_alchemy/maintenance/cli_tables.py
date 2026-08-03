@@ -11,7 +11,6 @@ from ..backends import resolve_backend, require_backend_support, backend_support
 from ._cli_utils import Status, dry_label, dry_status, omop_command, reject_reserved_schema, resolve_selection
 from .tables import (
     TableCategory,
-    TableScope,
     qualified_table_name,
     resolve_maintenance_tables,
     select_omop_tables,
@@ -49,12 +48,15 @@ def analyze_tables(
     engine: sa.Engine,
     *,
     db_schema: str | None = None,
-    scope: TableScope | None = None,
+    scope: TableCategory | None = None,
     table_names: tuple[str, ...] | None = None,
     vacuum: bool = False,
     dry_run: bool = False,
 ) -> list[AnalyzeTableResult]:
-    """Run ANALYZE (or VACUUM ANALYZE) on selected ORM-managed tables to refresh planner statistics."""
+    """Run ANALYZE (or VACUUM ANALYZE) on selected ORM-managed tables to refresh planner statistics.
+
+    Runs on every ORM-managed table if both scope and table_names are omitted.
+    """
     reject_reserved_schema(db_schema)
     if scope is not None and table_names is not None:
         raise RuntimeError("Use either `scope` or `table_names`, not both.")
@@ -159,7 +161,7 @@ def truncate_tables(
     engine: sa.Engine,
     *,
     db_schema: str | None = None,
-    scope: TableScope | None = None,
+    scope: TableCategory | None = None,
     table_names: tuple[str, ...] | None = None,
     restart_identities: bool = False,
     cascade: bool = False,
@@ -355,7 +357,7 @@ app = typer.Typer(rich_markup_mode="rich", help="Manage Database Tables: analyze
 def analyze_tables_command(
     conn,
     engine,
-    scope: TableScope | None = typer.Option(
+    scope: TableCategory | None = typer.Option(
         None,
         "--scope",
         help="CDM category scope to analyze (e.g. 'clinical', 'vocabulary'). Defaults to all ORM-managed tables when omitted.",
@@ -374,9 +376,7 @@ def analyze_tables_command(
     dry_run: bool = False,
 ) -> None:
     """Analyse selected ORM-managed tables to update planner statistics."""
-    resolved_scope, resolved_tables = resolve_selection(
-        scope=scope, tables=table, default_scope=TableScope.ALL
-    )
+    resolved_scope, resolved_tables = resolve_selection(scope=scope, tables=table)
     with console.status("Refreshing planner statistics for selected tables..."):
         results = analyze_tables(
             engine,
@@ -426,7 +426,7 @@ def reset_sequences_command(
 def truncate_tables_command(
     conn,
     engine,
-    scope: TableScope | None = typer.Option(
+    scope: TableCategory | None = typer.Option(
         None,
         "--scope",
         help="CDM category scope to truncate (e.g. 'clinical', 'vocabulary'). Must specify scope or --table.",

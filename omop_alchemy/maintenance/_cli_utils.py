@@ -13,7 +13,7 @@ import typer
 from orm_loader.backends import STAGING_SCHEMA
 from sqlalchemy.exc import SQLAlchemyError
 
-from .tables import TableScope
+from .tables import TableCategory
 from .ui import console, render_error, render_command_header
 from ..backends import BackendNotSupportedError, resolve_backend
 
@@ -253,10 +253,10 @@ def dry_label(dry_run: bool, planned: str, applied: str) -> str:
 
 def resolve_selection(
     *,
-    scope: TableScope | None,
+    scope: TableCategory | None,
     tables: list[str] | None,
-    default_scope: TableScope | None = None,
-) -> tuple[TableScope | None, tuple[str, ...] | None]:
+    default_scope: TableCategory | None = None,
+) -> tuple[TableCategory | None, tuple[str, ...] | None]:
     if scope is not None and tables:
         raise RuntimeError("Use either `--scope` or `--table`, not both.")
     selected = tuple(tables) if tables else None
