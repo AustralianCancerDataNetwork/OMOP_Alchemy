@@ -8,7 +8,7 @@ import sqlalchemy as sa
 import typer
 
 from ..backends import Backend, resolve_backend, require_backend_support, backend_support_note
-from ._cli_utils import Status, dry_label, dry_status, omop_command
+from ._cli_utils import Status, dry_label, dry_status, omop_command, reject_reserved_schema
 from .tables import (
     TableCategory,
     existing_maintenance_tables,
@@ -286,6 +286,7 @@ def manage_foreign_key_triggers(
     strict: bool = False,
 ) -> list[ForeignKeyManagementResult]:
     """Enable or disable RI trigger enforcement. With strict=True, aborts on any FK violation."""
+    reject_reserved_schema(db_schema)
     backend = resolve_backend(engine)
     require_backend_support(backend, "toggle_fk_triggers", "FK trigger management")
 
