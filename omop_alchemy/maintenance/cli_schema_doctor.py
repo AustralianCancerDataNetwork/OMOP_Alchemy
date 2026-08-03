@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass
+
+import sqlalchemy as sa
 
 from omop_alchemy.backends.resolve import SupportedDialect
 
@@ -153,34 +156,58 @@ def _build_recommendations(
 
 def collect_doctor_report(
     *,
+    engine: sa.engine.Engine | None = None,
     vocabulary_included: bool = True,
     deep: bool = False,
 ) -> DoctorReport:
-    """Run all maintenance health checks and return a prioritised report with recommendations."""
-    info = collect_maintenance_info(vocabulary_included=vocabulary_included)
+    """Run all maintenance health checks and return a prioritised report with recommendations.
 
-    checks = [
-        DoctorCheck(
-            name="connection",
-            status="passed" if info.connection_ready else "failed",
-            detail=(
-                "Target database connection succeeded."
-                if info.connection_ready
-                else info.connection_error or info.engine_error or "Connection could not be established."
-            ),
+    Parameters
+    ----------
+    engine : sa.engine.Engine, optional
+        Already-resolved CDM engine (e.g. from the ``@omop_command`` decorator),
+        reused for the deep checks below instead of re-resolving config.
+
+        .. deprecated::
+            Omitting this and letting the function resolve its own engine is
+            deprecated and will be required in 2.0. Pass the already-resolved
+            engine instead.
+    """
+    owns_engine = engine is None
+    if owns_engine:
+        warnings.warn(
+            "collect_doctor_report() without an explicit engine= is deprecated "
+            "and will be required in 2.0. Pass the already-resolved engine "
+            "(e.g. from @omop_command) instead of letting this function "
+            "re-resolve config a second time.",
+            DeprecationWarning,
+            stacklevel=2,
         )
-    ]
-
-    reconciliation: SchemaReconciliationReport | None = None
-    foreign_key_status: tuple[ForeignKeyStatusResult, ...] | None = None
-    foreign_key_validation: ForeignKeyValidationReport | None = None
-
-    if info.connection_ready:
         from omop_alchemy.config import create_cdm_engine, get_cdm_context
         _, resolved = get_cdm_context()
         engine = create_cdm_engine(resolved)
-        db_schema = resolved.cdm_schema
-        try:
+
+    try:
+        info = collect_maintenance_info(vocabulary_included=vocabulary_included)
+
+        checks = [
+            DoctorCheck(
+                name="connection",
+                status="passed" if info.connection_ready else "failed",
+                detail=(
+                    "Target database connection succeeded."
+                    if info.connection_ready
+                    else info.connection_error or info.engine_error or "Connection could not be established."
+                ),
+            )
+        ]
+
+        reconciliation: SchemaReconciliationReport | None = None
+        foreign_key_status: tuple[ForeignKeyStatusResult, ...] | None = None
+        foreign_key_validation: ForeignKeyValidationReport | None = None
+
+        if info.connection_ready:
+            db_schema = info.db_schema
             missing_table_count = info.missing_table_count or 0
             checks.append(
                 DoctorCheck(
@@ -286,68 +313,69 @@ def collect_doctor_report(
                         detail="Foreign key validation is only available on PostgreSQL.",
                     )
                 )
-        finally:
-            engine.dispose()
-    else:
-        checks.extend(
-            (
-                DoctorCheck(
-                    name="managed tables",
-                    status="skipped",
-                    detail="Skipped because the database connection is not ready.",
-                ),
-                DoctorCheck(
-                    name="foreign keys",
-                    status="skipped",
-                    detail="Skipped because the database connection is not ready.",
-                ),
-                DoctorCheck(
-                    name="schema drift",
-                    status="skipped",
-                    detail="Skipped because the database connection is not ready.",
-                ),
-                DoctorCheck(
-                    name="foreign key validation",
-                    status="skipped",
-                    detail="Skipped because the database connection is not ready.",
-                ),
+        else:
+            checks.extend(
+                (
+                    DoctorCheck(
+                        name="managed tables",
+                        status="skipped",
+                        detail="Skipped because the database connection is not ready.",
+                    ),
+                    DoctorCheck(
+                        name="foreign keys",
+                        status="skipped",
+                        detail="Skipped because the database connection is not ready.",
+                    ),
+                    DoctorCheck(
+                        name="schema drift",
+                        status="skipped",
+                        detail="Skipped because the database connection is not ready.",
+                    ),
+                    DoctorCheck(
+                        name="foreign key validation",
+                        status="skipped",
+                        detail="Skipped because the database connection is not ready.",
+                    ),
+                )
             )
-        )
 
-    if info.backend == SupportedDialect.POSTGRESQL:
-        backup_tools_ready = info.pg_dump_path is not None and (
-            info.pg_restore_path is not None or info.psql_path is not None
-        )
-        checks.append(
-            DoctorCheck(
-                name="backup tooling",
-                status="passed" if backup_tools_ready else "warning",
-                detail=(
-                    "PostgreSQL backup and restore client tools are available."
-                    if backup_tools_ready
-                    else "PostgreSQL client tools are incomplete on this machine."
-                ),
+        if info.backend == SupportedDialect.POSTGRESQL:
+            backup_tools_ready = info.pg_dump_path is not None and (
+                info.pg_restore_path is not None or info.psql_path is not None
             )
-        )
-    else:
-        checks.append(
-            DoctorCheck(
-                name="backup tooling",
-                status="skipped",
-                detail="Backup and restore tooling checks are only relevant for PostgreSQL targets.",
+            checks.append(
+                DoctorCheck(
+                    name="backup tooling",
+                    status="passed" if backup_tools_ready else "warning",
+                    detail=(
+                        "PostgreSQL backup and restore client tools are available."
+                        if backup_tools_ready
+                        else "PostgreSQL client tools are incomplete on this machine."
+                    ),
+                )
             )
-        )
+        else:
+            checks.append(
+                DoctorCheck(
+                    name="backup tooling",
+                    status="skipped",
+                    detail="Backup and restore tooling checks are only relevant for PostgreSQL targets.",
+                )
+            )
 
-    return DoctorReport(
-        info=info,
-        checks=tuple(checks),
-        recommendations=_build_recommendations(
+        return DoctorReport(
             info=info,
+            checks=tuple(checks),
+            recommendations=_build_recommendations(
+                info=info,
+                reconciliation=reconciliation,
+                foreign_key_status=foreign_key_status,
+                foreign_key_validation=foreign_key_validation,
+            ),
             reconciliation=reconciliation,
             foreign_key_status=foreign_key_status,
             foreign_key_validation=foreign_key_validation,
-        ),
-        reconciliation=reconciliation,
-        foreign_key_status=foreign_key_status,
-        foreign_key_validation=foreign_key_validation,
-    )
+        )
+    finally:
+        if owns_engine:
+            engine.dispose()

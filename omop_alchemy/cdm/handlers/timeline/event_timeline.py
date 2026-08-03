@@ -142,7 +142,7 @@ class ClinicalEvent:
         return {}
     
 
-    def __repr__(self: ClinicalEventProtocol) -> str:
+    def __repr__(self: ClinicalEventProtocol) -> str:  # ty: ignore[invalid-method-override]
         et = self.event_time
         ev = self.event_value()
 
@@ -201,7 +201,7 @@ class Condition_Event(Condition_Occurrence, ClinicalEvent):
     )
 
 
-class Measurement_Event(ClinicalEvent, Measurement):  # type: ignore[misc]
+class Measurement_Event(ClinicalEvent, Measurement):
 
     _mapping = EventMapping(
         concept_field="measurement_concept_id",
@@ -269,5 +269,5 @@ class Person_Timeline(Person):
             key=lambda e: e.event_time.start,
         )
     
-    def to_json(self) -> list[str]:  # type: ignore[override]
-        return [e.to_json() for e in self.timeline]  # type: ignore[return-value]
+    def to_json(self) -> list[str]:  # ty: ignore[invalid-method-override]
+        return [e.to_json() for e in self.timeline]  # ty: ignore[invalid-argument-type]

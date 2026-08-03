@@ -113,7 +113,7 @@ class PersonView(Person, PersonContext, DomainValidationMixin):
     }
 
     @hybrid_method
-    def age_at(self, on_date: date) -> Optional[int]: # type: ignore
+    def age_at(self, on_date: date) -> Optional[int]:
         if not self.year_of_birth:
             return None
         return on_date.year - self.year_of_birth

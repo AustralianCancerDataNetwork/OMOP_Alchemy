@@ -8,7 +8,7 @@ import importlib.util
 import shutil
 
 import sqlalchemy as sa
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import ArgumentError, SQLAlchemyError
 
 from oa_configurator import Resolver, load_stack_config
 from oa_configurator.loader import DEFAULT_CONFIG_PATH
@@ -347,13 +347,15 @@ def collect_maintenance_info(
         raw_url = sa.engine.make_url(resolved.database.url)
         engine_url = raw_url.render_as_string(hide_password=True)
         backend = raw_url.get_backend_name()
-        from omop_alchemy.config import create_cdm_engine
-        engine = create_cdm_engine(resolved)
-        engine_created = True
-    except RuntimeError as exc:
-        engine_error = str(exc)
-    except Exception as exc:
+    except (FileNotFoundError, ValueError, ArgumentError, KeyError) as exc:
         engine_error = f"Could not resolve engine configuration: {exc}"
+    else:
+        from omop_alchemy.config import create_cdm_engine
+        try:
+            engine = create_cdm_engine(resolved)
+            engine_created = True
+        except RuntimeError as exc:
+            engine_error = str(exc)
 
     if engine is not None:
         try:

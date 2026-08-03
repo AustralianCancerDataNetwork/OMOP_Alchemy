@@ -174,6 +174,7 @@ def test_load_vocab_source_cli_uses_configured_athena_source(monkeypatch, tmp_pa
         engine: object,
         *,
         source_path: str | Path,
+        tables: list[str] | None = None,  # noqa: ARG001
         db_schema: str | None = None,
         dry_run: bool = False,
         merge_strategy: MergeStrategy = "replace",
@@ -521,3 +522,103 @@ def test_load_vocab_source_uses_auto_not_literal_quote_mode(monkeypatch, tmp_pat
         f"Expected all tables to use quote_mode='auto', got: {received_quote_modes}"
     )
     assert "literal" not in received_quote_modes
+
+
+def test_load_vocab_source_tables_unknown_name_raises_runtime_error(tmp_path):
+    """Unknown table name in tables= is rejected before any DB connection."""
+    engine = sa.create_engine(f"sqlite:///{tmp_path / 'tables_unknown.db'}", future=True)
+    source_path = _build_required_athena_source(tmp_path)
+
+    with pytest.raises(RuntimeError, match="Unknown vocabulary table"):
+        load_vocab_source(engine, source_path=source_path, tables=["not_a_table"])
+
+
+def test_load_vocab_source_tables_single_loads_only_that_table(monkeypatch, tmp_path):
+    """tables=['concept'] loads only concept and skips every other table."""
+    engine = sa.create_engine(f"sqlite:///{tmp_path / 'tables_single.db'}", future=True)
+    source_path = _build_required_athena_source(tmp_path)
+    loaded_tables: list[str] = []
+
+    def fake_load_vocab_model_csv(
+        session,
+        *,
+        model,
+        csv_path,
+        merge_strategy,
+        quote_mode="auto",  # noqa: ARG001
+        chunksize=None,
+        index_strategy="auto",
+        merge_batch_size: int = 1_000_000,
+    ) -> int:
+        loaded_tables.append(model.__tablename__)
+        return 1
+
+    monkeypatch.setattr(
+        "omop_alchemy.maintenance.cli_vocab._load_vocab_model_csv",
+        fake_load_vocab_model_csv,
+    )
+
+    report = load_vocab_source(engine, source_path=source_path, tables=["concept"])
+
+    assert loaded_tables == ["concept"]
+    result_names = {r.table_name for r in report.results}
+    assert result_names == {"concept"}
+
+
+def test_load_vocab_source_tables_multiple_loads_exactly_those(monkeypatch, tmp_path):
+    """tables=['concept', 'vocabulary'] loads exactly those two tables."""
+    engine = sa.create_engine(f"sqlite:///{tmp_path / 'tables_multiple.db'}", future=True)
+    source_path = _build_required_athena_source(tmp_path)
+    loaded_tables: list[str] = []
+
+    def fake_load_vocab_model_csv(
+        session,
+        *,
+        model,
+        csv_path,
+        merge_strategy,
+        quote_mode="auto",  # noqa: ARG001
+        chunksize=None,
+        index_strategy="auto",
+        merge_batch_size: int = 1_000_000,
+    ) -> int:
+        loaded_tables.append(model.__tablename__)
+        return 1
+
+    monkeypatch.setattr(
+        "omop_alchemy.maintenance.cli_vocab._load_vocab_model_csv",
+        fake_load_vocab_model_csv,
+    )
+
+    load_vocab_source(engine, source_path=source_path, tables=["concept", "vocabulary"])
+
+    assert set(loaded_tables) == {"concept", "vocabulary"}
+
+
+def test_load_vocab_source_tables_skips_required_files_preflight(tmp_path):
+    """tables= skips the all-required-files gate even when most CSVs are absent."""
+    engine = sa.create_engine(f"sqlite:///{tmp_path / 'tables_preflight.db'}", future=True)
+
+    # Only concept.csv present — would fail the all-required-files check without tables=.
+    source_path = tmp_path / "sparse"
+    source_path.mkdir()
+    _write_athena_csv(source_path, "concept")
+
+    # Should raise RuntimeError for missing concept CSV — but NOT the "Missing required" error.
+    # Since concept.csv IS present, the load should proceed without hitting the preflight.
+    report = load_vocab_source(engine, source_path=source_path, tables=["concept"], dry_run=True)
+
+    result_names = {r.table_name for r in report.results}
+    assert result_names == {"concept"}
+
+
+def test_load_vocab_source_tables_missing_csv_raises_runtime_error(tmp_path):
+    """Explicitly named table whose CSV is absent raises RuntimeError, not a silent skip."""
+    engine = sa.create_engine(f"sqlite:///{tmp_path / 'tables_missing_csv.db'}", future=True)
+
+    source_path = tmp_path / "empty_source"
+    source_path.mkdir()
+    # No CSVs at all — concept is in tables= but its file is missing.
+
+    with pytest.raises(RuntimeError, match="concept"):
+        load_vocab_source(engine, source_path=source_path, tables=["concept"])

@@ -1,6 +1,7 @@
 import sqlalchemy as sa
 import sqlalchemy.orm as so
 from sqlalchemy.ext.declarative import declared_attr
+from enum import StrEnum, nonmember
 from typing import Optional, TYPE_CHECKING, List
 from datetime import date
 if TYPE_CHECKING:
@@ -21,6 +22,43 @@ from omop_alchemy.cdm.base import (
     omop_primary_key_index_name,
     omop_table_options,
 )
+
+
+class StandardConceptFlag(StrEnum):
+    """Allowed non-null values of ``concept.standard_concept`` (OMOP CDM v5.4)."""
+
+    STANDARD = "S"
+    CLASSIFICATION = "C"
+
+    # Precomputed membership set for the hot Python-side check (Concept.is_standard) --
+    # re-deriving this from the enum on every call is measurably expensive (~10x).
+    values = nonmember(frozenset({STANDARD, CLASSIFICATION}))
+
+
+class InvalidReasonFlag(StrEnum):
+    """Allowed non-null values of ``concept.invalid_reason`` (OMOP CDM v5.4)."""
+
+    DELETED = "D"
+    UPDATED = "U"
+
+
+def normalised_flag_expr(
+    column: sa.SQLColumnExpression[Optional[str]],
+) -> sa.SQLColumnExpression[Optional[str]]:
+    """Return a canonical OMOP flag expression.
+
+    OMOP CDM v5.4 allows only ``NULL``/``'S'``/``'C'`` for ``standard_concept``
+    and ``NULL``/``'D'``/``'U'`` for ``invalid_reason``. Some real-world loads
+    contain blank or whitespace-only strings instead of ``NULL``; those are
+    normalised here defensively so callers do not need to reimplement the same
+    tolerance logic.
+
+    Non-empty non-canonical values are left unchanged so downstream validation
+    can still detect them as bad data rather than silently treating them as a
+    valid state.
+    """
+    return sa.func.nullif(sa.func.trim(column), "")
+
 
 @cdm_table
 class Concept(
@@ -53,6 +91,26 @@ class Concept(
     valid_start_date: so.Mapped[date] = so.mapped_column(sa.Date(), nullable=False)
     valid_end_date: so.Mapped[date] = so.mapped_column(sa.Date(), nullable=False)
     invalid_reason: so.Mapped[Optional[str]] = so.mapped_column(sa.String(1), nullable=True)
+
+    @property
+    def is_standard(self) -> bool:
+        value = self.standard_concept.strip() if self.standard_concept is not None else ""
+        return bool(value) and value in StandardConceptFlag.values
+
+    @classmethod
+    def is_standard_expr(cls) -> sa.SQLColumnExpression[bool]:
+        """SQL-side counterpart to :attr:`is_standard`, for use in query filters."""
+        return normalised_flag_expr(cls.standard_concept).in_(StandardConceptFlag.values)
+
+    @property
+    def is_valid(self) -> bool:
+        value = self.invalid_reason.strip() if self.invalid_reason is not None else ""
+        return not value
+
+    @classmethod
+    def is_valid_expr(cls) -> sa.SQLColumnExpression[bool]:
+        """SQL-side counterpart to :attr:`is_valid`, for use in query filters."""
+        return normalised_flag_expr(cls.invalid_reason).is_(None)
 
 class ConceptContext(ReferenceContext):
     """
@@ -119,12 +177,3 @@ class ConceptView(Concept, ConceptContext):
     """
     __tablename__ = "concept"
     __mapper_args__ = {"concrete": False}
-
-
-    @property
-    def is_standard(self) -> bool:
-        return self.standard_concept == "S"
-
-    @property
-    def is_valid(self) -> bool:
-        return self.invalid_reason is None

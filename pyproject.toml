@@ -1,6 +1,6 @@
 [project]
 name = "omop-alchemy"
-version = "0.8.0"
+dynamic = ["version"]
 description = "SQLAlchemy-based models, validation, and utilities for the OHDSI OMOP Common Data Model"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -50,7 +50,7 @@ dev = [
   "requests>=2.33.0",
   "pytest>=9.0.3",
   "pytest-cov>=4.0",
-  "mypy>=1.8",
+  "ty==0.0.61",
   "ruff>=0.4",
   "mkdocs-material>=9.7.1",
   "mkdocstrings-python>=2.0.1",
@@ -58,10 +58,6 @@ dev = [
   "mkdocs-mermaid2-plugin"
 ]
 
-docs = [
-  "sphinx",
-  "myst-parser",
-]
 
 [project.urls]
 Homepage = "https://australiancancerdatanetwork.github.io/OMOP_Alchemy/"
@@ -76,10 +72,17 @@ omop_alchemy = "omop_alchemy.config:OmopAlchemyConfig"
 
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
+raw-options = { tag_regex = '^v?(?P<version>[0-9]+\.[0-9]+\.[0-9]+)$' }
 
 [tool.hatch.build.targets.wheel]
 packages = ["omop_alchemy"]
+
+[tool.uv]
+cache-keys = [{ file = "pyproject.toml" }, { git = { commit = true, tags = true } }]
 
 [tool.pytest.ini_options]

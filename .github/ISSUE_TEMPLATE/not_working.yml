@@ -1,0 +1,65 @@
+name: "❗ Something is not working"
+description: Something behaves unexpectedly but you are not sure if it is a bug.
+body:
+  - type: checkboxes
+    attributes:
+      label: Pre-flight
+      options:
+        - label: I searched existing issues for this problem.
+          required: true
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Problem summary
+      description: 1-2 sentences describing what is not working.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Steps and/or a minimal code example. Wrap code in triple backticks.
+      placeholder: |
+        1. Import X and call Y with Z
+        2. Observe unexpected behaviour
+
+        ```python
+        # minimal example
+        ```
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual outcome
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected outcome
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error messages
+      description: Full traceback if applicable. Formatted automatically.
+      render: python-traceback
+
+  - type: textarea
+    id: system
+    attributes:
+      label: System info
+      description: |
+        Run this in your environment and paste the output:
+
+        ```shell
+        python <(curl -s https://raw.githubusercontent.com/AustralianCancerDataNetwork/cava-devops/main/scripts/cava_system_info.py)
+        ```
+      render: shell

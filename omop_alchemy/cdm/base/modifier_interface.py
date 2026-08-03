@@ -22,10 +22,10 @@ class ModifierTargetMixin:
 
     @classmethod
     def modifier_target_table(cls) -> str:
-        return cls.__tablename__ # type: ignore[attr-defined]
+        return cls.__tablename__ # ty: ignore[unresolved-attribute]
 
     @hybrid_property
-    def event_id(self) -> int: # type: ignore
+    def event_id(self) -> int:
         return getattr(self, self.__event_id_col__)
     
     @event_id.expression
