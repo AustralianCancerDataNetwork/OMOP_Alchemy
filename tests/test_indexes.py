@@ -14,6 +14,7 @@ from omop_alchemy.maintenance.cli_indexes import (
     _DROPPED_INDEXES_TABLE_NAME,
     get_bookkeeping_schema,
     _cluster_index_unique,
+    _cluster_target_name,
     _describe_shape_conflict,
     _find_equivalent_index,
     _find_shape_conflict,
@@ -925,6 +926,32 @@ def test_cluster_index_unique_defaults_true_for_primary_key_target():
     # "pk_person" is the primary-key-based cluster target and is never one of
     # person's secondary indexes.
     assert _cluster_index_unique(person, "pk_person") is True
+
+
+def test_vocabulary_domain_concept_class_relationship_cluster_on_primary_key():
+    """vocabulary/domain/concept_class/relationship previously declared a
+    redundant secondary index as their cluster target (same column as their own
+    primary key), inconsistently with person/location/care_site/provider/concept
+    which cluster directly on the primary key's own index. Normalized onto the
+    latter: Alchemy never creates that redundant index itself, and index
+    reconciliation is what recognizes a database that has the OHDSI-standard
+    duplicate (see _resolve_physical_cluster_name_falls_back_to_equivalent)
+    as an equivalent cluster target."""
+    tables = {table.table_name: table for table in collect_maintenance_tables()}
+    for table_name, pk_column in (
+        ("vocabulary", "vocabulary_id"),
+        ("domain", "domain_id"),
+        ("concept_class", "concept_class_id"),
+        ("relationship", "relationship_id"),
+    ):
+        table = tables[table_name]
+        cluster_name = _cluster_target_name(table)
+        assert cluster_name == f"pk_{table_name}"
+        assert _cluster_index_unique(table, cluster_name) is True
+        assert not any(
+            set(index.columns.keys()) == {pk_column}
+            for index in table.table.indexes
+        )
 
 
 def test_render_reconciliation_summary_treats_renamed_only_as_matched():

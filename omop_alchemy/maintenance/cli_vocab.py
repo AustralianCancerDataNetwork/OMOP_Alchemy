@@ -462,7 +462,7 @@ def load_vocab_source(
                             index_strategy="keep" if _use_bulk_mode else "auto",
                             chunksize=chunksize,
                             merge_batch_size=merge_batch_size,
-                            staging_schema=STAGING_SCHEMA,
+                            staging_schema=ReservedSchema.STAGING,
                         )
                         session.commit()
                     break

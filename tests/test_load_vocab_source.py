@@ -645,7 +645,8 @@ def test_load_vocab_source_bulk_mode_surfaces_index_warnings(monkeypatch, tmp_pa
     monkeypatch.setattr(
         "omop_alchemy.maintenance.cli_vocab._load_vocab_model_csv",
         lambda session, *, model, csv_path, merge_strategy, quote_mode="auto",
-        chunksize=None, index_strategy="auto", merge_batch_size=1_000_000: 1,
+        chunksize=None, index_strategy="auto", merge_batch_size=1_000_000,
+        staging_schema=None: 1,
     )
     # ensure_schema() resolves a backend from engine.dialect.name too, and would
     # otherwise try to run real PostgreSQL "CREATE SCHEMA" DDL against this SQLite
