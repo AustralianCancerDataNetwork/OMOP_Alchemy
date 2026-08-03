@@ -73,6 +73,7 @@ def test_load_vocab_source_on_sqlite_creates_tables_and_reports_loaded_results(
         chunksize=None,
         index_strategy="auto",
         merge_batch_size: int = 1_000_000,
+        staging_schema=None,
     ) -> int:
         loaded_tables.append((model.__tablename__, merge_strategy, quote_mode, csv_path))
         return 1
@@ -237,7 +238,10 @@ def test_load_vocab_model_csv_passes_quote_mode(monkeypatch, tmp_path):
 
     calls: dict[str, object] = {}
 
-    def fake_load_csv(session, path, *, merge_strategy, quote_mode, index_strategy="auto", merge_batch_size: int = 1_000_000):
+    def fake_load_csv(
+        session, path, *, merge_strategy, quote_mode, index_strategy="auto",
+        merge_batch_size: int = 1_000_000, staging_schema=None,
+    ):
         calls["merge_strategy"] = merge_strategy
         calls["quote_mode"] = quote_mode
         calls["path"] = path
@@ -283,6 +287,7 @@ def test_load_vocab_source_loads_in_fk_dependency_order(monkeypatch, tmp_path):
         chunksize=None,
         index_strategy="auto",
         merge_batch_size: int = 1_000_000,
+        staging_schema=None,
     ) -> int:
         loaded_order.append(model.__tablename__)
         return 1
@@ -318,6 +323,7 @@ def test_load_vocab_source_reports_weighted_progress(monkeypatch, tmp_path):
         chunksize=None,
         index_strategy="auto",
         merge_batch_size: int = 1_000_000,
+        staging_schema=None,
     ) -> int:
         return 1
 
@@ -344,7 +350,7 @@ def test_load_vocab_source_wraps_failed_table_load(monkeypatch, tmp_path):
     engine = sa.create_engine(f"sqlite:///{tmp_path / 'load_vocab_source_error.db'}", future=True)
     source_path = _build_required_athena_source(tmp_path)
 
-    def fake_load_vocab_model_csv(session, *, model, csv_path, merge_strategy, quote_mode="auto", chunksize=None, index_strategy="auto", merge_batch_size: int = 1_000_000):
+    def fake_load_vocab_model_csv(session, *, model, csv_path, merge_strategy, quote_mode="auto", chunksize=None, index_strategy="auto", merge_batch_size: int = 1_000_000, staging_schema=None):
         if model.__tablename__ == "domain":
             raise sa.exc.ProgrammingError(  # type: ignore[attr-defined]
                 "COPY domain FROM STDIN",
@@ -391,7 +397,10 @@ def test_load_vocab_model_csv_retries_missing_staging_table(monkeypatch, tmp_pat
 
     calls = {"load_csv": 0, "create_staging_table": 0}
 
-    def fake_load_csv(session, path, *, merge_strategy, quote_mode, index_strategy="auto", merge_batch_size: int = 1_000_000):
+    def fake_load_csv(
+        session, path, *, merge_strategy, quote_mode, index_strategy="auto",
+        merge_batch_size: int = 1_000_000, staging_schema=None,
+    ):
         calls["load_csv"] += 1
         if calls["load_csv"] == 1:
             raise sa.exc.ProgrammingError(  # type: ignore[attr-defined]
@@ -401,7 +410,7 @@ def test_load_vocab_model_csv_retries_missing_staging_table(monkeypatch, tmp_pat
             )
         return 123
 
-    def fake_create_staging_table(session):
+    def fake_create_staging_table(session, *, staging_schema=None):
         calls["create_staging_table"] += 1
 
     monkeypatch.setattr(FakeModel, "load_csv", fake_load_csv)
@@ -498,6 +507,7 @@ def test_load_vocab_source_uses_auto_not_literal_quote_mode(monkeypatch, tmp_pat
         chunksize=None,
         index_strategy="auto",
         merge_batch_size: int = 1_000_000,
+        staging_schema=None,
     ) -> int:
         received_quote_modes.append(quote_mode)
         return 1
@@ -540,6 +550,7 @@ def test_load_vocab_source_tables_single_loads_only_that_table(monkeypatch, tmp_
         chunksize=None,
         index_strategy="auto",
         merge_batch_size: int = 1_000_000,
+        staging_schema=None,
     ) -> int:
         loaded_tables.append(model.__tablename__)
         return 1
@@ -572,6 +583,7 @@ def test_load_vocab_source_tables_multiple_loads_exactly_those(monkeypatch, tmp_
         chunksize=None,
         index_strategy="auto",
         merge_batch_size: int = 1_000_000,
+        staging_schema=None,
     ) -> int:
         loaded_tables.append(model.__tablename__)
         return 1
