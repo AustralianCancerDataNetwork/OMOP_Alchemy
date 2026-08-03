@@ -1,15 +1,15 @@
 from __future__ import annotations
 
-from typing import ClassVar
+from typing import Annotated, ClassVar
 
 import sqlalchemy as sa
 from pydantic import Field
 from oa_configurator import (
     DatabaseConfig,
     PackageConfigBase,
-    ResourceSpec,
+    RefTo,
     Resolver,
-    ResolvedResource,
+    ResolvedDatabase,
     load_stack_config,
 )
 
@@ -44,36 +44,26 @@ def _missing_driver_message(url: str, exc: ModuleNotFoundError) -> str | None:
 
 
 class OmopAlchemyConfig(PackageConfigBase):
-    CDM_DB: ClassVar[ResourceSpec] = ResourceSpec(
-        semantic_name="cdm_db",
-        display_name="OMOP CDM Database",
-        description="Database containing the OMOP CDM tables and vocabulary.",
-        connection_name_hint="cdm",
-    )
-    TEST_DB: ClassVar[ResourceSpec] = ResourceSpec(
-        semantic_name="test_cdm_db",
-        display_name="Test OMOP CDM Database",
-        description=(
-            "Dedicated PostgreSQL database for running integration tests. "
-            "Tests drop and recreate the entire public schema on every run."
-        ),
-        connection_name_hint="pg_test",
-        cdm_schema_default="public",
-        connection_defaults=DatabaseConfig(
-            dialect="postgresql+psycopg",
-            host="localhost",
-            port=55432,
-            user="test",
-            password="test",
-            database_name="test_db",
-        ),
-    )
+    """oa-configurator config class for omop-alchemy, the CDM database owner.
+
+    Every downstream package's own ``cdm_db``-named field shares this
+    database purely by naming convention (see ``RefTo``), not by importing
+    this class.
+
+    Attributes
+    ----------
+    cdm_db : str
+        Name of the ``[databases.*]`` entry holding the CDM database.
+    test_cdm_db : str, optional
+        Name of the ``[databases.*]`` entry holding the test CDM database,
+        marked ``RefTo(DatabaseConfig, is_test=True)``.
+    """
 
     tool_name: ClassVar[str] = "omop_alchemy"
     extra_logging_namespaces: ClassVar[tuple[str, ...]] = ("orm_loader",)
-    required_resources: ClassVar[tuple[str, ...]] = (CDM_DB.semantic_name,)
-    owned_resources: ClassVar[tuple[ResourceSpec, ...]] = (CDM_DB,)
-    test_resources: ClassVar[tuple[ResourceSpec, ...]] = (TEST_DB,)
+
+    cdm_db: Annotated[str, RefTo(DatabaseConfig)] = "cdm_db"
+    test_cdm_db: Annotated[str | None, RefTo(DatabaseConfig, is_test=True)] = None
 
     athena_source_path: str | None = Field(
         default=None,
@@ -81,11 +71,12 @@ class OmopAlchemyConfig(PackageConfigBase):
     )
 
 
-def get_cdm_context() -> tuple[OmopAlchemyConfig, ResolvedResource]:
-    """Return (pkg_config, resolved_cdm_resource), loading config once.
+def get_cdm_context() -> tuple[OmopAlchemyConfig, ResolvedDatabase]:
+    """Return (pkg_config, resolved_cdm_database), loading config once.
 
-    The resource is taken from tools.omop_alchemy.default_resource when set;
-    otherwise falls back to the canonical CDM_DB resource name.
+    The CDM database is always whatever ``OmopAlchemyConfig.cdm_db`` resolves
+    to -- point a deployment at a second CDM instance via that field's own
+    ``--cdm-db`` flag at configure time, not a call-site override.
 
     Raises
     ------
@@ -99,19 +90,18 @@ def get_cdm_context() -> tuple[OmopAlchemyConfig, ResolvedResource]:
             "No omop-alchemy configuration found. "
             "Run `omop-config configure omop_alchemy` to set it up."
         ) from exc
-    pkg_config = OmopAlchemyConfig.from_stack(stack)
-    tool = stack.tools.get(OmopAlchemyConfig.tool_name)
-    resource_name = (tool.default_resource if tool else None) or OmopAlchemyConfig.CDM_DB.semantic_name
-    resolved = Resolver(stack).resolve_resource(resource_name)
+    resolver = Resolver(stack)
+    pkg_config = resolver.resolve_package_config(OmopAlchemyConfig)
+    resolved = resolver.resolve_database(pkg_config.cdm_db)
     return pkg_config, resolved
 
 
-def create_cdm_engine(resolved: ResolvedResource) -> sa.Engine:
+def create_cdm_engine(resolved: ResolvedDatabase) -> sa.Engine:
     """Create the CDM SQLAlchemy engine with helpful PostgreSQL driver error messages."""
     try:
         return resolved.create_engine()
     except ModuleNotFoundError as exc:
-        msg = _missing_driver_message(resolved.database.url, exc)
+        msg = _missing_driver_message(resolved.connection.url, exc)
         if msg is not None:
             raise RuntimeError(msg) from exc
         raise
