@@ -194,17 +194,17 @@ def collect_doctor_report(
     try:
         info = collect_maintenance_info(vocabulary_included=vocabulary_included)
 
-    checks = [
-        DoctorCheck(
-            name="connection",
-            status=Status.PASSED if info.connection_ready else Status.FAILED,
-            detail=(
-                "Target database connection succeeded."
-                if info.connection_ready
-                else info.connection_error or info.engine_error or "Connection could not be established."
-            ),
-        )
-    ]
+        checks = [
+            DoctorCheck(
+                name="connection",
+                status=Status.PASSED if info.connection_ready else Status.FAILED,
+                detail=(
+                    "Target database connection succeeded."
+                    if info.connection_ready
+                    else info.connection_error or info.engine_error or "Connection could not be established."
+                ),
+            )
+        ]
 
         reconciliation: SchemaReconciliationReport | None = None
         foreign_key_status: tuple[ForeignKeyStatusResult, ...] | None = None
@@ -320,57 +320,54 @@ def collect_doctor_report(
                         detail="Foreign key validation is only available on PostgreSQL.",
                     )
                 )
-        finally:
-            engine.dispose()
-    else:
-        checks.extend(
-            (
-                DoctorCheck(
-                    name="managed tables",
-                    status=Status.SKIPPED,
-                    detail="Skipped because the database connection is not ready.",
-                ),
-                DoctorCheck(
-                    name="foreign keys",
-                    status=Status.SKIPPED,
-                    detail="Skipped because the database connection is not ready.",
-                ),
-                DoctorCheck(
-                    name="schema drift",
-                    status=Status.SKIPPED,
-                    detail="Skipped because the database connection is not ready.",
-                ),
-                DoctorCheck(
-                    name="foreign key validation",
-                    status=Status.SKIPPED,
-                    detail="Skipped because the database connection is not ready.",
-                ),
+        else:
+            checks.extend(
+                (
+                    DoctorCheck(
+                        name="managed tables",
+                        status=Status.SKIPPED,
+                        detail="Skipped because the database connection is not ready.",
+                    ),
+                    DoctorCheck(
+                        name="foreign keys",
+                        status=Status.SKIPPED,
+                        detail="Skipped because the database connection is not ready.",
+                    ),
+                    DoctorCheck(
+                        name="schema drift",
+                        status=Status.SKIPPED,
+                        detail="Skipped because the database connection is not ready.",
+                    ),
+                    DoctorCheck(
+                        name="foreign key validation",
+                        status=Status.SKIPPED,
+                        detail="Skipped because the database connection is not ready.",
+                    ),
+                )
             )
-        )
-
-    if info.backend == SupportedDialect.POSTGRESQL:
-        backup_tools_ready = info.pg_dump_path is not None and (
-            info.pg_restore_path is not None or info.psql_path is not None
-        )
-        checks.append(
-            DoctorCheck(
-                name="backup tooling",
-                status=Status.PASSED if backup_tools_ready else Status.WARNING,
-                detail=(
-                    "PostgreSQL backup and restore client tools are available."
-                    if backup_tools_ready
-                    else "PostgreSQL client tools are incomplete on this machine."
-                ),
+        if info.backend == SupportedDialect.POSTGRESQL:
+            backup_tools_ready = info.pg_dump_path is not None and (
+                info.pg_restore_path is not None or info.psql_path is not None
             )
-        )
-    else:
-        checks.append(
-            DoctorCheck(
-                name="backup tooling",
-                status=Status.SKIPPED,
-                detail="Backup and restore tooling checks are only relevant for PostgreSQL targets.",
+            checks.append(
+                DoctorCheck(
+                    name="backup tooling",
+                    status=Status.PASSED if backup_tools_ready else Status.WARNING,
+                    detail=(
+                        "PostgreSQL backup and restore client tools are available."
+                        if backup_tools_ready
+                        else "PostgreSQL client tools are incomplete on this machine."
+                    ),
+                )
             )
-        )
+        else:
+            checks.append(
+                DoctorCheck(
+                    name="backup tooling",
+                    status=Status.SKIPPED,
+                    detail="Backup and restore tooling checks are only relevant for PostgreSQL targets.",
+                )
+            )
 
         return DoctorReport(
             info=info,
