@@ -328,13 +328,22 @@ def render_reconciliation_issues(issues: Iterable[ReconciliationIssue]) -> Rende
 
 
 def render_reconciliation_summary(report: SchemaReconciliationReport) -> Panel:
+    """Summarize a reconciliation report: table match/drift counts, plus a
+    per-status breakdown of blocking issues (Missing/Unexpected/Mismatch).
+    Renamed is shown separately since it's informational, not drift.
+    """
+    from ._cli_utils import Status
     from .cli_schema_reconcile import is_blocking_issue
 
-    matched = sum(result.status == "matched" for result in report.table_results)
-    drifted = sum(result.status == "drifted" for result in report.table_results)
-    missing = sum(result.status == "missing" for result in report.table_results)
+    matched = sum(result.status == Status.MATCHED for result in report.table_results)
+    drifted = sum(result.status == Status.DRIFTED for result in report.table_results)
+    missing = sum(result.status == Status.MISSING for result in report.table_results)
+
     blocking_issues = [issue for issue in report.issues if is_blocking_issue(issue)]
-    informational_issue_count = len(report.issues) - len(blocking_issues)
+    issues_missing = sum(issue.status == Status.MISSING for issue in blocking_issues)
+    issues_unexpected = sum(issue.status == Status.UNEXPECTED for issue in blocking_issues)
+    issues_mismatch = sum(issue.status == Status.MISMATCH for issue in blocking_issues)
+    renamed_count = sum(issue.status == Status.RENAMED for issue in report.issues)
 
     grid = Table.grid(padding=(0, 2))
     grid.add_column(style="bold cyan")
@@ -342,14 +351,20 @@ def render_reconciliation_summary(report: SchemaReconciliationReport) -> Panel:
     grid.add_row("Backend", _backend_label(report.backend))
     grid.add_row("Tables", str(len(report.table_results)))
     if matched:
-        grid.add_row("Matched", str(matched))
+        grid.add_row(Status.MATCHED.value.capitalize(), str(matched))
     if drifted:
-        grid.add_row("Drifted", str(drifted))
+        grid.add_row(Status.DRIFTED.value.capitalize(), str(drifted))
     if missing:
-        grid.add_row("Missing", str(missing))
+        grid.add_row(f"{Status.MISSING.value.capitalize()} tables", str(missing))
     grid.add_row("Issues", str(len(blocking_issues)))
-    if informational_issue_count:
-        grid.add_row("Renamed indexes", str(informational_issue_count))
+    if issues_missing:
+        grid.add_row(Status.MISSING.value.capitalize(), str(issues_missing))
+    if issues_unexpected:
+        grid.add_row(Status.UNEXPECTED.value.capitalize(), str(issues_unexpected))
+    if issues_mismatch:
+        grid.add_row(Status.MISMATCH.value.capitalize(), str(issues_mismatch))
+    if renamed_count:
+        grid.add_row(Status.RENAMED.value.capitalize(), str(renamed_count))
     grid.add_row(
         "Summary",
         "Schema drift detected." if blocking_issues else "Database schema matches ORM metadata for the selected scope.",

@@ -986,4 +986,4 @@ def test_render_reconciliation_summary_treats_renamed_only_as_matched():
     text = _render_to_text(render_reconciliation_summary(report))
     assert "matches ORM metadata" in text
     assert "drift detected" not in text.lower()
-    assert "Renamed indexes" in text
+    assert "Renamed" in text

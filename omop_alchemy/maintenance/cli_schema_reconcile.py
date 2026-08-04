@@ -27,9 +27,7 @@ def is_blocking_issue(issue: ReconciliationIssue) -> bool:
     Returns
     -------
     bool
-        True unless the issue's status is Severity.ERROR-below (currently
-        only Status.RENAMED, an intentionally supported state -- e.g. an
-        index present under a foreign name -- rather than actual drift).
+        True when the issue's status has Severity.ERROR.
     """
     return issue.status.severity == Severity.ERROR
 
