@@ -1,14 +1,17 @@
 import sqlalchemy as sa
 import sqlalchemy.orm as so
-from typing import TYPE_CHECKING, Any, Type, cast
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, Literal, Type
 from functools import cached_property
-from orm_loader.helpers import Base, get_model_by_tablename
+from orm_loader.helpers import Base
 from omop_alchemy.cdm.base import (
     cdm_table,
     CDMTableBase, 
     ReferenceContext,
     DomainValidationMixin,
     ExpectedDomain,
+    ModifierFieldConcepts,
+    ModifierTargetMixin,
     merge_table_args,
     omop_index,
 )
@@ -16,6 +19,53 @@ from omop_alchemy.cdm.base import (
 if TYPE_CHECKING:
     from ..vocabulary import Concept
     from .episode import Episode
+
+ResolutionDiagnosticKind = Literal[
+    "unrecognized_field_concept",
+    "unmapped_field_concept",
+    "dangling_event",
+]
+
+
+@dataclass(frozen=True)
+class EpisodeEventResolutionDiagnostic:
+    """
+    Advisory detail for an episode_event row whose target cannot be resolved.
+
+    Resolution remains best-effort: unresolved rows still return ``None`` from
+    ``resolved_event``. These diagnostics give maintenance and QA code enough
+    information to distinguish miscoded field concepts from harmless ORM
+    coverage gaps and genuine dangling event references.
+    """
+
+    kind: ResolutionDiagnosticKind
+    episode_id: int
+    event_id: int
+    episode_event_field_concept_id: int
+    message: str
+
+
+def _known_modifier_field_concept_ids() -> set[int]:
+    return {
+        value
+        for name, value in vars(ModifierFieldConcepts).items()
+        if name.isupper() and isinstance(value, int)
+    }
+
+
+def _modifier_target_classes_by_field_concept_id() -> dict[int, Type[Any]]:
+    classes: dict[int, Type[Any]] = {}
+    for mapper in Base.registry.mappers:
+        cls = mapper.class_
+        if not issubclass(cls, ModifierTargetMixin):
+            continue
+        try:
+            field_concept_id = cls.modifier_field_concept_id()
+        except NotImplementedError:
+            continue
+        if field_concept_id not in classes:
+            classes[field_concept_id] = cls
+    return classes
 
 @cdm_table
 class Episode_Event(CDMTableBase, Base):
@@ -51,6 +101,22 @@ class Episode_EventView(Episode_Event, Episode_EventContext, DomainValidationMix
         "episode_event_field_concept_id": ExpectedDomain("Metadata"),
     }
 
+    @classmethod
+    def resolved_event_target_classes(cls) -> dict[int, Type[Any]]:
+        """
+        Map episode_event field concepts to ORM classes that can receive them.
+
+        Subclasses may override this to prefer domain-specific mapped views
+        over the base CDM views. The default map is built from registered
+        ``ModifierTargetMixin`` classes and keyed by the field concept id
+        itself, avoiding the fragile concept-name table parsing that the CDM
+        metadata labels happen to support today.
+        """
+        return _modifier_target_classes_by_field_concept_id()
+
+    @classmethod
+    def recognized_field_concept_ids(cls) -> set[int]:
+        return _known_modifier_field_concept_ids()
 
     @property
     def event_table(self) -> str | None:
@@ -58,21 +124,77 @@ class Episode_EventView(Episode_Event, Episode_EventContext, DomainValidationMix
             return self.event_field.concept_name.split(".", 1)[0]
         return None
 
+    @property
+    def resolved_event_class(self) -> Type[Any] | None:
+        return self.resolved_event_target_classes().get(
+            self.episode_event_field_concept_id
+        )
+
+    @property
+    def event_resolution_diagnostics(self) -> list[EpisodeEventResolutionDiagnostic]:
+        session = so.object_session(self)
+        field_concept_id = self.episode_event_field_concept_id
+
+        if field_concept_id not in self.recognized_field_concept_ids():
+            return [
+                EpisodeEventResolutionDiagnostic(
+                    kind="unrecognized_field_concept",
+                    episode_id=self.episode_id,
+                    event_id=self.event_id,
+                    episode_event_field_concept_id=field_concept_id,
+                    message=(
+                        "episode_event_field_concept_id is not a known "
+                        "ModifierFieldConcepts value"
+                    ),
+                )
+            ]
+
+        cls = self.resolved_event_class
+        if cls is None:
+            return [
+                EpisodeEventResolutionDiagnostic(
+                    kind="unmapped_field_concept",
+                    episode_id=self.episode_id,
+                    event_id=self.event_id,
+                    episode_event_field_concept_id=field_concept_id,
+                    message=(
+                        "episode_event_field_concept_id is recognized, but no "
+                        "registered ORM target class declares it"
+                    ),
+                )
+            ]
+
+        if session is None:
+            return []
+
+        if session.get(cls, self.event_id) is None:
+            return [
+                EpisodeEventResolutionDiagnostic(
+                    kind="dangling_event",
+                    episode_id=self.episode_id,
+                    event_id=self.event_id,
+                    episode_event_field_concept_id=field_concept_id,
+                    message=(
+                        f"episode_event points to {cls.__name__}#{self.event_id}, "
+                        "but no matching row exists"
+                    ),
+                )
+            ]
+
+        return []
+
     @cached_property
     def resolved_event(self) -> Any | None:
         """
         Resolve EVENT_ID to concrete OMOP row.
         Cached per-instance.
         """
-        table_name = self.event_table
         session = so.object_session(self)
-        if session is None or table_name is None:
+        cls = self.resolved_event_class
+        if session is None or cls is None:
             return None
 
-        cls = cast(Type[Any] | None, get_model_by_tablename(table_name))
-        if cls is not None:
-            return session.get(cls, self.event_id)
-        return None
+        return session.get(cls, self.event_id)
 
     def __repr__(self):
         target = self.resolved_event

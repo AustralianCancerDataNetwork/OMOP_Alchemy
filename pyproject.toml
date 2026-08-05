@@ -44,6 +44,10 @@ postgres = [
   "psycopg[binary]>=3.2",
 ]
 
+semantics = [
+  "omop-semantics>=0.5.0",
+]
+
 dev = [
   "oa-configurator[dev,postgres]==0.1.2",
   "ipython>=8.0",

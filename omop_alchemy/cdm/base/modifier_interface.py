@@ -28,8 +28,9 @@ class ModifierTargetMixin:
     def event_id(self) -> int:
         return getattr(self, self.__event_id_col__)
     
-    @event_id.expression
-    def event_id(cls):
+    @event_id.inplace.expression
+    @classmethod
+    def _event_id(cls):
         return getattr(cls, cls.__event_id_col__)
 
     @property

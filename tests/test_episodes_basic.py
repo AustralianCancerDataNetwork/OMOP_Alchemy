@@ -1,4 +1,5 @@
-from omop_alchemy.cdm.model.structural import EpisodeView, Episode_Event
+from omop_alchemy.cdm.base import ModifierFieldConcepts
+from omop_alchemy.cdm.model.structural import EpisodeView, Episode_Event, Episode_EventView
 import sqlalchemy as sa
 
 def test_episode_view_expected_domains():
@@ -63,6 +64,84 @@ def test_episode_event_resolves_target(session):
     assert getattr(target, col) == ee.event_id
 
 
+def test_episode_event_resolution_has_no_diagnostics_for_valid_target(session):
+    """Valid episode_event links resolve without advisory issues."""
+    ee = (
+        session.query(EpisodeView)
+        .filter(EpisodeView.episode_events.any())
+        .first()
+        .episode_events[0]
+    )
+
+    assert ee.resolved_event is not None
+    assert ee.event_resolution_diagnostics == []
+
+
+def test_episode_event_resolution_reports_unrecognized_field_concept(session):
+    """A field concept outside ModifierFieldConcepts is surfaced separately."""
+    ee = Episode_Event(
+        episode_id=101,
+        event_id=998,
+        episode_event_field_concept_id=201826,
+    )
+    session.add(ee)
+    session.flush()
+    session.expire_all()
+
+    loaded = session.get(Episode_EventView, (101, 998, 201826))
+    diagnostics = loaded.event_resolution_diagnostics
+
+    assert loaded.resolved_event is None
+    assert len(diagnostics) == 1
+    assert diagnostics[0].kind == "unrecognized_field_concept"
+
+
+def test_episode_event_resolution_reports_unmapped_known_field_concept(
+    session,
+    monkeypatch,
+):
+    """Known field concepts can be valid data even before this ORM maps them."""
+    ee = (
+        session.query(EpisodeView)
+        .filter(EpisodeView.episode_events.any())
+        .first()
+        .episode_events[0]
+    )
+    monkeypatch.setattr(
+        type(ee),
+        "resolved_event_target_classes",
+        classmethod(lambda cls: {}),
+    )
+
+    diagnostics = ee.event_resolution_diagnostics
+
+    assert ee.resolved_event is None
+    assert len(diagnostics) == 1
+    assert diagnostics[0].kind == "unmapped_field_concept"
+
+
+def test_episode_event_resolution_reports_dangling_target(session):
+    """Recognized field concepts with missing target rows are true dangling links."""
+    ee = Episode_Event(
+        episode_id=101,
+        event_id=999,
+        episode_event_field_concept_id=ModifierFieldConcepts.CONDITION_OCCURRENCE,
+    )
+    session.add(ee)
+    session.flush()
+    session.expire_all()
+
+    loaded = session.get(
+        Episode_EventView,
+        (101, 999, ModifierFieldConcepts.CONDITION_OCCURRENCE),
+    )
+    diagnostics = loaded.event_resolution_diagnostics
+
+    assert loaded.resolved_event is None
+    assert len(diagnostics) == 1
+    assert diagnostics[0].kind == "dangling_event"
+
+
 
 def test_episode_view_events_property(session):
     """Test episode view events property."""
@@ -97,6 +176,15 @@ def test_episode_parent_relationship(session):
     if child:
         assert child.parent_episode is not None
         assert child.parent_episode.episode_id == child.episode_parent_id
+
+
+def test_episode_children_relationship_preserves_episode_view(session):
+    """Child navigation returns the concrete episode view being queried."""
+    parent = session.get(EpisodeView, 100)
+
+    assert parent is not None
+    assert [child.episode_id for child in parent.children] == [101]
+    assert all(isinstance(child, EpisodeView) for child in parent.children)
 
 
 def test_episode_date_bounds(session):

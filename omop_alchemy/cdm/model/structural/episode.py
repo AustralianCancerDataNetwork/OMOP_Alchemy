@@ -82,6 +82,18 @@ class EpisodeContext(ReferenceContext):
             uselist=False,
         )
 
+    @declared_attr
+    def children(cls) -> so.Mapped[List["Episode"]]:
+        return so.relationship(
+            cls.__name__,
+            primaryjoin=lambda: so.remote(cls.episode_parent_id) == cls.episode_id,
+            foreign_keys=lambda: [cls.episode_parent_id],
+            remote_side=lambda: [cls.episode_parent_id],
+            viewonly=True,
+            lazy="selectin",
+            uselist=True,
+        )
+
 class EpisodeView(Episode, EpisodeContext, DomainValidationMixin):
     """
     Navigable Episode view.
