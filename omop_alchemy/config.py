@@ -57,6 +57,11 @@ class OmopAlchemyConfig(PackageConfigBase):
     test_cdm_db : str, optional
         Name of the ``[databases.*]`` entry holding the test CDM database,
         marked ``RefTo(DatabaseConfig, is_test=True)``.
+
+    Notes
+    -----
+    By design, this config is for internal use only and must not be
+    imported or resolved by any other package.
     """
 
     tool_name: ClassVar[str] = "omop_alchemy"
