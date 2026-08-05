@@ -83,12 +83,15 @@ class EpisodeContext(ReferenceContext):
         )
 
     @declared_attr
+    @classmethod
     def children(cls) -> so.Mapped[List["Episode"]]:
+        episode_id = cls.__table__.c.episode_id
+        episode_parent_id = cls.__table__.c.episode_parent_id
         return so.relationship(
             cls.__name__,
-            primaryjoin=lambda: so.remote(cls.episode_parent_id) == cls.episode_id,
-            foreign_keys=lambda: [cls.episode_parent_id],
-            remote_side=lambda: [cls.episode_parent_id],
+            primaryjoin=lambda: so.remote(episode_parent_id) == episode_id,
+            foreign_keys=lambda: [episode_parent_id],
+            remote_side=lambda: [episode_parent_id],
             viewonly=True,
             lazy="selectin",
             uselist=True,

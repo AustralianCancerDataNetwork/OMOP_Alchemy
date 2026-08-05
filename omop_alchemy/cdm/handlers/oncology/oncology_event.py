@@ -41,6 +41,7 @@ class OncologyEpisodeEventMixin:
     """
 
     @declared_attr
+    @classmethod
     def episode_events(cls) -> so.Mapped[list["OncologyEpisodeEvent"]]:
         owner_episode_id = cast(Any, cls).__table__.c.episode_id
         event_episode_id = OncologyEpisodeEvent.__table__.c.episode_id

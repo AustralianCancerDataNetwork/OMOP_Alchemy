@@ -1,5 +1,10 @@
 from omop_alchemy.cdm.base import ModifierFieldConcepts
-from omop_alchemy.cdm.model.structural import EpisodeView, Episode_Event, Episode_EventView
+from omop_alchemy.cdm.model.structural import (
+    EpisodeView,
+    Episode_Event,
+    Episode_EventView,
+    clear_episode_event_target_class_cache,
+)
 import sqlalchemy as sa
 
 def test_episode_view_expected_domains():
@@ -141,6 +146,20 @@ def test_episode_event_resolution_reports_dangling_target(session):
     assert len(diagnostics) == 1
     assert diagnostics[0].kind == "dangling_event"
 
+
+def test_episode_event_target_class_cache_can_be_cleared():
+    """The resolver map is memoized but explicitly invalidatable."""
+    clear_episode_event_target_class_cache()
+    first = Episode_EventView.resolved_event_target_classes()
+    second = Episode_EventView.resolved_event_target_classes()
+
+    assert first is second
+
+    clear_episode_event_target_class_cache()
+    third = Episode_EventView.resolved_event_target_classes()
+
+    assert third is not first
+    assert third == first
 
 
 def test_episode_view_events_property(session):

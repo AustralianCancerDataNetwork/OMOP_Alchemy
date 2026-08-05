@@ -67,6 +67,34 @@ def _modifier_target_classes_by_field_concept_id() -> dict[int, Type[Any]]:
             classes[field_concept_id] = cls
     return classes
 
+
+class _EpisodeEventTargetClassCache:
+    def __init__(self) -> None:
+        self._cache: dict[int, Type[Any]] | None = None
+
+    def get(self) -> dict[int, Type[Any]]:
+        if self._cache is None:
+            self._cache = _modifier_target_classes_by_field_concept_id()
+        return self._cache
+
+    def clear(self) -> None:
+        self._cache = None
+
+
+_target_class_cache = _EpisodeEventTargetClassCache()
+
+
+def clear_episode_event_target_class_cache() -> None:
+    """
+    Clear cached episode_event field-concept target mappings.
+
+    Most applications import all mapped classes before resolving episode events.
+    Long-running processes that register additional modifier-target classes
+    later can call this before resolving through the new class surface.
+    """
+    _target_class_cache.clear()
+
+
 @cdm_table
 class Episode_Event(CDMTableBase, Base):
     __tablename__ = "episode_event"
@@ -112,7 +140,7 @@ class Episode_EventView(Episode_Event, Episode_EventContext, DomainValidationMix
         itself, avoiding the fragile concept-name table parsing that the CDM
         metadata labels happen to support today.
         """
-        return _modifier_target_classes_by_field_concept_id()
+        return _target_class_cache.get()
 
     @classmethod
     def recognized_field_concept_ids(cls) -> set[int]:

@@ -24,7 +24,7 @@ class ModifierTargetMixin:
 
     @classmethod
     def modifier_target_table(cls) -> str:
-        return cls.__tablename__ # ty: ignore[unresolved-attribute]
+        return cls.__tablename__ 
 
     @hybrid_property
     def event_id(self) -> int:

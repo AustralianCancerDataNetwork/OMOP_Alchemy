@@ -55,6 +55,7 @@ class OncologyEpisode(
     """
 
     @declared_attr
+    @classmethod
     def children(cls) -> so.Mapped[list["OncologyEpisode"]]:
         episode_id = cls.__table__.c.episode_id
         episode_parent_id = cls.__table__.c.episode_parent_id
