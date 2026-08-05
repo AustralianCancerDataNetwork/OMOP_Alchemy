@@ -89,12 +89,12 @@ def test_missing_driver_message_returns_none_for_sqlite_url():
 
 def test_sqlite_url_not_intercepted():
     """create_cdm_engine should work for sqlite without wrapping errors."""
-    from oa_configurator.resolver import ResolvedDatabaseTarget
-    target = ResolvedDatabaseTarget(name="test", url="sqlite:///:memory:", safe_url="sqlite:///:memory:")
+    from oa_configurator.resolver import ResolvedConnection
+    target = ResolvedConnection(name="test", url="sqlite:///:memory:", safe_url="sqlite:///:memory:")
     from unittest.mock import MagicMock
     resolved = MagicMock()
     resolved.create_engine.return_value = target.create_engine()
-    resolved.database.url = "sqlite:///:memory:"
+    resolved.connection.url = "sqlite:///:memory:"
     engine = create_cdm_engine(resolved)
     engine.dispose()
 
@@ -106,7 +106,7 @@ def test_create_engine_raises_runtime_for_missing_postgres_driver(monkeypatch):
 
     resolved = MagicMock()
     resolved.create_engine.side_effect = exc
-    resolved.database.url = "postgresql+psycopg://host/db"
+    resolved.connection.url = "postgresql+psycopg://host/db"
 
     with pytest.raises(RuntimeError, match="psycopg"):
         create_cdm_engine(resolved)
