@@ -12,7 +12,7 @@ import sqlalchemy as sa
 import typer
 
 from ..backends import resolve_backend, require_backend_support, backend_support_note
-from ._cli_utils import dry_label, dry_status, omop_command
+from ._cli_utils import Status, dry_label, dry_status, omop_command, reject_reserved_schema
 from .ui import (
     console,
     render_backup_result,
@@ -41,7 +41,7 @@ class BackupResult:
 
     file_path: str
     backup_format: BackupFormat
-    status: str
+    status: Status
     detail: str
     database_name: str
     backend: str
@@ -65,6 +65,7 @@ def create_database_backup(
     dry_run: bool = False,
 ) -> BackupResult:
     """Create a database backup artifact at output_path. Runs the subprocess unless dry_run is True."""
+    reject_reserved_schema(db_schema)
     backend = resolve_backend(engine)
     require_backend_support(backend, "prepare_backup", "Database backup")
     resolved_output_path = Path(output_path) if output_path is not None else _default_output_path(backup_format)
@@ -92,7 +93,7 @@ def create_database_backup(
     return BackupResult(
         file_path=str(resolved_output_path),
         backup_format=backup_format,
-        status=dry_status(dry_run, applied="created"),
+        status=dry_status(dry_run, applied=Status.CREATED),
         detail=dry_label(dry_run, "Database backup would be created with pg_dump.", "Database backup created with pg_dump."),
         database_name=database_name,
         backend=engine.dialect.name,
@@ -111,6 +112,7 @@ def restore_database_backup(
     dry_run: bool = False,
 ) -> BackupResult:
     """Restore a database backup. Runs the subprocess unless dry_run is True."""
+    reject_reserved_schema(db_schema)
     backend = resolve_backend(engine)
     require_backend_support(backend, "prepare_restore", "Database restore")
     resolved_input_path = Path(input_path).expanduser().resolve()

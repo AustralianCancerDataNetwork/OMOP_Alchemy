@@ -8,7 +8,7 @@ import sqlalchemy as sa
 import typer
 
 from ..backends import Backend, resolve_backend, require_backend_support, backend_support_note
-from ._cli_utils import dry_label, dry_status, omop_command
+from ._cli_utils import Status, dry_label, dry_status, omop_command, reject_reserved_schema
 from .tables import (
     TableCategory,
     existing_maintenance_tables,
@@ -46,7 +46,7 @@ class _FKTableInfo(ForeignKeyBase):
 class ForeignKeyManagementResult(_FKTableInfo):
     """Outcome of a FK trigger enable or disable operation for one table."""
     enable: bool
-    status: str
+    status: Status
     detail: str
 
 
@@ -62,7 +62,7 @@ class ForeignKeyValidationResult(_FKTableInfo):
     """FK constraint validation outcome for one table, with counts of violating constraints and rows."""
     violating_constraint_count: int
     violating_row_count: int
-    status: str
+    status: Status
     detail: str
 
 
@@ -257,7 +257,7 @@ def validate_foreign_key_constraints(
                 incoming_constraint_count=target.incoming_constraint_count,
                 violating_constraint_count=violating_constraint_count,
                 violating_row_count=violating_row_count,
-                status="failed" if violations else "passed",
+                status=Status.FAILED if violations else Status.PASSED,
                 detail=(
                     _fk_violation_detail(violations)
                     if violations
@@ -286,6 +286,7 @@ def manage_foreign_key_triggers(
     strict: bool = False,
 ) -> list[ForeignKeyManagementResult]:
     """Enable or disable RI trigger enforcement. With strict=True, aborts on any FK violation."""
+    reject_reserved_schema(db_schema)
     backend = resolve_backend(engine)
     require_backend_support(backend, "toggle_fk_triggers", "FK trigger management")
 
@@ -314,7 +315,7 @@ def manage_foreign_key_triggers(
                             outgoing_constraint_count=target.outgoing_constraint_count,
                             incoming_constraint_count=target.incoming_constraint_count,
                             enable=enable,
-                            status="failed" if violations else "skipped",
+                            status=Status.FAILED if violations else Status.SKIPPED,
                             detail=(
                                 _fk_violation_detail(violations, strict_abort=True)
                                 if violations

@@ -9,14 +9,13 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
-from omop_alchemy.backends.base import FullTextResult
-
 from ..backends.resolve import _DIALECT_TO_BACKEND_MAP, SupportedDialect as _SupportedDialect
 
 from .ascii import render_banner
 from .tables import TableCategory
 
 if TYPE_CHECKING:
+    from ._cli_utils import Status
     from .cli_backup import BackupResult
     from .cli_foreign_keys import (
         ForeignKeyConstraintViolation,
@@ -25,6 +24,7 @@ if TYPE_CHECKING:
         ForeignKeyValidationReport,
         ForeignKeyValidationResult,
     )
+    from .cli_fulltext import FullTextResult
     from .cli_indexes import IndexManagementResult
     from .cli_schema import (
         CommandSupport,
@@ -43,37 +43,22 @@ if TYPE_CHECKING:
 
 console = Console()
 
-STATUS_STYLES = {
-    "applied": "green",
-    "blocked": "red",
-    "drifted": "yellow",
-    "limited": "yellow",
-    "matched": "green",
-    "missing": "red",
-    "planned": "cyan",
-    "ready": "green",
-    "reset": "green",
-    "created": "green",
-    "loaded": "green",
-    "warning": "yellow",
-    "info": "cyan",
-    "skipped": "yellow",
-    "unsupported": "red",
-    "failed": "red",
-    "passed": "green",
-}
+def _status_style(status: Status) -> str:
+    """Resolve the render color for a status via its severity.
 
-CATEGORY_STYLES = {
-    TableCategory.CLINICAL: "bright_blue",
-    TableCategory.DERIVED: "blue",
-    TableCategory.HEALTH_ECONOMIC: "green",
-    TableCategory.HEALTH_SYSTEM: "bright_cyan",
-    TableCategory.METADATA: "white",
-    TableCategory.STRUCTURAL: "magenta",
-    TableCategory.UNSTRUCTURED: "bright_magenta",
-    TableCategory.VOCABULARY: "yellow",
-}
+    Raises
+    ------
+    TypeError
+        If the status is not a Status member (e.g., a plain string).
+    """
+    # Local import to prevent circular import
+    from ._cli_utils import Status as _Status
 
+    if not isinstance(status, _Status):
+        raise TypeError(
+            f"_status_style() expected a Status member, got {status!r} ({type(status).__name__})"
+        )
+    return status.severity.style
 
 def _backend_label(dialect_name: str) -> str:
     try:
@@ -89,7 +74,7 @@ def _bool_label(value: bool) -> Text:
 def _category_label(category: TableCategory) -> Text:
     return Text(
         category.value.replace("_", " "),
-        style=CATEGORY_STYLES[category],
+        style=category.style,
     )
 
 
@@ -140,8 +125,8 @@ def render_error(message: str, *, title: str = "Error") -> Panel:
 
 
 
-def _status_text(status: str) -> Text:
-    return Text(status.upper(), style=STATUS_STYLES.get(status, "white"))
+def _status_text(status: Status) -> Text:
+    return Text(status.upper(), style=_status_style(status))
 
 
 def _optional_bool_label(value: bool | None) -> Text:
@@ -343,9 +328,22 @@ def render_reconciliation_issues(issues: Iterable[ReconciliationIssue]) -> Rende
 
 
 def render_reconciliation_summary(report: SchemaReconciliationReport) -> Panel:
-    matched = sum(result.status == "matched" for result in report.table_results)
-    drifted = sum(result.status == "drifted" for result in report.table_results)
-    missing = sum(result.status == "missing" for result in report.table_results)
+    """Summarize a reconciliation report: table match/drift counts, plus a
+    per-status breakdown of blocking issues (Missing/Unexpected/Mismatch).
+    Renamed is shown separately since it's informational, not drift.
+    """
+    from ._cli_utils import Status
+    from .cli_schema_reconcile import is_blocking_issue
+
+    matched = sum(result.status == Status.MATCHED for result in report.table_results)
+    drifted = sum(result.status == Status.DRIFTED for result in report.table_results)
+    missing = sum(result.status == Status.MISSING for result in report.table_results)
+
+    blocking_issues = [issue for issue in report.issues if is_blocking_issue(issue)]
+    issues_missing = sum(issue.status == Status.MISSING for issue in blocking_issues)
+    issues_unexpected = sum(issue.status == Status.UNEXPECTED for issue in blocking_issues)
+    issues_mismatch = sum(issue.status == Status.MISMATCH for issue in blocking_issues)
+    renamed_count = sum(issue.status == Status.RENAMED for issue in report.issues)
 
     grid = Table.grid(padding=(0, 2))
     grid.add_column(style="bold cyan")
@@ -353,20 +351,28 @@ def render_reconciliation_summary(report: SchemaReconciliationReport) -> Panel:
     grid.add_row("Backend", _backend_label(report.backend))
     grid.add_row("Tables", str(len(report.table_results)))
     if matched:
-        grid.add_row("Matched", str(matched))
+        grid.add_row(Status.MATCHED.value.capitalize(), str(matched))
     if drifted:
-        grid.add_row("Drifted", str(drifted))
+        grid.add_row(Status.DRIFTED.value.capitalize(), str(drifted))
     if missing:
-        grid.add_row("Missing", str(missing))
-    grid.add_row("Issues", str(len(report.issues)))
+        grid.add_row(f"{Status.MISSING.value.capitalize()} tables", str(missing))
+    grid.add_row("Issues", str(len(blocking_issues)))
+    if issues_missing:
+        grid.add_row(Status.MISSING.value.capitalize(), str(issues_missing))
+    if issues_unexpected:
+        grid.add_row(Status.UNEXPECTED.value.capitalize(), str(issues_unexpected))
+    if issues_mismatch:
+        grid.add_row(Status.MISMATCH.value.capitalize(), str(issues_mismatch))
+    if renamed_count:
+        grid.add_row(Status.RENAMED.value.capitalize(), str(renamed_count))
     grid.add_row(
         "Summary",
-        "Schema drift detected." if report.issues else "Database schema matches ORM metadata for the selected scope.",
+        "Schema drift detected." if blocking_issues else "Database schema matches ORM metadata for the selected scope.",
     )
     return Panel.fit(
         grid,
         title="[bold]Summary[/bold]",
-        border_style="yellow" if report.issues else "green",
+        border_style="yellow" if blocking_issues else "green",
     )
 
 
@@ -498,7 +504,7 @@ def render_sequence_reset_results(results: Iterable[SequenceResetResult]) -> Ren
     table.add_column("Detail")
 
     for result in items:
-        style = STATUS_STYLES.get(result.status, "white")
+        style = _status_style(result.status)
         table.add_row(
             Text(result.status.upper(), style=style),
             f"{result.table_name}.{result.pk_column_name}",
@@ -612,6 +618,8 @@ def render_vocab_load_summary(report: VocabularyLoadReport, *, dry_run: bool) ->
         grid.add_row("Reset sequences", str(report.sequence_reset_count))
     if skipped_count:
         grid.add_row("Skipped", str(skipped_count))
+    if report.index_warnings:
+        grid.add_row("Index warnings", str(len(report.index_warnings)))
     grid.add_row(
         "Summary",
         (
@@ -620,10 +628,25 @@ def render_vocab_load_summary(report: VocabularyLoadReport, *, dry_run: bool) ->
             else "Athena vocabulary source loaded into ORM-managed vocabulary tables."
         ),
     )
+    border_style = "yellow" if report.index_warnings else ("cyan" if dry_run else "green")
     return Panel.fit(
         grid,
         title="[bold]Summary[/bold]",
-        border_style="cyan" if dry_run else "green",
+        border_style=border_style,
+    )
+
+
+def render_vocab_index_warnings(report: VocabularyLoadReport) -> Panel | None:
+    """Panel listing indexes that could not be optimized for bulk load (left in
+    place rather than dropped, since they couldn't be safely restored afterward).
+    Returns None when there's nothing to show."""
+    if not report.index_warnings:
+        return None
+    body = "\n".join(f"- {message}" for message in report.index_warnings)
+    return Panel.fit(
+        body,
+        title="[bold yellow]Index Warnings[/bold yellow]",
+        border_style="yellow",
     )
 
 
@@ -641,7 +664,7 @@ def render_foreign_key_results(results: Iterable[ForeignKeyManagementResult]) ->
     table.add_column("Incoming", justify="right")
 
     for result in items:
-        style = STATUS_STYLES.get(result.status, "white")
+        style = _status_style(result.status)
         table.add_row(
             Text(result.status.upper(), style=style),
             "Enable" if result.enable else "Disable",
@@ -842,7 +865,7 @@ def render_table_creation_results(results: Iterable[TableCreationResult]) -> Ren
     table.add_column("Model")
     table.add_column("Detail")
     for result in items:
-        style = STATUS_STYLES.get(result.status, "white")
+        style = _status_style(result.status)
         table.add_row(
             Text(result.status.upper(), style=style),
             result.table_name,
@@ -876,8 +899,9 @@ def render_index_results(results: Iterable[IndexManagementResult]) -> Renderable
     table.add_column("Index")
     table.add_column("Category")
     table.add_column("Columns")
+    table.add_column("Detail")
     for result in items:
-        style = STATUS_STYLES.get(result.status, "white")
+        style = _status_style(result.status)
         table.add_row(
             Text(result.status.upper(), style=style),
             result.operation,
@@ -886,6 +910,7 @@ def render_index_results(results: Iterable[IndexManagementResult]) -> Renderable
             result.index_name,
             _category_label(result.category),
             ", ".join(result.column_names),
+            result.detail,
         )
     return table
 
@@ -911,13 +936,17 @@ def render_index_summary(results: Iterable[IndexManagementResult], *, dry_run: b
     skipped = sum(item.status == "skipped" for item in items)
     if skipped:
         grid.add_row("Skipped", str(skipped))
+    warnings = sum(item.status == "warning" for item in items)
+    if warnings:
+        grid.add_row("Warnings", str(warnings))
     grid.add_row("Tables", str(len({item.table_name for item in items})))
     action = ("enable" if items[0].enable else "disable") if items else "manage"
     grid.add_row(
         "Summary",
         f"{'Planned' if dry_run else 'Applied'} {action} on {len(items)} metadata operation(s).",
     )
-    return Panel.fit(grid, title="[bold]Summary[/bold]", border_style="green" if not dry_run else "cyan")
+    border_style = "yellow" if warnings else ("green" if not dry_run else "cyan")
+    return Panel.fit(grid, title="[bold]Summary[/bold]", border_style=border_style)
 
 
 def render_fulltext_results(results: Iterable[FullTextResult]) -> RenderableType:

@@ -6,14 +6,15 @@ from oa_configurator import StackConfig, DatabaseConfig
 from omop_alchemy.backends import (
     CONCEPT_NAME_TSVECTOR_COLUMN,
     CONCEPT_SYNONYM_NAME_TSVECTOR_COLUMN,
-    FullTextAction,
-    FullTextResult,
     PostgresBackend,
 )
 from omop_alchemy.cdm.model.vocabulary.concept import Concept
 from omop_alchemy.cdm.model.vocabulary.concept_synonym import Concept_Synonym
+from omop_alchemy.maintenance._cli_utils import Status
 from omop_alchemy.maintenance.cli import app
 from omop_alchemy.maintenance.cli_fulltext import (
+    FullTextAction,
+    FullTextResult,
     drop_fulltext_columns,
     install_fulltext_columns,
     populate_fulltext_columns,
@@ -232,7 +233,7 @@ def test_fulltext_install_cli_passes_options(monkeypatch):
                 vector_column_name=CONCEPT_NAME_TSVECTOR_COLUMN,
                 index_name="idx_gin_concept_name_tsvector",
                 action=FullTextAction.INSTALL,
-                status="planned",
+                status=Status.PLANNED,
                 detail="tsvector column and GIN index would be installed",
             ),
         )

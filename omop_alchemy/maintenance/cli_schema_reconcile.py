@@ -8,11 +8,28 @@ import sqlalchemy as sa
 from sqlalchemy.engine.interfaces import ReflectedForeignKeyConstraint, ReflectedIndex
 
 from ..backends import backend_supports, resolve_backend
-from .cli_indexes import _cluster_target_name
+from ._cli_utils import Severity, Status
+from .cli_indexes import _cluster_column_names, _cluster_target_name, _find_equivalent_index
 from .tables import (
     TableCategory,
     select_maintenance_tables,
 )
+
+
+def is_blocking_issue(issue: ReconciliationIssue) -> bool:
+    """Whether a reconciliation issue represents actual drift requiring attention.
+
+    Parameters
+    ----------
+    issue : ReconciliationIssue
+        A single reconciliation issue.
+
+    Returns
+    -------
+    bool
+        True when the issue's status has Severity.ERROR.
+    """
+    return issue.status.severity == Severity.ERROR
 
 
 @dataclass(frozen=True)
@@ -23,7 +40,7 @@ class ReconciliationIssue:
     category: TableCategory
     component: str
     object_name: str
-    status: str
+    status: Status
     expected: str | None
     actual: str | None
     detail: str
@@ -35,7 +52,7 @@ class TableReconciliationResult:
 
     table_name: str
     category: TableCategory
-    status: str
+    status: Status
     issue_count: int
     detail: str
 
@@ -146,7 +163,7 @@ def reconcile_schema(
                         category=maintenance_table.category,
                         component="table",
                         object_name=maintenance_table.table_name,
-                        status="missing",
+                        status=Status.MISSING,
                         expected="present",
                         actual="absent",
                         detail="ORM-managed table is missing from the target database.",
@@ -156,7 +173,7 @@ def reconcile_schema(
                     TableReconciliationResult(
                         table_name=maintenance_table.table_name,
                         category=maintenance_table.category,
-                        status="missing",
+                        status=Status.MISSING,
                         issue_count=1,
                         detail="Table is missing from the target database.",
                     )
@@ -183,7 +200,7 @@ def reconcile_schema(
                             category=maintenance_table.category,
                             component="column",
                             object_name=column_name,
-                            status="missing",
+                            status=Status.MISSING,
                             expected=_normalized_type(column.type, engine.dialect),
                             actual=None,
                             detail="Column is defined in ORM metadata but missing from the database.",
@@ -198,7 +215,7 @@ def reconcile_schema(
                             category=maintenance_table.category,
                             component="column",
                             object_name=column_name,
-                            status="unexpected",
+                            status=Status.UNEXPECTED,
                             expected=None,
                             actual=_normalized_type(column["type"], engine.dialect),
                             detail="Column exists in the database but is not defined in ORM metadata.",
@@ -217,7 +234,7 @@ def reconcile_schema(
                             category=maintenance_table.category,
                             component="column",
                             object_name=column_name,
-                            status="mismatch",
+                            status=Status.MISMATCH,
                             expected=expected_type,
                             actual=actual_type,
                             detail="Column type differs from ORM metadata.",
@@ -233,7 +250,7 @@ def reconcile_schema(
                             category=maintenance_table.category,
                             component="column",
                             object_name=column_name,
-                            status="mismatch",
+                            status=Status.MISMATCH,
                             expected="nullable" if expected_nullable else "not nullable",
                             actual="nullable" if actual_nullable else "not nullable",
                             detail="Column nullability differs from ORM metadata.",
@@ -247,7 +264,7 @@ def reconcile_schema(
                         category=maintenance_table.category,
                         component="primary_key",
                         object_name=maintenance_table.table_name,
-                        status="mismatch",
+                        status=Status.MISMATCH,
                         expected=", ".join(expected_pk_names),
                         actual=", ".join(actual_pk_names) if actual_pk_names else None,
                         detail="Primary key columns differ from ORM metadata.",
@@ -266,7 +283,7 @@ def reconcile_schema(
                             category=maintenance_table.category,
                             component="foreign_key",
                             object_name=constraint.name if isinstance(constraint.name, str) else ",".join(constrained_columns),
-                            status="missing",
+                            status=Status.MISSING,
                             expected=f"{','.join(constrained_columns)} -> {referred_table}({','.join(referred_columns)})",
                             actual=None,
                             detail="Foreign key is defined in ORM metadata but missing from the database.",
@@ -282,7 +299,7 @@ def reconcile_schema(
                             category=maintenance_table.category,
                             component="foreign_key",
                             object_name=str(foreign_key.get("name") or ",".join(constrained_columns)),
-                            status="unexpected",
+                            status=Status.UNEXPECTED,
                             expected=None,
                             actual=f"{','.join(constrained_columns)} -> {referred_table}({','.join(referred_columns)})",
                             detail="Foreign key exists in the database but is not defined in ORM metadata.",
@@ -291,21 +308,45 @@ def reconcile_schema(
 
             expected_idxs = _expected_indexes(expected_table)
             actual_idxs = _actual_indexes(inspector, maintenance_table.table_name, db_schema)
+            actual_index_list = list(actual_idxs.values())
+            renamed_actual_names: set[str] = set()
 
             for index_name, index in expected_idxs.items():
                 if index_name not in actual_idxs:
-                    table_issues.append(
-                        ReconciliationIssue(
-                            table_name=maintenance_table.table_name,
-                            category=maintenance_table.category,
-                            component="index",
-                            object_name=index_name,
-                            status="missing",
-                            expected=", ".join(column.name for column in index.columns),
-                            actual=None,
-                            detail="Index is defined in ORM metadata but missing from the database.",
-                        )
+                    expected_columns_for_index = tuple(column.name for column in index.columns)
+                    equivalent_name = _find_equivalent_index(
+                        actual_index_list, expected_columns_for_index, bool(index.unique)
                     )
+                    if equivalent_name is not None:
+                        renamed_actual_names.add(equivalent_name)
+                        table_issues.append(
+                            ReconciliationIssue(
+                                table_name=maintenance_table.table_name,
+                                category=maintenance_table.category,
+                                component="index",
+                                object_name=index_name,
+                                status=Status.RENAMED,
+                                expected=index_name,
+                                actual=equivalent_name,
+                                detail=(
+                                    f"Index is present under a different name ('{equivalent_name}') "
+                                    f"than ORM metadata expects ('{index_name}')."
+                                ),
+                            )
+                        )
+                    else:
+                        table_issues.append(
+                            ReconciliationIssue(
+                                table_name=maintenance_table.table_name,
+                                category=maintenance_table.category,
+                                component="index",
+                                object_name=index_name,
+                                status=Status.MISSING,
+                                expected=", ".join(column.name for column in index.columns),
+                                actual=None,
+                                detail="Index is defined in ORM metadata but missing from the database.",
+                            )
+                        )
                     continue
 
                 actual_index = actual_idxs[index_name]
@@ -318,7 +359,7 @@ def reconcile_schema(
                             category=maintenance_table.category,
                             component="index",
                             object_name=index_name,
-                            status="mismatch",
+                            status=Status.MISMATCH,
                             expected=", ".join(expected_columns_for_index),
                             actual=", ".join(actual_columns_for_index) if actual_columns_for_index else None,
                             detail="Index columns differ from ORM metadata.",
@@ -331,25 +372,10 @@ def reconcile_schema(
                             category=maintenance_table.category,
                             component="index",
                             object_name=index_name,
-                            status="mismatch",
+                            status=Status.MISMATCH,
                             expected="unique" if index.unique else "non-unique",
                             actual="unique" if actual_index.get("unique") else "non-unique",
                             detail="Index uniqueness differs from ORM metadata.",
-                        )
-                    )
-
-            for index_name, index in actual_idxs.items():
-                if index_name not in expected_idxs:
-                    table_issues.append(
-                        ReconciliationIssue(
-                            table_name=maintenance_table.table_name,
-                            category=maintenance_table.category,
-                            component="index",
-                            object_name=index_name,
-                            status="unexpected",
-                            expected=None,
-                            actual=", ".join(c for c in (index.get("column_names") or []) if c is not None),
-                            detail="Index exists in the database but is not defined in ORM metadata.",
                         )
                     )
 
@@ -361,26 +387,74 @@ def reconcile_schema(
                     db_schema,
                 )
                 if expected_cluster != actual_cluster:
+                    # May be a rename, not drift, so treat like a renamed index.
+                    # Ignore uniqueness (irrelevant to CLUSTER). Runs before
+                    # the unexpected-index loop below and registers the match
+                    # in renamed_actual_names so that loop doesn't double-flag it.
+                    renamed_cluster = False
+                    equivalent_cluster_name: str | None = None
+                    if expected_cluster is not None and actual_cluster is not None:
+                        expected_cluster_columns = _cluster_column_names(
+                            maintenance_table, expected_cluster
+                        )
+                        equivalent_cluster_name = _find_equivalent_index(
+                            actual_index_list,
+                            expected_cluster_columns,
+                            None,
+                        )
+                        renamed_cluster = equivalent_cluster_name == actual_cluster
+                    if renamed_cluster:
+                        assert equivalent_cluster_name is not None
+                        renamed_actual_names.add(equivalent_cluster_name)
+                        table_issues.append(
+                            ReconciliationIssue(
+                                table_name=maintenance_table.table_name,
+                                category=maintenance_table.category,
+                                component="cluster",
+                                object_name=maintenance_table.table_name,
+                                status=Status.RENAMED,
+                                expected=expected_cluster,
+                                actual=actual_cluster,
+                                detail="Table is clustered on a differently-named equivalent index.",
+                            )
+                        )
+                    else:
+                        table_issues.append(
+                            ReconciliationIssue(
+                                table_name=maintenance_table.table_name,
+                                category=maintenance_table.category,
+                                component="cluster",
+                                object_name=maintenance_table.table_name,
+                                status=(
+                                    Status.MISSING
+                                    if expected_cluster and not actual_cluster
+                                    else Status.UNEXPECTED
+                                    if actual_cluster and not expected_cluster
+                                    else Status.MISMATCH
+                                ),
+                                expected=expected_cluster,
+                                actual=actual_cluster,
+                                detail="Table clustering differs from ORM metadata.",
+                            )
+                        )
+
+            for index_name, index in actual_idxs.items():
+                if index_name not in expected_idxs and index_name not in renamed_actual_names:
                     table_issues.append(
                         ReconciliationIssue(
                             table_name=maintenance_table.table_name,
                             category=maintenance_table.category,
-                            component="cluster",
-                            object_name=maintenance_table.table_name,
-                            status=(
-                                "missing"
-                                if expected_cluster and not actual_cluster
-                                else "unexpected"
-                                if actual_cluster and not expected_cluster
-                                else "mismatch"
-                            ),
-                            expected=expected_cluster,
-                            actual=actual_cluster,
-                            detail="Table clustering differs from ORM metadata.",
+                            component="index",
+                            object_name=index_name,
+                            status=Status.UNEXPECTED,
+                            expected=None,
+                            actual=", ".join(c for c in (index.get("column_names") or []) if c is not None),
+                            detail="Index exists in the database but is not defined in ORM metadata.",
                         )
                     )
 
-            table_status = "matched" if not table_issues else "drifted"
+            blocking_issues = [issue for issue in table_issues if is_blocking_issue(issue)]
+            table_status = Status.MATCHED if not blocking_issues else Status.DRIFTED
             table_results.append(
                 TableReconciliationResult(
                     table_name=maintenance_table.table_name,

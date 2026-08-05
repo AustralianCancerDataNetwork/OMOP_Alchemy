@@ -5,8 +5,9 @@ from typer.testing import CliRunner
 from oa_configurator import StackConfig, DatabaseConfig
 
 from omop_alchemy.maintenance.cli import app
+from omop_alchemy.maintenance._cli_utils import Status
 from omop_alchemy.maintenance.cli_schema import create_missing_tables
-from omop_alchemy.maintenance.tables import TableCategory, TableScope
+from omop_alchemy.maintenance.tables import TableCategory
 from omop_alchemy.maintenance.cli_tables import TruncateTableResult, truncate_tables
 
 runner = CliRunner()
@@ -18,7 +19,7 @@ def test_truncate_tables_requires_postgresql(tmp_path):
     engine = sa.create_engine(f"sqlite:///{tmp_path / 'truncate.db'}", future=True)
 
     with pytest.raises(RuntimeError) as exc_info:
-        truncate_tables(engine, scope=TableScope.CLINICAL, dry_run=True)
+        truncate_tables(engine, scope=TableCategory.CLINICAL, dry_run=True)
 
     assert "not supported by the SQLite backend" in str(exc_info.value)
 
@@ -31,7 +32,7 @@ def test_truncate_tables_reports_blocking_foreign_key_references(monkeypatch, tm
     monkeypatch.setattr(truncate_tables_module, "require_backend_support", lambda *args, **kwargs: None)
 
     with pytest.raises(RuntimeError) as exc_info:
-        truncate_tables(engine, scope=TableScope.CLINICAL, dry_run=False)
+        truncate_tables(engine, scope=TableCategory.CLINICAL, dry_run=False)
 
     message = str(exc_info.value)
     assert "foreign key references from tables outside the current selection" in message
@@ -74,7 +75,7 @@ def test_truncate_tables_cli_invokes_management(monkeypatch):
         engine: object,
         *,
         db_schema: str | None = None,
-        scope: TableScope | None = None,
+        scope: TableCategory | None = None,
         table_names: tuple[str, ...] | None = None,
         restart_identities: bool = False,
         cascade: bool = False,
@@ -92,7 +93,7 @@ def test_truncate_tables_cli_invokes_management(monkeypatch):
                 table_name="person",
                 category=TableCategory.CLINICAL,
                 row_count=10,
-                status="planned",
+                status=Status.PLANNED,
                 detail="table would be truncated",
             )
         ]
@@ -115,7 +116,7 @@ def test_truncate_tables_cli_invokes_management(monkeypatch):
     )
 
     assert result.exit_code == 0
-    assert calls["scope"] == TableScope.CLINICAL
+    assert calls["scope"] == TableCategory.CLINICAL
     assert calls["table_names"] is None
     assert calls["restart_identities"] is True
     assert calls["cascade"] is True

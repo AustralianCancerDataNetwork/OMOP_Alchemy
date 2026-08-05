@@ -4,7 +4,7 @@ from typer.testing import CliRunner
 
 from omop_alchemy.maintenance.cli_tables import analyze_tables
 from omop_alchemy.maintenance.cli_schema import create_missing_tables
-from omop_alchemy.maintenance.tables import TableScope
+from omop_alchemy.maintenance.tables import TableCategory
 
 runner = CliRunner()
 
@@ -21,7 +21,7 @@ def test_analyze_tables_runs_on_sqlite(tmp_path):
 
     results = analyze_tables(
         engine,
-        scope=TableScope.CLINICAL,
+        scope=TableCategory.CLINICAL,
         dry_run=False,
     )
 
@@ -37,7 +37,7 @@ def test_analyze_tables_rejects_vacuum_on_sqlite(tmp_path):
     create_missing_tables(engine, vocabulary_included=True)
 
     with pytest.raises(RuntimeError) as exc_info:
-        analyze_tables(engine, scope=TableScope.CLINICAL, vacuum=True)
+        analyze_tables(engine, scope=TableCategory.CLINICAL, vacuum=True)
 
     assert "not supported by the SQLite backend" in str(exc_info.value)
 

@@ -8,10 +8,9 @@ import sqlalchemy as sa
 import typer
 
 from ..backends import resolve_backend, require_backend_support, backend_support_note
-from ._cli_utils import dry_label, dry_status, omop_command, resolve_selection
+from ._cli_utils import Status, dry_label, dry_status, omop_command, reject_reserved_schema, resolve_selection
 from .tables import (
     TableCategory,
-    TableScope,
     qualified_table_name,
     resolve_maintenance_tables,
     select_omop_tables,
@@ -41,7 +40,7 @@ class AnalyzeTableResult:
     table_name: str
     category: TableCategory
     operation: str
-    status: str
+    status: Status
     detail: str
 
 
@@ -49,12 +48,16 @@ def analyze_tables(
     engine: sa.Engine,
     *,
     db_schema: str | None = None,
-    scope: TableScope | None = None,
+    scope: TableCategory | None = None,
     table_names: tuple[str, ...] | None = None,
     vacuum: bool = False,
     dry_run: bool = False,
 ) -> list[AnalyzeTableResult]:
-    """Run ANALYZE (or VACUUM ANALYZE) on selected ORM-managed tables to refresh planner statistics."""
+    """Run ANALYZE (or VACUUM ANALYZE) on selected ORM-managed tables to refresh planner statistics.
+
+    Runs on every ORM-managed table if both scope and table_names are omitted.
+    """
+    reject_reserved_schema(db_schema)
     if scope is not None and table_names is not None:
         raise RuntimeError("Use either `scope` or `table_names`, not both.")
 
@@ -78,7 +81,7 @@ def analyze_tables(
                         table_name=maintenance_table.table_name,
                         category=maintenance_table.category,
                         operation=operation,
-                        status="skipped",
+                        status=Status.SKIPPED,
                         detail="table not present in target database",
                     )
                 )
@@ -111,7 +114,7 @@ class TruncateTableResult:
     table_name: str
     category: TableCategory
     row_count: int | None
-    status: str
+    status: Status
     detail: str
 
 
@@ -158,13 +161,14 @@ def truncate_tables(
     engine: sa.Engine,
     *,
     db_schema: str | None = None,
-    scope: TableScope | None = None,
+    scope: TableCategory | None = None,
     table_names: tuple[str, ...] | None = None,
     restart_identities: bool = False,
     cascade: bool = False,
     dry_run: bool = False,
 ) -> list[TruncateTableResult]:
     """Truncate selected ORM-managed tables. Raises if non-selected tables hold blocking FK references."""
+    reject_reserved_schema(db_schema)
     if scope is not None and table_names is not None:
         raise RuntimeError("Use either `scope` or `table_names`, not both.")
     if scope is None and table_names is None:
@@ -185,7 +189,7 @@ def truncate_tables(
                         table_name=maintenance_table.table_name,
                         category=maintenance_table.category,
                         row_count=None,
-                        status="skipped",
+                        status=Status.SKIPPED,
                         detail="table not present in target database",
                     )
                 )
@@ -250,7 +254,7 @@ class SequenceResetResult:
     pk_column_name: str
     sequence_name: str | None
     next_value: int | None
-    status: str
+    status: Status
     detail: str
 
 
@@ -285,6 +289,7 @@ def reset_model_sequences(
     dry_run: bool = False,
 ) -> list[SequenceResetResult]:
     """Reset each owned sequence to MAX(pk_column) + 1 to prevent insert conflicts after bulk loads."""
+    reject_reserved_schema(db_schema)
     backend = resolve_backend(engine)
     require_backend_support(backend, "find_sequence_name", "Sequence reset")
     inspector = sa.inspect(engine)
@@ -308,7 +313,7 @@ def reset_model_sequences(
                         pk_column_name=target.pk_column_name,
                         sequence_name=None,
                         next_value=None,
-                        status="skipped",
+                        status=Status.SKIPPED,
                         detail="no owned PostgreSQL sequence found",
                     )
                 )
@@ -333,7 +338,7 @@ def reset_model_sequences(
                     pk_column_name=target.pk_column_name,
                     sequence_name=sequence_name,
                     next_value=next_value,
-                    status=dry_status(dry_run, applied="reset"),
+                    status=dry_status(dry_run, applied=Status.RESET),
                     detail=dry_label(dry_run, "sequence would be reset from table max + 1", "sequence reset from table max + 1"),
                 )
             )
@@ -352,7 +357,7 @@ app = typer.Typer(rich_markup_mode="rich", help="Manage Database Tables: analyze
 def analyze_tables_command(
     conn,
     engine,
-    scope: TableScope | None = typer.Option(
+    scope: TableCategory | None = typer.Option(
         None,
         "--scope",
         help="CDM category scope to analyze (e.g. 'clinical', 'vocabulary'). Defaults to all ORM-managed tables when omitted.",
@@ -371,9 +376,7 @@ def analyze_tables_command(
     dry_run: bool = False,
 ) -> None:
     """Analyse selected ORM-managed tables to update planner statistics."""
-    resolved_scope, resolved_tables = resolve_selection(
-        scope=scope, tables=table, default_scope=TableScope.ALL
-    )
+    resolved_scope, resolved_tables = resolve_selection(scope=scope, tables=table)
     with console.status("Refreshing planner statistics for selected tables..."):
         results = analyze_tables(
             engine,
@@ -423,7 +426,7 @@ def reset_sequences_command(
 def truncate_tables_command(
     conn,
     engine,
-    scope: TableScope | None = typer.Option(
+    scope: TableCategory | None = typer.Option(
         None,
         "--scope",
         help="CDM category scope to truncate (e.g. 'clinical', 'vocabulary'). Must specify scope or --table.",
