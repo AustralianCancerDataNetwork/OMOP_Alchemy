@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 import sqlalchemy as sa
 from pydantic import Field
 from oa_configurator import (
-    DatabaseConfig,
+    CDMDatabaseConfig,
     PackageConfigBase,
     RefTo,
     Resolver,
@@ -56,7 +56,7 @@ class OmopAlchemyConfig(PackageConfigBase):
         Name of the ``[databases.*]`` entry holding the CDM database.
     test_cdm_db : str, optional
         Name of the ``[databases.*]`` entry holding the test CDM database,
-        marked ``RefTo(DatabaseConfig, is_test=True)``.
+        marked ``RefTo(CDMDatabaseConfig, is_test=True)``.
 
     Notes
     -----
@@ -67,8 +67,8 @@ class OmopAlchemyConfig(PackageConfigBase):
     tool_name: ClassVar[str] = "omop_alchemy"
     extra_logging_namespaces: ClassVar[tuple[str, ...]] = ("orm_loader",)
 
-    cdm_db: Annotated[str, RefTo(DatabaseConfig)] = "cdm_db"
-    test_cdm_db: Annotated[str | None, RefTo(DatabaseConfig, is_test=True)] = None
+    cdm_db: Annotated[str, RefTo(CDMDatabaseConfig)] = "cdm_db"
+    test_cdm_db: Annotated[str | None, RefTo(CDMDatabaseConfig, is_test=True)] = None
 
     athena_source_path: str | None = Field(
         default=None,

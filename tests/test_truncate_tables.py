@@ -2,7 +2,7 @@ import importlib
 import sqlalchemy as sa
 import pytest
 from typer.testing import CliRunner
-from oa_configurator import ConnectionConfig, DatabaseConfig, StackConfig
+from oa_configurator import CDMDatabaseConfig, ConnectionConfig, StackConfig
 
 from omop_alchemy.maintenance.cli import app
 from omop_alchemy.maintenance.cli_schema import create_missing_tables
@@ -44,7 +44,7 @@ def test_truncate_tables_cli_requires_confirmation(monkeypatch):
 
     cfg = StackConfig.for_session(
         connections={"db": ConnectionConfig(dialect="sqlite", database_name=":memory:")},
-        databases={"cdm_db": DatabaseConfig(connection="db", cdm_schema="main")},
+        databases={"cdm_db": CDMDatabaseConfig(connection="db", schema_name="main")},
     )
     monkeypatch.setattr(
         "omop_alchemy.config.load_stack_config",
@@ -63,7 +63,7 @@ def test_truncate_tables_cli_invokes_management(monkeypatch):
 
     cfg = StackConfig.for_session(
         connections={"db": ConnectionConfig(dialect="sqlite", database_name=":memory:")},
-        databases={"cdm_db": DatabaseConfig(connection="db", cdm_schema="main")},
+        databases={"cdm_db": CDMDatabaseConfig(connection="db", schema_name="main")},
     )
     monkeypatch.setattr(
         "omop_alchemy.config.load_stack_config",

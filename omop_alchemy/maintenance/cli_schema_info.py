@@ -342,7 +342,7 @@ def collect_maintenance_info(
         resolver = Resolver(stack)
         db_name = resolver.resolve_package_config(OmopAlchemyConfig).cdm_db
         resolved = resolver.resolve_database(db_name)
-        db_schema = resolved.cdm_schema
+        db_schema = resolved.schema_name
         raw_url = sa.engine.make_url(resolved.connection.url)
         engine_url = raw_url.render_as_string(hide_password=True)
         backend = raw_url.get_backend_name()

@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 import sqlalchemy as sa
-from oa_configurator import ConnectionConfig, DatabaseConfig, StackConfig
+from oa_configurator import CDMDatabaseConfig, ConnectionConfig, StackConfig
 from sqlalchemy.orm import sessionmaker
 from typer.testing import CliRunner
 
@@ -160,7 +160,7 @@ def test_load_vocab_source_cli_uses_configured_athena_source(monkeypatch, tmp_pa
 
     cfg = StackConfig.for_session(
         connections={"db": ConnectionConfig(dialect="sqlite", database_name=":memory:")},
-        databases={"cdm_db": DatabaseConfig(connection="db", cdm_schema="main")},
+        databases={"cdm_db": CDMDatabaseConfig(connection="db", schema_name="main")},
         tools={OmopAlchemyConfig.tool_name: {"athena_source_path": str(athena_dir)}},
     )
 
@@ -426,7 +426,7 @@ def test_load_vocab_source_cli_surfaces_database_error_detail(monkeypatch):
 
     cfg = StackConfig.for_session(
         connections={"db": ConnectionConfig(dialect="sqlite", database_name=":memory:")},
-        databases={"cdm_db": DatabaseConfig(connection="db", cdm_schema="main")},
+        databases={"cdm_db": CDMDatabaseConfig(connection="db", schema_name="main")},
     )
     monkeypatch.setattr(
         "omop_alchemy.config.load_stack_config",
