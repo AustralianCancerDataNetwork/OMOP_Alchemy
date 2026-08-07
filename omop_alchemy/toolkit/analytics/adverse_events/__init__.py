@@ -29,3 +29,18 @@ Grading functions take computed values, not ORM rows.  Where the values
 come from — which readings were admitted, over what window — is decided
 in ``omop_alchemy.toolkit.analytics.body_metrics``.
 """
+
+from .ctcae import CTCAEWeightLoss, ctcae_weight_loss_grade
+from .weight_loss import (
+    MartinWeightLoss,
+    critical_weight_loss_grade,
+    martin_weight_loss_grade,
+)
+
+__all__ = [
+    "CTCAEWeightLoss",
+    "MartinWeightLoss",
+    "critical_weight_loss_grade",
+    "ctcae_weight_loss_grade",
+    "martin_weight_loss_grade",
+]

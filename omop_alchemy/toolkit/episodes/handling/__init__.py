@@ -37,16 +37,39 @@ episode view to reach it through ordinary ``episode.episode_events``
 traversal.
 """
 
+from .dosing import DOSE_EVALUABLE, DoseEvaluability
+from .drug_episode import DrugEpisodeMixin
+from .event_windowing import (
+    DEFAULT_EPISODE_OPEN_END_FALLBACK_DAYS,
+    DEFAULT_EPISODE_WINDOW_DAYS_PRIOR,
+    episode_attachment_window,
+)
+from .exposure_series import resolve_drug_exposure_series
 from .resolved_event import (
     EpisodeEventResolutionDiagnostic,
     ResolutionDiagnosticKind,
     ResolvedEpisodeEvent,
     ResolvedEpisodeEventMixin,
 )
+from .summaries import (
+    DrugExposureSummary,
+    summarize_drug_exposures,
+    summarize_drug_exposures_by,
+)
 
 __all__ = [
+    "DEFAULT_EPISODE_OPEN_END_FALLBACK_DAYS",
+    "DEFAULT_EPISODE_WINDOW_DAYS_PRIOR",
+    "DOSE_EVALUABLE",
+    "DoseEvaluability",
+    "DrugEpisodeMixin",
+    "DrugExposureSummary",
     "EpisodeEventResolutionDiagnostic",
     "ResolutionDiagnosticKind",
     "ResolvedEpisodeEvent",
     "ResolvedEpisodeEventMixin",
+    "episode_attachment_window",
+    "resolve_drug_exposure_series",
+    "summarize_drug_exposures",
+    "summarize_drug_exposures_by",
 ]
