@@ -6,12 +6,15 @@ questions follow from that, and this tier answers both:
 
 ``derivation``
     How episodes are constructed and related to one another — building
-    episode queries, resolving parent/child hierarchy, and establishing
-    the windows over which events are attributed.
+    episode queries and resolving parent/child hierarchy. Not yet
+    populated; the equivalent built against materialised views lives in
+    ``omop-constructs``.
 
 ``handling``
     What is inside an episode once it exists — retrieving the linked
-    drug exposures, procedures, and measurements, and summarising them.
+    drug exposures, procedures, and measurements, admitting same-person
+    facts within a bounded window when an explicit link is unavailable,
+    and summarising what was found.
 
 Everything here is domain-neutral.  A drug episode behaves the same
 whether the drug is a cytotoxic agent or an antibiotic, so the mixins and
