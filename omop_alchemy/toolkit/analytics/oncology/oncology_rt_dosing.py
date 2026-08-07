@@ -89,7 +89,11 @@ def summarize_rt_procedures_by(
 
 
 def rt_site_key(procedure: OncologyProcedure) -> object:
-    return procedure.modifier_concept_id or procedure.procedure_source_value or "unknown_site"
+    if procedure.modifier_concept_id is not None:
+        return procedure.modifier_concept_id
+    if procedure.procedure_source_value is not None:
+        return procedure.procedure_source_value
+    return "unknown_site"
 
 
 class OncologyRTDosingMixin:

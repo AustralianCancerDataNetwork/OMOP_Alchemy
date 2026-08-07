@@ -153,6 +153,7 @@ class WeightTrajectoryMixin:
             or target is None
             or baseline.measurement_id == target.measurement_id
             or baseline.value is None
+            or baseline.value <= 0
             or target.value is None
         ):
             return WeightChange.not_evaluable()
@@ -170,6 +171,7 @@ class WeightTrajectoryMixin:
         if (
             latest.value is None
             or earliest_in_window.value is None
+            or earliest_in_window.value <= 0
             or earliest_in_window.measurement_id == latest.measurement_id
         ):
             return WeightChange.not_evaluable()
@@ -178,7 +180,7 @@ class WeightTrajectoryMixin:
 
     def pct_change_trajectory(self) -> list[WeightTrajectoryPoint]:
         baseline = self.baseline_weight
-        if baseline is None or baseline.value is None:
+        if baseline is None or baseline.value is None or baseline.value <= 0:
             return []
         points: list[WeightTrajectoryPoint] = []
         for reading in self.weight_readings:
@@ -203,7 +205,12 @@ class WeightTrajectoryMixin:
     ) -> Optional[bool]:
         baseline = self.baseline_weight
         readings = self.weight_readings
-        if baseline is None or baseline.value is None or len(readings) < min_consecutive:
+        if (
+            baseline is None
+            or baseline.value is None
+            or baseline.value <= 0
+            or len(readings) < min_consecutive
+        ):
             return None
         tail = readings[-min_consecutive:]
         if any(r.value is None for r in tail):

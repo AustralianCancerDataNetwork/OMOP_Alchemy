@@ -6,6 +6,7 @@ from orm_loader.helpers import Base
 from omop_alchemy.cdm.base import (
     cdm_table,
     CDMTableBase,
+    MODEL_MODULE_PREFIX,
     ReferenceContext,
     DomainValidationMixin,
     ExpectedDomain,
@@ -20,10 +21,28 @@ if TYPE_CHECKING:
 
 
 def _modifier_target_classes_by_field_concept_id() -> dict[int, Type[Any]]:
+    """
+    Default field-concept -> ORM target class map, CDM classes only.
+
+    Scans every registered mapper, so iteration order is otherwise at the
+    mercy of import order. Sorting makes the result deterministic, and
+    restricting to ``cdm.model`` (the same ``MODEL_MODULE_PREFIX`` that
+    ``@cdm_table`` itself classifies tables by) excludes toolkit/domain
+    subclasses (e.g. oncology-aware views) that also implement
+    ``ModifierTargetMixin`` -- those are reached only through an explicit
+    override such as ``OncologyEpisodeEvent.resolved_event_target_classes``,
+    never by accident here.
+    """
     classes: dict[int, Type[Any]] = {}
-    for mapper in Base.registry.mappers:
+    mappers = sorted(
+        Base.registry.mappers,
+        key=lambda mapper: f"{mapper.class_.__module__}.{mapper.class_.__qualname__}",
+    )
+    for mapper in mappers:
         cls = mapper.class_
         if not issubclass(cls, ModifierTargetMixin):
+            continue
+        if not cls.__module__.startswith(MODEL_MODULE_PREFIX):
             continue
         try:
             field_concept_id = cls.modifier_field_concept_id()
