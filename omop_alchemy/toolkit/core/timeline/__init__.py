@@ -13,7 +13,7 @@ casing per table::
     from omop_alchemy.toolkit.core.timeline import Person_Timeline
 
     for event in person.timeline:
-        print(event.time, event.concept_id, event.value)
+        print(event.event_time.start, event.concept_id, event.event_value().value)
 
 The timeline is a flat chronological view.  It carries no notion of which
 events group together into a treatment course or disease phase — that

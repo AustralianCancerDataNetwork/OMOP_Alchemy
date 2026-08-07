@@ -11,10 +11,14 @@ Turns a declarative description of *which* concepts belong in a lookup into a ru
 resolver that maps free text and source codes to OMOP concept IDs.
 
 ```python
-from omop_alchemy.toolkit.core.concepts import LookupSpec, make_concept_resolver
+from omop_alchemy.toolkit.core.concepts import make_concept_resolver
 
-resolver = make_concept_resolver(session, spec)
-concept_id = resolver.resolve("Adenocarcinoma of lung")
+resolver = make_concept_resolver(
+    session,
+    name="condition lookup",
+    domain_id="Condition",
+)
+concept_id = resolver.lookup("Adenocarcinoma of lung")
 ```
 
 ::: omop_alchemy.toolkit.core.concepts

@@ -51,4 +51,3 @@ class ModifierTargetMixin:
     @property
     def type_concept_id(self) -> int:
         return getattr(self, self.__type_concept_id_col__)
-

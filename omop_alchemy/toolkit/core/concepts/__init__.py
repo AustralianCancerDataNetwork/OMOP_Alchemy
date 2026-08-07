@@ -24,8 +24,12 @@ Three pieces make up the workflow:
 
     from omop_alchemy.toolkit.core.concepts import make_concept_resolver
 
-    resolver = make_concept_resolver(session, spec)
-    concept_id = resolver.resolve("Adenocarcinoma of lung")
+    resolver = make_concept_resolver(
+        session,
+        name="condition lookup",
+        domain_id="Condition",
+    )
+    concept_id = resolver.lookup("Adenocarcinoma of lung")
 
 Normalisation is composable.  ``compose_normalizers`` chains individual
 rules — ``normalize_default`` for whitespace and casing, ``strip_uicc``

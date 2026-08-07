@@ -27,8 +27,8 @@ normalised weight and height, BMI, and windowed weight change::
     class MyEpisode(WeightTrajectoryMixin, EpisodeView):
         ...
 
-    episode.bmi
-    episode.weight_change(days=180)
+    episode.baseline_bmi
+    episode.pct_change_over(days=180)
 
 ``WeightChange`` reports ``pct_change`` as ``None`` whenever the change is
 not evaluable — too few readings, or an unusable unit — so callers cannot
