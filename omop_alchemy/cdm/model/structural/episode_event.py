@@ -1,14 +1,15 @@
 import sqlalchemy as sa
 import sqlalchemy.orm as so
-from typing import TYPE_CHECKING, Any, Type, cast
+from typing import TYPE_CHECKING, Any, Type
 from functools import cached_property
-from orm_loader.helpers import Base, get_model_by_tablename
+from orm_loader.helpers import Base
 from omop_alchemy.cdm.base import (
     cdm_table,
-    CDMTableBase, 
+    CDMTableBase,
     ReferenceContext,
     DomainValidationMixin,
     ExpectedDomain,
+    ModifierTargetMixin,
     merge_table_args,
     omop_index,
 )
@@ -16,6 +17,48 @@ from omop_alchemy.cdm.base import (
 if TYPE_CHECKING:
     from ..vocabulary import Concept
     from .episode import Episode
+
+
+def _modifier_target_classes_by_field_concept_id() -> dict[int, Type[Any]]:
+    classes: dict[int, Type[Any]] = {}
+    for mapper in Base.registry.mappers:
+        cls = mapper.class_
+        if not issubclass(cls, ModifierTargetMixin):
+            continue
+        try:
+            field_concept_id = cls.modifier_field_concept_id()
+        except NotImplementedError:
+            continue
+        if field_concept_id not in classes:
+            classes[field_concept_id] = cls
+    return classes
+
+
+class _EpisodeEventTargetClassCache:
+    def __init__(self) -> None:
+        self._cache: dict[int, Type[Any]] | None = None
+
+    def get(self) -> dict[int, Type[Any]]:
+        if self._cache is None:
+            self._cache = _modifier_target_classes_by_field_concept_id()
+        return self._cache
+
+    def clear(self) -> None:
+        self._cache = None
+
+
+_target_class_cache = _EpisodeEventTargetClassCache()
+
+
+def clear_episode_event_target_class_cache() -> None:
+    """
+    Clear cached episode_event field-concept target mappings.
+
+    Honestly this isn't likely to be needed in normal operation, 
+    but the unenforced polymorphism is hard to capture otherwise.
+    """
+    _target_class_cache.clear()
+
 
 @cdm_table
 class Episode_Event(CDMTableBase, Base):
@@ -51,6 +94,18 @@ class Episode_EventView(Episode_Event, Episode_EventContext, DomainValidationMix
         "episode_event_field_concept_id": ExpectedDomain("Metadata"),
     }
 
+    @classmethod
+    def resolved_event_target_classes(cls) -> dict[int, Type[Any]]:
+        """
+        Map episode_event field concepts to ORM classes that can receive them.
+
+        Subclasses may override this to prefer domain-specific mapped views
+        over the base CDM views. The default map is built from registered
+        ``ModifierTargetMixin`` classes and keyed by the field concept id
+        itself, avoiding the fragile concept-name table parsing that the CDM
+        metadata labels happen to support today.
+        """
+        return _target_class_cache.get()
 
     @property
     def event_table(self) -> str | None:
@@ -58,21 +113,24 @@ class Episode_EventView(Episode_Event, Episode_EventContext, DomainValidationMix
             return self.event_field.concept_name.split(".", 1)[0]
         return None
 
+    @property
+    def resolved_event_class(self) -> Type[Any] | None:
+        return self.resolved_event_target_classes().get(
+            self.episode_event_field_concept_id
+        )
+
     @cached_property
     def resolved_event(self) -> Any | None:
         """
         Resolve EVENT_ID to concrete OMOP row.
         Cached per-instance.
         """
-        table_name = self.event_table
         session = so.object_session(self)
-        if session is None or table_name is None:
+        cls = self.resolved_event_class
+        if session is None or cls is None:
             return None
 
-        cls = cast(Type[Any] | None, get_model_by_tablename(table_name))
-        if cls is not None:
-            return session.get(cls, self.event_id)
-        return None
+        return session.get(cls, self.event_id)
 
     def __repr__(self):
         target = self.resolved_event
