@@ -72,7 +72,7 @@ utilities that operate across multiple CDM tables.
 
 !!! note
     The concrete mixin of the same name lives in
-    `omop_alchemy.cdm.handlers.timeline.event_timeline`. The Protocol here is the
+    `omop_alchemy.toolkit.core.timeline.event_timeline`. The Protocol here is the
     structural interface; the mixin there is the implementation.
 
 ::: omop_alchemy.cdm.base.typing.ClinicalEvent
@@ -81,15 +81,6 @@ utilities that operate across multiple CDM tables.
         show_root_heading: false
         members: true
 
----
-
-### `ConceptResolver`
-
-Protocol for objects that can look up whether a set of concept IDs are standard.
-
-::: omop_alchemy.cdm.base.typing.ConceptResolver
-    options:
-        heading_level: 4
 ---
 
 ## Typed row containers (`cdm.model.typing`)

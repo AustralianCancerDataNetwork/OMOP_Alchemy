@@ -2,7 +2,7 @@ from typing import Callable
 import sqlalchemy as sa
 import sqlalchemy.orm as so
 
-from .vocab_handlers import ConceptResolver
+from .lookup import ConceptResolver
 
 class ConceptResolverRegistry:
     """

@@ -3,9 +3,9 @@ from dataclasses import dataclass
 import sqlalchemy as sa
 import sqlalchemy.orm as so
 
-from .concept_normalisers import normalize_default
-from ...model import ConceptRow
-from ...model.vocabulary import Concept, Concept_Synonym, Concept_Ancestor
+from .normalizers import normalize_default
+from omop_alchemy.cdm.model import ConceptRow
+from omop_alchemy.cdm.model.vocabulary import Concept, Concept_Synonym, Concept_Ancestor
 
 """
 Class definitions for vocabulary handling and mapping.
